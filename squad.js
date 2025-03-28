@@ -41,12 +41,12 @@ const POWERUP_TYPES = {
 
 // Enemy Types
 const ENEMY_TYPES = {
-  BASIC: { health: 50, speed: 2.5, damage: 15, size: 20, points: 100, meleeRange: 50 }, // Faster enemies
-  FAST: { health: 35, speed: 2.5, damage: 12, size: 20, points: 150, meleeRange: 40 },
-  HEAVY: { health: 80, speed: 1, damage: 20, size: 25, points: 200, meleeRange: 60 },
-  BOSS1: { health: 300, speed: 0.8, damage: 25, size: 30, points: 1000, meleeRange: 80 },
-  BOSS2: { health: 500, speed: 1, damage: 30, size: 35, points: 2000, meleeRange: 90 },
-  BOSS3: { health: 1000, speed: 1.2, damage: 40, size: 40, points: 5000, meleeRange: 100 }
+  SOLDIER: { health: 50, speed: 2.5, damage: 15, size: 20, points: 100, meleeRange: 50, color: [255, 50, 50] }, // Red soldier
+  FAST: { health: 35, speed: 2.5, damage: 12, size: 18, points: 150, meleeRange: 40, color: [255, 100, 100] }, // Light red
+  HEAVY: { health: 80, speed: 1, damage: 20, size: 25, points: 200, meleeRange: 60, color: [200, 50, 50] }, // Dark red
+  BOSS1: { health: 300, speed: 0.8, damage: 25, size: 30, points: 1000, meleeRange: 80, color: [180, 0, 0] }, // Deep red
+  BOSS2: { health: 500, speed: 1, damage: 30, size: 35, points: 2000, meleeRange: 90, color: [150, 0, 0] }, // Darker red
+  BOSS3: { health: 1000, speed: 1.2, damage: 40, size: 40, points: 5000, meleeRange: 100, color: [120, 0, 0] } // Darkest red
 };
 
 // Movement Settings
@@ -83,6 +83,22 @@ let bullets = [];
 let enemies = [];
 let powerups = [];
 let moving = { left: false, right: false };
+
+function keyPressed() {
+  if (key === ' ') {
+    gamePaused = !gamePaused;
+  } else if (key === 'a' || key === 'A') {
+    // Add new squad member when 'a' is pressed
+    if (squad.size < MAX_SQUAD_SIZE) {
+      squad.size++;
+      squad.members.push({
+        x: squad.x - squad.size * SQUAD_SPACING * squad.direction,
+        z: squad.z,
+        health: 100
+      });
+    }
+  }
+}
 
 // Game progress
 let enemiesKilled = 0;
@@ -192,7 +208,6 @@ function setup() {
   textFont(myFont); // Set the font
   textSize(32); // Set the text size
   textAlign(CENTER, CENTER); // Align text to center
-  zoomLevel = getDynamicZoomLevel();
 }
 
 let bridgeTexture;
@@ -455,19 +470,15 @@ function drawEffects() {
     pop();
   }
 }
-function drawSquad() {
-  push();
-  translate(squad.x, 10, squad.z); // Raise slightly above ground
-
-  // Draw single player character
+function drawSoldier(isLeader = false) {
   push();
   // Body
-  fill(100, 150, 255); // Light blue
+  fill(100, 150, 255); // Light blue body for all soldiers
   sphere(15); // Round body
 
   // Hat
   translate(0, -12, 0);
-  fill(50, 100, 255); // Darker blue
+  fill(isLeader ? color(255, 255, 0) : color(50, 100, 255)); // Yellow for leader, blue for others
   rotateX(PI/6);
   cylinder(10, 8); // Baseball cap style
 
@@ -482,7 +493,17 @@ function drawSquad() {
     rect(-20, 0, map(squad.health, 0, 100, 0, 40), 5); // Health
   }
   pop();
+}
 
+function drawSquad() {
+  push();
+  // Draw each squad member
+  squad.members.forEach((member, index) => {
+    push();
+    translate(member.x, 10, member.z);
+    drawSoldier(index === 0); // First member is the leader
+    pop();
+  });
   pop();
 }
 
@@ -618,39 +639,24 @@ function drawEnemies() {
     push();
     translate(enemy.x, 30, enemy.z); // Raise enemies higher above bridge
 
-    if (enemy.type === ENEMY_TYPES.BOSS1 ||
-        enemy.type === ENEMY_TYPES.BOSS2 ||
-        enemy.type === ENEMY_TYPES.BOSS3) {
-      // Boss enemy - larger
-      push();
-      // Body
-      fill(255, 50, 50); // Bright red
-      sphere(20); // Round body
+    // Body
+    fill(...enemy.type.color); // Use enemy type color
+    sphere(enemy.type.size); // Size from enemy type
 
-      // Hat
-      translate(0, -15, 0);
-      fill(200, 0, 0); // Darker red
-      rotateX(PI/6);
-      cylinder(15, 10); // Baseball cap style
-      pop();
-    } else {
-      // Regular enemy
-      push();
-      // Body
-      fill(255, 50, 50); // Bright red
-      sphere(15); // Round body
+    // Hat
+    translate(0, -enemy.type.size * 0.8, 0);
+    fill(200, 0, 0); // Dark red hat for all enemies
+    rotateX(PI/6);
+    cylinder(enemy.type.size * 0.7, enemy.type.size * 0.5);
 
-      // Hat
-      translate(0, -12, 0);
-      fill(200, 0, 0); // Darker red
-      rotateX(PI/6);
-      cylinder(10, 8); // Baseball cap style
-      pop();
-    }
+    // White details
+    fill(255);
+    translate(0, enemy.type.size * 0.3, enemy.type.size * 0.2);
+    box(enemy.type.size * 0.3, enemy.type.size * 0.1, enemy.type.size * 0.1);
 
     // Health bar if damaged
     if (enemy.health < enemy.type.health) {
-      translate(0, -20, 0);
+      translate(0, -enemy.type.size, 0);
       rotateX(-PI/6);
       noStroke();
       fill(100);
@@ -676,18 +682,24 @@ function spawnEnemies() {
       enemyType = types[Math.floor(Math.random() * types.length)];
     }
 
-    // Random position ahead of the squad
-    const x = random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2);
-    const z = squad.z + random(500, 1000);
+    // Spawn enemies across the bridge width
+    const numEnemies = random(3, 6); // Spawn 3-6 enemies at once
+    const spacing = BRIDGE_WIDTH / (numEnemies + 1);
+    
+    for (let i = 1; i <= numEnemies; i++) {
+      const x = -BRIDGE_WIDTH/2 + spacing * i; // Evenly space enemies
+      const z = squad.z + random(500, 1000);
 
-    // Add new enemy
-    enemies.push({
-      x,
-      z,
-      type: enemyType,
-      health: enemyType.health,
-      lastShot: 0
-    });
+      // Add new enemy
+      enemies.push({
+        x,
+        z,
+        type: enemyType,
+        health: enemyType.health,
+        lastShot: 0
+      });
+    }
+    break; // Exit while loop after spawning a group
   }
 
   // Check if wave is complete
@@ -696,91 +708,37 @@ function spawnEnemies() {
   }
 }
 
-function getDynamicZoomLevel() {
-  const screenWidth = windowWidth;
-
-  if (screenWidth < 1024) {
-    return 0.1;
-  }
-
-  return 0.2;
-}
-
-function drawSoldier(isPlayer = false) {
+function drawSoldier(isLeader = false) {
   push();
-  if (isPlayer) {
-    translate(playerX, 0, playerZ);
-    rotateY(playerAngle); // Rotate tank body
-  }
   // Soldier body
-  fill(100, 150, 255);
-  box(soldierSize, 20, soldierSize);
-  // Weapon
-  translate(0, -15, 0);
-  if (isPlayer) {
-    rotateY(weaponAngle - playerAngle); // Rotate weapon independently for player
-  }
-  fill(50, 100, 255);
-  box(20, 8, 20);
+  fill(100, 150, 255); // Light blue body
+  sphere(15); // Round body
+
+  // Hat
+  translate(0, -12, 0);
+  fill(isLeader ? color(255, 255, 0) : color(50, 100, 255)); // Yellow for leader, blue for others
+  rotateX(PI/6);
+  cylinder(10, 8); // Baseball cap style
+
   // Gun
-  translate(0, 0, -15);
-  rotateX(HALF_PI);
+  translate(0, 8, -10);
   fill(80, 130, 255);
-  cylinder(3, 30);
+  rotateX(HALF_PI);
+  cylinder(2, 15);
   pop();
 }
 
-function drawAimLine(target) {
-  let dx = target.x - playerX;
-  let dz = target.z - playerZ;
-  let angle = atan2(dz, dx);
 
-  push();
-  stroke(255, 255, 0, 150); // Yellow line
-  strokeWeight(2);
-  let aimX = playerX + cos(angle) * AIM_LINE_LENGTH;
-  let aimZ = playerZ + sin(angle) * AIM_LINE_LENGTH;
-  line(playerX, 0, playerZ, aimX, 0, aimZ);
-  pop();
-}
-
-function drawSkillAimLines() {
-  for (let skill of skills) {
-    if (skill.lifetime > 0 && skill.target) {
-      drawAimLine(skill.target);
-    }
-  }
-}
-
-function findNearestEnemies(numTargets) {
-  let sortedEnemies = [...enemies].sort((a, b) => {
-    let distA = dist(playerX, 0, playerZ, a.x, 0, a.z);
-    let distB = dist(playerX, 0, playerZ, b.x, 0, b.z);
-    return distA - distB;
-  });
-  return sortedEnemies.slice(0, numTargets);
-}
 
 function fireBullet() {
-  let targets = findNearestEnemies(1); // Find the nearest enemy
-  if (targets.length > 0) {
-    let target = targets[0];
-    let dx = target.x - playerX;
-    let dz = target.z - playerZ;
-    let angle = atan2(dz, dx);
-    targetWeaponAngle = -atan2(dz, dx) - HALF_PI;
-    bullets.push({
-      x: playerX,
-      y: 0,
-      z: playerZ,
-      dx: cos(angle),
-      dz: sin(angle),
-      distanceTraveled: 0,
-    });
-
-    // Draw aim line for the bullet
-    drawAimLine(target);
-  }
+  bullets.push({
+    x: squad.x,
+    y: 0,
+    z: squad.z,
+    dx: 0,  // No horizontal movement
+    dz: 1,  // Move straight forward
+    distanceTraveled: 0
+  });
 }
 
 function updateWeaponAngle() {
