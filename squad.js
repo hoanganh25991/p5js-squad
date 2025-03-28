@@ -83,12 +83,67 @@ let bullets = [];
 let enemies = [];
 let powerups = [];
 let moving = { left: false, right: false };
+let lastPowerupSpawnTime = 0;
+
+function spawnPowerup() {
+  if (millis() - lastPowerupSpawnTime > POWERUP_SPAWN_INTERVAL) {
+    // Spawn in power-up lane (right side of bridge)
+    const x = BRIDGE_WIDTH/2 - POWERUP_LANE_WIDTH/2;
+    const z = squad.z + random(300, 800);
+    
+    // Random power-up type
+    const types = Object.keys(POWERUP_TYPES);
+    const type = POWERUP_TYPES[types[floor(random(types.length))]];
+    
+    powerups.push({
+      x,
+      z,
+      type,
+      collected: false
+    });
+    
+    lastPowerupSpawnTime = millis();
+  }
+}
+
+function checkPowerupCollision() {
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const powerup = powerups[i];
+    if (!powerup.collected) {
+      const dx = squad.x - powerup.x;
+      const dz = squad.z - powerup.z;
+      const distance = sqrt(dx * dx + dz * dz);
+      
+      if (distance < 30) { // Collection radius
+        powerup.collected = true;
+        
+        // Apply power-up effect
+        if (powerup.type.effect === 'squad_size' && squad.size < MAX_SQUAD_SIZE) {
+          squad.size++;
+          squad.members.push({
+            x: squad.x - squad.size * SQUAD_SPACING * squad.direction,
+            z: squad.z,
+            health: 100
+          });
+        } else if (powerup.type.effect === 'weapon') {
+          squad.weapon = WEAPON_TYPES[powerup.type.nextWeapon];
+        }
+        
+        // Remove collected powerup
+        powerups.splice(i, 1);
+      }
+    }
+  }
+}
+
+let lastSquadAddTime = 0;
+const SQUAD_ADD_COOLDOWN = 2000; // 2 seconds cooldown
 
 function keyPressed() {
   if (key === ' ') {
     gamePaused = !gamePaused;
-  } else if (key === 'a' || key === 'A') {
-    // Add new squad member when 'a' is pressed
+  } else if ((key === 'a' || key === 'A') && millis() - lastSquadAddTime > SQUAD_ADD_COOLDOWN) {
+    // Add new squad member when 'a' is pressed and cooldown is over
     if (squad.size < MAX_SQUAD_SIZE) {
       squad.size++;
       squad.members.push({
@@ -96,6 +151,7 @@ function keyPressed() {
         z: squad.z,
         health: 100
       });
+      lastSquadAddTime = millis(); // Update last add time
     }
   }
 }
@@ -249,9 +305,12 @@ function drawBridge() {
   push();
   fill(200); // Light gray for the road
   noStroke();
-  box(BRIDGE_WIDTH, 1, BRIDGE_LENGTH);
+  box(BRIDGE_WIDTH - POWERUP_LANE_WIDTH, 1, BRIDGE_LENGTH);
 
-
+  // Draw power-up lane
+  translate(BRIDGE_WIDTH/2 - POWERUP_LANE_WIDTH/2, 0, 0);
+  fill(150, 200, 255); // Light blue for power-up lane
+  box(POWERUP_LANE_WIDTH, 2, BRIDGE_LENGTH);
   pop();
 
   // Draw side barriers
@@ -266,12 +325,16 @@ function drawBridge() {
   box(10, 20, BRIDGE_LENGTH);
   pop();
 
-  // Draw powerup lane (blue section on the right)
-  push();
-  translate(BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0); // Right side of main bridge
-  fill(100, 150, 255, 100); // Light blue for powerup lane
-  box(POWERUP_LANE_WIDTH, 1, BRIDGE_LENGTH);
-  pop();
+  // Draw power-ups
+  for (let powerup of powerups) {
+    if (!powerup.collected) {
+      push();
+      translate(powerup.x, -20, powerup.z - BRIDGE_LENGTH/2);
+      fill(255, 255, 0); // Yellow for power-ups
+      sphere(15);
+      pop();
+    }
+  }
 
   pop();
 }
@@ -280,9 +343,13 @@ function draw() {
   if (gamePaused) {
     return;
   }
-
+  
   background(200);
   smooth();
+
+  // Update power-ups
+  spawnPowerup();
+  checkPowerupCollision();
 
   // Set up fixed camera view
   let camX = 0; // Fixed X position at center
@@ -683,21 +750,43 @@ function spawnEnemies() {
     }
 
     // Spawn enemies across the bridge width
-    const numEnemies = random(3, 6); // Spawn 3-6 enemies at once
+    const numEnemies = random(2, 4); // Spawn 2-4 enemies at once
     const spacing = BRIDGE_WIDTH / (numEnemies + 1);
+    const minDistance = 50; // Minimum distance between enemies
     
     for (let i = 1; i <= numEnemies; i++) {
-      const x = -BRIDGE_WIDTH/2 + spacing * i; // Evenly space enemies
-      const z = squad.z + random(500, 1000);
+      let x = -BRIDGE_WIDTH/2 + spacing * i; // Base position
+      let z = squad.z + random(500, 1000);
+      
+      // Adjust position if too close to other enemies
+      let validPosition = false;
+      let attempts = 0;
+      while (!validPosition && attempts < 10) {
+        validPosition = true;
+        for (let enemy of enemies) {
+          const dx = enemy.x - x;
+          const dz = enemy.z - z;
+          const distance = sqrt(dx * dx + dz * dz);
+          if (distance < minDistance) {
+            validPosition = false;
+            x += random(-spacing/2, spacing/2);
+            z += random(-100, 100);
+            break;
+          }
+        }
+        attempts++;
+      }
 
-      // Add new enemy
-      enemies.push({
-        x,
-        z,
-        type: enemyType,
-        health: enemyType.health,
-        lastShot: 0
-      });
+      if (validPosition) {
+        // Add new enemy
+        enemies.push({
+          x,
+          z,
+          type: enemyType,
+          health: enemyType.health,
+          lastShot: 0
+        });
+      }
     }
     break; // Exit while loop after spawning a group
   }
