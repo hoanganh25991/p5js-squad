@@ -49,7 +49,8 @@ const ENEMY_TYPES = {
 };
 
 // Movement Settings
-const MIN_CAMERA_DISTANCE = 100; // Add missing camera constant
+const MIN_CAMERA_DISTANCE = 100;
+const MAX_CAMERA_DISTANCE = 1000; // Maximum distance camera can be from player
 const PLAYER_MOVE_SPEED = 4;
 const MIN_X = -BRIDGE_WIDTH / 2;
 const MAX_X = BRIDGE_WIDTH / 2;
@@ -226,7 +227,7 @@ function createBridgeTexture() {
 
 function drawBridge() {
   push();
-  translate(0, 0, BRIDGE_LENGTH/2);
+  translate(0, 50, BRIDGE_LENGTH/2); // Move bridge down by 50 units
 
   // Draw main road
   push();
