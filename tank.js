@@ -1,65 +1,95 @@
 // Configuration variables
 
+// Squad Mechanics
+const INITIAL_SQUAD_SIZE = 1;
+const MAX_SQUAD_SIZE = 10;
+const SQUAD_SPACING = 40; // Space between squad members
+
+// Bridge Settings
+const BRIDGE_WIDTH = 300;
+const BRIDGE_LENGTH = 16000;
+const POWERUP_LANE_WIDTH = 100;
+const POWERUP_SPAWN_INTERVAL = 3000; // Spawn power-up every 3 seconds
+
 // Gameplay Mechanics
-const ENEMIES_TO_KILL = 1_000_000_000; // Number of enemies to kill before pausing
-const MAX_ENEMIES = 50; // Maximum number of enemies at any time
+const ENEMIES_TO_KILL = 1_000_000_000;
+const MAX_ENEMIES = 50;
+const AUTO_FIRE_RATE = 500; // Auto fire every 500ms
 
-// Bullet and Skill Properties
+// Weapon Properties
+const WEAPON_TYPES = {
+  BASIC: { name: 'Basic Gun', fireRate: 30, damage: 10, bulletSpeed: 8, bulletSize: 5 },
+  MACHINE_GUN: { name: 'Machine Gun', fireRate: 15, damage: 15, bulletSpeed: 10, bulletSize: 6 },
+  CANNON: { name: 'Cannon', fireRate: 45, damage: 30, bulletSpeed: 7, bulletSize: 8 },
+  LASER: { name: 'Laser Gun', fireRate: 10, damage: 20, bulletSpeed: 12, bulletSize: 4 },
+  SUPER_GUN: { name: 'Super Gun', fireRate: 8, damage: 25, bulletSpeed: 15, bulletSize: 7 },
+  MEGA_GUN: { name: 'Mega Gun', fireRate: 5, damage: 35, bulletSpeed: 18, bulletSize: 9 }
+};
 
-// Bullet Properties
-const BULLET_SPEED = 8; // Speed of the player's bullets
-const ENEMY_BULLET_SPEED = 3; // Speed of the enemy's bullets
-const BULLET_MAX_DISTANCE = 1000; // Maximum distance bullets can travel
-const BULLET_FIRE_INTERVAL = 30; // Fire bullets every 500ms (30 frames at 60 FPS)
-const BULLET_SIZE = 5;
+// Power-up Types
+const POWERUP_TYPES = {
+  MIRROR: { name: 'Mirror', effect: 'squad_size', model: 'mirror' },
+  GUN_BASIC: { name: 'Basic Gun Upgrade', effect: 'weapon', nextWeapon: 'MACHINE_GUN' },
+  GUN_ADVANCED: { name: 'Advanced Gun', effect: 'weapon', nextWeapon: 'CANNON' },
+  GUN_SUPER: { name: 'Super Gun X', effect: 'weapon', nextWeapon: 'SUPER_GUN' },
+  GUN_MEGA: { name: 'Mega Gun Y', effect: 'weapon', nextWeapon: 'MEGA_GUN' }
+};
 
-// Skill Properties
-const SKILL_SPEED = 12; // Speed of the skills
-const SKILL_BASE_SIZE = 30; // Base size of the skill
-const SKILL_MAX_DISTANCE = 2000; // Maximum distance skills can travel
-const SKILL_EXPAND_DISTANCE = 0; // Distance after which the skill expands
+// Enemy Types
+const ENEMY_TYPES = {
+  BASIC: { health: 30, speed: 2, damage: 10, size: 50, points: 100 },
+  FAST: { health: 20, speed: 3, damage: 8, size: 40, points: 150 },
+  HEAVY: { health: 50, speed: 1, damage: 15, size: 60, points: 200 },
+  BOSS1: { health: 200, speed: 1, damage: 20, size: 100, points: 1000 },
+  BOSS2: { health: 400, speed: 1.2, damage: 25, size: 120, points: 2000 },
+  BOSS3: { health: 800, speed: 1.5, damage: 30, size: 150, points: 5000 }
+};
 
-// Enemy Settings
-const ENEMY_SHOOTING_DISTANCE = 500; // Increased maximum distance for enemies to shoot
-const ENEMY_SPAWN_DISTANCE = 1500; // Increased maximum distance for enemies to shoot
+// Movement Settings
+const PLAYER_MOVE_SPEED = 4;
+const MIN_X = -BRIDGE_WIDTH / 2;
+const MAX_X = BRIDGE_WIDTH / 2;
+
+// Visual Settings
+const AIM_LINE_LENGTH = 2000;
 
 // Camera Settings
-const MIN_CAMERA_HEIGHT = -500; // Minimum camera height (ground level)
-const MAX_CAMERA_HEIGHT = 0; // Maximum camera height (tank level)
+const MIN_CAMERA_HEIGHT = -500;
+const MAX_CAMERA_HEIGHT = 0;
+const MIN_ZOOM_LEVEL = 0.04;
+const MAX_ZOOM_LEVEL = 2;
 
-// Camera Settings
-const MIN_ZOOM_LEVEL = 0.04; // Maximum camera height (tank level)
-const MAX_ZOOM_LEVEL = 2; // Minimum camera height (ground level)
+// Game state variables
+let squad = {
+  x: 0,
+  z: 0,
+  size: INITIAL_SQUAD_SIZE,
+  members: [{ x: 0, z: 0, health: 100 }],
+  weapon: WEAPON_TYPES.BASIC,
+  lastFireTime: 0,
+  direction: 1, // 1 for right, -1 for left
+  speed: 3
+};
 
-// Movement Speeds
-const PLAYER_MOVE_SPEED = 6; // Speed of the player's tank
-const ENEMY_MOVE_SPEED = 2; // Speed of the enemies
-
-// Visual Aids
-const AIM_LINE_LENGTH = 2000; // Configurable length of the aim line
-
-// Ground Settings
-const GROUND_TILE_SIZE = 16000; // Size of each ground tile (4x larger)
-const GROUND_TILES = 1; // Number of tiles in each direction (3x3 grid)
-const GROUND_REPEAT_DISTANCE = GROUND_TILE_SIZE; // Distance before ground repeats
-
-let playerX = 0;
-let playerZ = 0;
 let bullets = [];
 let enemyBullets = [];
 let enemies = [];
-let skills = [];
-let moving = { left: false, right: false, up: false, down: false };
+let powerups = [];
+let moving = { left: false, right: false };
 
-// Mouse control variables
-let isMiddleMouseDown = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-let playerHealth = 1000; // Default health
+// Game progress
 let enemiesKilled = 0;
-let tankSize = 75; // Tank size
-let zoomLevel = 0.2; // Default zoom level
+let score = 0;
+let currentWave = 1;
 let gamePaused = true;
+
+// Visual settings
+let zoomLevel = 0.2;
+let tankSize = 75;
+
+// Share state with window for external access
+window.squadSize = INITIAL_SQUAD_SIZE;
+window.currentWeapon = WEAPON_TYPES.BASIC.name;
 
 let playerAngle = 0; // Tank body angle
 let turretAngle = 0; // Turret angle
@@ -109,13 +139,15 @@ const cooldown = {
 };
 
 window.getState = function () {
+  // Calculate average health of squad members
+  const avgHealth = squad.members.reduce((sum, member) => sum + member.health, 0) / squad.members.length;
+  
   return {
-    playerHealth,
+    squadHealth: Math.round(avgHealth),
     enemiesKilled,
-    cameraHeight,
-    cameraAngle,
-    zoomLevel,
-    gamePaused,
+    squadSize: squad.size,
+    currentWeapon: squad.weapon.name,
+    gamePaused
   };
 };
 
@@ -148,42 +180,36 @@ function setup() {
   zoomLevel = getDynamicZoomLevel();
 }
 
-function drawGround() {
+function drawBridge() {
   push();
-  translate(0, 50, 0); // Move ground down by 50 units
-  
-  // Calculate which grid cell the player is in
-  let gridX = Math.floor(playerX / GROUND_REPEAT_DISTANCE);
-  let gridZ = Math.floor(playerZ / GROUND_REPEAT_DISTANCE);
-  
-  // Draw ground tiles centered around player
-  for (let x = -GROUND_TILES; x <= GROUND_TILES; x++) {
-    for (let z = -GROUND_TILES; z <= GROUND_TILES; z++) {
-      push();
-      translate(
-        (gridX + x) * GROUND_REPEAT_DISTANCE,
-        0,
-        (gridZ + z) * GROUND_REPEAT_DISTANCE
-      );
-      
-      // Draw ground tile with image
-      noStroke();
-      rotateX(HALF_PI);
-      texture(groundTexture);
-      
-      // Draw a single large texture for each tile
-      // Scale UV coordinates to 1/4 to make texture 4x larger
-      beginShape();
-      textureMode(NORMAL);
-      vertex(-GROUND_TILE_SIZE/2, -GROUND_TILE_SIZE/2, 0, 0, 0);
-      vertex(GROUND_TILE_SIZE/2, -GROUND_TILE_SIZE/2, 0, 0.25, 0);
-      vertex(GROUND_TILE_SIZE/2, GROUND_TILE_SIZE/2, 0, 0.25, 0.25);
-      vertex(-GROUND_TILE_SIZE/2, GROUND_TILE_SIZE/2, 0, 0, 0.25);
-      endShape(CLOSE);
-      
-      pop();
-    }
-  }
+  translate(0, 50, 0);
+
+  // Draw main bridge
+  push();
+  fill(100);
+  noStroke();
+  rotateX(HALF_PI);
+  rect(-BRIDGE_WIDTH / 2, -BRIDGE_LENGTH / 2, BRIDGE_WIDTH, BRIDGE_LENGTH);
+  pop();
+
+  // Draw power-up lane on the right
+  push();
+  fill(120);
+  noStroke();
+  translate(BRIDGE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, 0, 0);
+  rotateX(HALF_PI);
+  rect(-POWERUP_LANE_WIDTH / 2, -BRIDGE_LENGTH / 2, POWERUP_LANE_WIDTH, BRIDGE_LENGTH);
+  pop();
+
+  // Draw bridge railings
+  push();
+  fill(150);
+  translate(-BRIDGE_WIDTH / 2, -20, 0);
+  box(10, 40, BRIDGE_LENGTH);
+  translate(BRIDGE_WIDTH, 0, 0);
+  box(10, 40, BRIDGE_LENGTH);
+  pop();
+
   pop();
 }
 
@@ -192,81 +218,311 @@ function draw() {
     return;
   }
 
-  // Update camera angle based on key presses
-  if (rotatingLeft) {
-    cameraAngle -= PI / 180; // Rotate left
-  }
-  if (rotatingRight) {
-    cameraAngle += PI / 180; // Rotate right
-  }
+  background(200);
+  smooth();
 
-  // Adjust camera height based on key presses
-  if (increasingHeight) {
-    cameraHeight = min(cameraHeight + 2, MAX_CAMERA_HEIGHT); // Increase camera height, but not above tank level
-  }
-  if (decreasingHeight) {
-    cameraHeight = max(cameraHeight - 2, MIN_CAMERA_HEIGHT); // Decrease camera height, but not below ground level
-  }
+  // Set up camera
+  let camX = squad.x + cos(cameraAngle) * cameraDistance;
+  let camZ = squad.z + sin(cameraAngle) * cameraDistance;
+  camera(camX, cameraHeight, camZ,
+    squad.x, cameraHeight, squad.z,
+    0, 1, 0);
 
-  // Move camera closer or further from the tank with t and y
-  if (movingCloser) {
-    zoomLevel = min(zoomLevel + 0.005, MAX_ZOOM_LEVEL);
-  }
-  if (movingFarther) {
-    zoomLevel = max(zoomLevel - 0.005, MIN_ZOOM_LEVEL);
-  }
-
-  background(135, 206, 235); // Sky color
-
-  // Lighting
-  ambientLight(75); // Ánh sáng môi trường
-  directionalLight(255, 255, 255, 0, 1, -1);
-
-  // Draw infinite ground
-  drawGround();
-
-  // Move camera with player and apply zoom
-  let camX = playerX + (cos(cameraAngle) * cameraDistance) / zoomLevel;
-  let camZ = playerZ + (sin(cameraAngle) * cameraDistance) / zoomLevel;
-
-  // Adjust camera height and ensure it rotates around the tank
-  camera(camX, cameraHeight / zoomLevel, camZ, playerX, 0, playerZ, 0, 1, 0);
-
-  // Draw tank
-  drawTank(true); // Player tank needs translation
-
-  // Draw aim lines for active skills
-  drawSkillAimLines();
-
-  // Draw bullets
-  drawBullets();
-
-  // Draw enemy bullets
-  drawEnemyBullets();
-
-  // Draw skills
-  drawSkills();
-
-  // Draw cast skills
-  drawCastSkills();
-
-  // Draw enemies
-  drawEnemies();
-
-  // Update player position
-  updatePlayerPosition();
-
-  // Update enemies position
-  updateEnemiesPosition();
-
-  updateTurretAngle();
-
-  // Check collisions
+  // Update game state
+  updateSquadPosition();
+  updatePowerups();
+  updateEnemies();
+  autoFireSquad();
   checkCollisions();
 
-  // Automatically fire bullets every BULLET_FIRE_INTERVAL frames
-  if (frameCount % BULLET_FIRE_INTERVAL === 0) {
-    fireBullet();
+  // Draw game elements
+  drawBridge();
+  drawSquad();
+  drawBullets();
+  drawEnemyBullets();
+  drawEnemies();
+  drawPowerups();
+}
+
+function updateSquadPosition() {
+  // Auto move squad horizontally
+  squad.x = constrain(squad.x + squad.speed * squad.direction, MIN_X, MAX_X);
+
+  // Reverse direction if hitting bridge boundaries
+  if (squad.x <= MIN_X || squad.x >= MAX_X) {
+    squad.direction *= -1;
+  }
+
+  // Update squad members positions with spacing
+  squad.members = squad.members.map((member, index) => ({
+    ...member,
+    x: squad.x - index * SQUAD_SPACING * squad.direction,
+    z: squad.z
+  }));
+}
+
+function autoFireSquad() {
+  if (millis() - squad.lastFireTime > AUTO_FIRE_RATE) {
+    // Each squad member fires forward
+    squad.members.forEach(member => {
+      bullets.push({
+        x: member.x,
+        z: member.z,
+        size: squad.weapon.bulletSize,
+        speed: squad.weapon.bulletSpeed,
+        damage: squad.weapon.damage,
+        angle: 0, // Always shoot forward
+        distance: 0
+      });
+    });
+    squad.lastFireTime = millis();
+  }
+}
+
+function updatePowerups() {
+  // Update powerup positions and check for collection
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const powerup = powerups[i];
+    powerup.z -= 2; // Move towards squad
+
+    // Check if any squad member collects the powerup
+    for (let member of squad.members) {
+      if (dist(member.x, member.z, powerup.x, powerup.z) < 30) {
+        // Apply powerup effect
+        if (powerup.type === POWERUP_TYPES.MIRROR) {
+          if (squad.size < MAX_SQUAD_SIZE) {
+            squad.size++;
+            squad.members.push({
+              x: member.x - squad.size * SQUAD_SPACING * squad.direction,
+              z: member.z,
+              health: 100
+            });
+          }
+        } else if (powerup.type.effect === 'weapon') {
+          squad.weapon = WEAPON_TYPES[powerup.type.nextWeapon];
+        }
+        powerups.splice(i, 1);
+        break;
+      }
+    }
+
+    // Remove powerups that are too far behind
+    if (powerup.z < squad.z - 1000) {
+      powerups.splice(i, 1);
+    }
+  }
+
+  // Spawn new powerups in the power-up lane
+  if (frameCount % POWERUP_SPAWN_INTERVAL === 0) {
+    const powerupTypes = Object.values(POWERUP_TYPES);
+    const randomType = powerupTypes[Math.floor(random(powerupTypes.length))];
+    
+    powerups.push({
+      x: BRIDGE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, // Always in power-up lane
+      z: squad.z + 1000,
+      speed: 2,
+      size: 20,
+      type: randomType
+    });
+  }
+  powerups = powerups.filter(powerup => {
+    if (!powerup.collected) {
+      powerup.z -= PLAYER_MOVE_SPEED * 0.5; // Move towards player
+      return powerup.z > squad.z - 500;
+    }
+    return false;
+  });
+}
+
+function drawPowerups() {
+  powerups.forEach(powerup => {
+    if (!powerup.collected) {
+      push();
+      translate(powerup.x, 0, powerup.z);
+
+      // Hover animation
+      translate(0, 10 + sin(frameCount * 0.05) * 5, 0);
+      rotateY(frameCount * 0.02);
+
+      // Different visuals for different powerup types
+      if (powerup.type === POWERUP_TYPES.MIRROR) {
+        fill(200, 200, 255);
+        box(30);
+      } else if (powerup.type === POWERUP_TYPES.GUN_UPGRADE) {
+        fill(255, 200, 200);
+        cylinder(15, 40);
+      } else {
+        fill(200, 255, 200);
+        sphere(20);
+      }
+      pop();
+    }
+  });
+}
+function drawSquad() {
+  const spacing = tankSize * 1.2;
+  const rows = Math.ceil(Math.sqrt(squad.size));
+  const cols = Math.ceil(squad.size / rows);
+
+  push();
+  translate(squad.x, 0, squad.z);
+
+  // Update squad member positions
+  squad.members = [];
+  let memberIndex = 0;
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols && memberIndex < squad.size; col++) {
+      const offsetX = (col - (cols - 1) / 2) * spacing;
+      const offsetZ = (row - (rows - 1) / 2) * spacing;
+      squad.members.push({ x: squad.x + offsetX, z: squad.z + offsetZ });
+
+      // Draw individual tank
+      push();
+      translate(offsetX, 0, offsetZ);
+
+      // Draw tank body
+      fill(200);
+      box(tankSize, tankSize / 2, tankSize * 1.5);
+
+      // Draw tank turret
+      translate(0, -tankSize / 4, 0);
+      fill(180);
+      box(tankSize * 0.8, tankSize / 2, tankSize);
+
+      // Draw tank barrel with current weapon appearance
+      translate(0, 0, tankSize * 0.7);
+      fill(160);
+      const barrelSize = squad.weapon.bulletSize * 2;
+      box(barrelSize, barrelSize, tankSize);
+      pop();
+
+      memberIndex++;
+    }
+  }
+  pop();
+}
+
+function updateEnemies() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    
+    // Move towards squad on bridge
+    enemy.z -= enemy.type.speed; // Always move towards squad
+
+    // Check for collisions with bullets
+    for (let j = bullets.length - 1; j >= 0; j--) {
+      const bullet = bullets[j];
+      if (dist(bullet.x, bullet.z, enemy.x, enemy.z) < enemy.type.size/2 + bullet.size/2) {
+        enemy.health -= bullet.damage;
+        bullets.splice(j, 1);
+        
+        if (enemy.health <= 0) {
+          score += enemy.type.points;
+          enemies.splice(i, 1);
+          enemiesKilled++;
+          break;
+        }
+      }
+    }
+
+    // Check for collisions with squad members
+    for (let j = squad.members.length - 1; j >= 0; j--) {
+      const member = squad.members[j];
+      if (dist(member.x, member.z, enemy.x, enemy.z) < enemy.type.size/2 + 20) {
+        member.health -= enemy.type.damage;
+        if (member.health <= 0) {
+          squad.members.splice(j, 1);
+          squad.size--;
+          if (squad.size <= 0) {
+            gamePaused = true;
+          }
+        }
+      }
+    }
+
+    // Remove enemies that are off screen
+    if (enemy.z < squad.z - 1000) {
+      enemies.splice(i, 1);
+    }
+  }
+
+  // Spawn new enemies
+  if (frameCount % 120 === 0 && enemies.length < MAX_ENEMIES) {
+    const wave = Math.floor(enemiesKilled / 50); // Every 50 kills increases wave
+    const types = Object.keys(ENEMY_TYPES);
+    const type = types[Math.min(wave, types.length - 1)];
+    
+    // Spawn boss every 200 kills
+    if (enemiesKilled % 200 === 0 && enemiesKilled > 0) {
+      const bossLevel = Math.min(Math.floor(wave / 3), 3);
+      spawnEnemy(`BOSS${bossLevel}`);
+    } else {
+      spawnEnemy(type);
+    }
+  }
+}
+
+function drawEnemies() {
+  enemies.forEach(enemy => {
+    push();
+    translate(enemy.x, 0, enemy.z);
+
+    // Different visuals for different enemy types
+    if (enemy.type === ENEMY_TYPES.BOSS1 ||
+      enemy.type === ENEMY_TYPES.BOSS2 ||
+      enemy.type === ENEMY_TYPES.BOSS3) {
+      // Boss appearance
+      fill(255, 0, 0);
+      box(enemy.type.size, enemy.type.size * 0.6, enemy.type.size * 1.5);
+
+      // Boss turret
+      translate(0, -enemy.type.size * 0.2, 0);
+      fill(200, 0, 0);
+      box(enemy.type.size * 0.8, enemy.type.size * 0.4, enemy.type.size);
+    } else {
+      // Regular enemy
+      fill(150, 0, 0);
+      box(enemy.type.size, enemy.type.size * 0.5, enemy.type.size * 1.2);
+
+      // Enemy turret
+      translate(0, -enemy.type.size * 0.15, 0);
+      fill(120, 0, 0);
+      box(enemy.type.size * 0.6, enemy.type.size * 0.3, enemy.type.size * 0.8);
+    }
+    pop();
+  });
+}
+
+function spawnEnemies() {
+  // Spawn new enemies if there are too few
+  while (enemies.length < MAX_ENEMIES) {
+    // Determine enemy type based on current wave
+    let enemyType;
+    if (currentWave % 10 === 0) { // Boss wave every 10 waves
+      const bossLevel = Math.min(3, Math.floor(currentWave / 10));
+      enemyType = ENEMY_TYPES[`BOSS${bossLevel}`];
+    } else {
+      const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.FAST, ENEMY_TYPES.HEAVY];
+      enemyType = types[Math.floor(Math.random() * types.length)];
+    }
+
+    // Random position ahead of the squad
+    const x = random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2);
+    const z = squad.z + random(500, 1000);
+
+    // Add new enemy
+    enemies.push({
+      x,
+      z,
+      type: enemyType,
+      health: enemyType.health,
+      lastShot: 0
+    });
+  }
+
+  // Check if wave is complete
+  if (enemies.length === 0) {
+    currentWave++;
   }
 }
 
@@ -361,21 +617,44 @@ function updateTurretAngle() {
 }
 
 function drawBullets() {
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    let bullet = bullets[i];
-    bullet.x += bullet.dx * BULLET_SPEED;
-    bullet.z += bullet.dz * BULLET_SPEED;
-    bullet.distanceTraveled += BULLET_SPEED;
-
+  // Draw and update squad bullets
+  bullets = bullets.filter((bullet) => {
     push();
-    translate(bullet.x, bullet.y, bullet.z);
-    sphere(BULLET_SIZE);
+    translate(bullet.x, 0, bullet.z);
+    fill(255, 255, 0);
+    sphere(bullet.size);
     pop();
 
-    // Remove bullets that have traveled beyond the maximum distance
-    if (bullet.distanceTraveled > BULLET_MAX_DISTANCE) {
-      bullets.splice(i, 1);
-    }
+    // Update bullet position
+    bullet.z += bullet.speed; // Only move forward
+    bullet.distance += bullet.speed;
+
+    // Remove bullet if it has traveled too far
+    return bullet.distance < 1000;
+  });
+
+  // Draw and update enemy bullets
+  enemyBullets = enemyBullets.filter((bullet) => {
+    push();
+    translate(bullet.x, 0, bullet.z);
+    fill(255, 0, 0);
+    sphere(5);
+    pop();
+
+    // Update bullet position
+    bullet.x += cos(bullet.angle) * bullet.speed;
+    bullet.z += sin(bullet.angle) * bullet.speed;
+
+    // Remove bullets that are too far behind the squad
+    return bullet.z > squad.z - 1000;
+  });
+  translate(bullet.x, bullet.y, bullet.z);
+  sphere(BULLET_SIZE);
+  pop();
+
+  // Remove bullets that have traveled beyond the maximum distance
+  if (bullet.distanceTraveled > BULLET_MAX_DISTANCE) {
+    bullets.splice(i, 1);
   }
 }
 
@@ -406,7 +685,7 @@ class Wave {
     this.x = x;
     this.z = z;
     this.waves = [
-      { radius: 50, alpha:255 },
+      { radius: 50, alpha: 255 },
       { radius: 50, alpha: 255 },
       { radius: 50, alpha: 255 },
       { radius: 50, alpha: 255 },
@@ -422,7 +701,7 @@ class Wave {
   update() {
     this.frameCount++;
     let anyWaveActive = false;
-    
+
     for (let i = 0; i < this.waves.length; i++) {
       if (this.frameCount > this.startTimes[i]) {
         let wave = this.waves[i];
@@ -435,7 +714,7 @@ class Wave {
         anyWaveActive = true;
       }
     }
-    
+
     return anyWaveActive;
   }
 
@@ -443,7 +722,7 @@ class Wave {
     push();
     translate(this.x, 0, this.z);
     rotateX(HALF_PI);
-    
+
     // Draw each wave
     for (let wave of this.waves) {
       if (wave.radius <= this.maxRadius) {
@@ -451,7 +730,7 @@ class Wave {
         stroke(0, 180, 255, wave.alpha);
         strokeWeight(20);
         circle(0, 0, wave.radius * 2);
-        
+
         // Check collision with enemies for each wave
         for (let i = enemies.length - 1; i >= 0; i--) {
           let enemy = enemies[i];
@@ -486,40 +765,40 @@ function drawSkills() {
 
     if (skill.type === "g") {
       updateMiniTankPosition(skill);
-      
+
       // Find nearest enemy for turret rotation
       let nearestEnemy = findNearestEnemies(1)[0];
       let turretAngle = 0;
-      
+
       if (nearestEnemy) {
         turretAngle = atan2(nearestEnemy.z - skill.z, nearestEnemy.x - skill.x);
       }
-      
+
       push();
       translate(skill.x, skill.y, skill.z);
       fill(0, 255, 0, skill.lifetime);
       scale(0.5); // Fixed scale for ally tank
-      
+
       // Draw tank with turret rotation
       push();
       // Tank body
       texture(tankTexture);
       box(tankSize, 20, tankSize);
-      
+
       // Turret with rotation
       translate(0, -15, 0);
       rotateY(turretAngle);
       box(30, 10, 30);
-      
+
       // Gun barrel
       translate(0, 0, -20);
       rotateX(HALF_PI);
       fill(100);
       cylinder(5, 40);
       pop();
-      
+
       pop();
-      
+
       skill.lifetime--;
     } else {
       // Original behavior for other skills
@@ -585,9 +864,9 @@ function drawCastSkills() {
     castSkill("g", 1, 1, skillSoundMap["g"]);
     lastCastTime.g = currentTime;
   }
-  if(casting.h && currentTime - lastCastTime.h >= cooldown.h){
+  if (casting.h && currentTime - lastCastTime.h >= cooldown.h) {
     if (millis() - lastCastTime.h > 500) { // 500ms cooldown
-      waves.push(new Wave(playerX, playerZ, 9999  ));
+      waves.push(new Wave(playerX, playerZ, 9999));
       skillSoundMap.h.play();
       lastCastTime.h = millis();
     }
@@ -820,7 +1099,7 @@ function keyReleased() {
 function mouseWheel(event) {
   // Prevent default behavior (page scrolling)
   event.preventDefault();
-  
+
   // Adjust zoom level with mouse wheel when middle mouse is not held
   if (!isMiddleMouseDown) {
     let zoomChange = event.delta > 0 ? 0.01 : -0.01;
@@ -848,17 +1127,17 @@ function mouseDragged() {
     // Calculate mouse movement
     let deltaX = mouseX - lastMouseX;
     let deltaY = mouseY - lastMouseY;
-    
+
     // Adjust camera angle based on horizontal movement
     cameraAngle += deltaX * 0.01;
-    
+
     // Adjust camera height based on vertical movement
     cameraHeight = constrain(
       cameraHeight - deltaY * 2,
       MIN_CAMERA_HEIGHT,
       MAX_CAMERA_HEIGHT
     );
-    
+
     // Update last position
     lastMouseX = mouseX;
     lastMouseY = mouseY;
@@ -900,55 +1179,83 @@ function castSkill(type, numTargets, sizeFactor, skillSound) {
   }
 }
 
-function spawnEnemies() {
-  // Count the number of enemies within the spawn distance
-  let enemiesWithinRadius = enemies.filter((enemy) => {
-    return (
-      dist(enemy.x, 0, enemy.z, playerX, 0, playerZ) < ENEMY_SPAWN_DISTANCE
-    );
-  }).length;
+function spawnEnemy(type) {
+  const enemyType = ENEMY_TYPES[type];
+  const enemy = {
+    x: random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2),
+    z: squad.z + 1000, // Spawn ahead of squad
+    type: enemyType,
+    health: enemyType.health,
+    lastShot: 0
+  };
+  enemies.push(enemy);
+}
 
-  // Spawn new enemies if the count is below the maximum
-  while (enemiesWithinRadius < MAX_ENEMIES) {
-    let x = random(
-      playerX - ENEMY_SPAWN_DISTANCE,
-      playerX + ENEMY_SPAWN_DISTANCE
-    );
-    let z = random(
-      playerZ - ENEMY_SPAWN_DISTANCE,
-      playerZ + ENEMY_SPAWN_DISTANCE
-    );
-
-    // Ensure enemies do not spawn too close to the player
-    if (dist(x, 0, z, playerX, 0, playerZ) > tankSize) {
-      enemies.push({ x: x, z: z, health: 10 });
-      enemiesWithinRadius++;
-    }
+function spawnEnemies(count = 1) {
+  for (let i = 0; i < count; i++) {
+    const types = Object.keys(ENEMY_TYPES);
+    const type = types[Math.floor(Math.random() * types.length)];
+    spawnEnemy(type);
   }
 }
 
 function checkCollisions() {
-  // Bullet collision with enemies
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    let bullet = bullets[i];
-    for (let j = enemies.length - 1; j >= 0; j--) {
-      let enemy = enemies[j];
-      let d = dist(bullet.x, bullet.y, bullet.z, enemy.x, 0, enemy.z);
-      if (d < 40) {
-        enemies[j].health -= 10;
-        bullets.splice(i, 1);
-        if (enemies[j].health <= 0) {
-          enemies.splice(j, 1);
+  // Check bullet collisions with enemies
+  bullets = bullets.filter((bullet) => {
+    let hit = false;
+    enemies = enemies.filter((enemy) => {
+      const dx = enemy.x - bullet.x;
+      const dz = enemy.z - bullet.z;
+      const distance = sqrt(dx * dx + dz * dz);
+      if (distance < enemy.type.size / 2) {
+        hit = true;
+        enemy.health -= bullet.damage;
+        if (enemy.health <= 0) {
           enemiesKilled++;
-          if (enemiesKilled >= ENEMIES_TO_KILL) {
-            gamePaused = true;
-          } else {
-            spawnEnemies(1);
-          }
+          score += enemy.type.health; // Score based on enemy health
+          return false;
         }
-        break;
+        return true;
       }
+      return true;
+    });
+    return !hit;
+  });
+
+  // Check enemy bullet collisions with squad members
+  enemyBullets = enemyBullets.filter((bullet) => {
+    let hit = false;
+    squad.members.forEach(member => {
+      const dx = member.x - bullet.x;
+      const dz = member.z - bullet.z;
+      const distance = sqrt(dx * dx + dz * dz);
+      if (distance < tankSize / 2) {
+        squad.health -= bullet.damage;
+        hit = true;
+      }
+    });
+    return !hit;
+  });
+
+  // Check powerup collisions with squad
+  powerups.forEach(powerup => {
+    if (!powerup.collected) {
+      squad.members.forEach(member => {
+        const dx = member.x - powerup.x;
+        const dz = member.z - powerup.z;
+        const distance = sqrt(dx * dx + dz * dz);
+        if (distance < tankSize) {
+          powerup.collected = true;
+          applyPowerup(powerup.type);
+        }
+      });
     }
+  });
+
+  // Check if game over
+  if (squad.health <= 0) {
+    gamePaused = true;
+    alert('Game Over! Score: ' + score);
   }
 
   // Skill collision with enemies
@@ -977,19 +1284,6 @@ function checkCollisions() {
             spawnEnemies(1);
           }
         }
-      }
-    }
-  }
-
-  // Enemy bullet collision with player
-  for (let i = enemyBullets.length - 1; i >= 0; i--) {
-    let bullet = enemyBullets[i];
-    let d = dist(bullet.x, bullet.y, bullet.z, playerX, 0, playerZ);
-    if (d < 40) {
-      playerHealth -= 1;
-      enemyBullets.splice(i, 1);
-      if (playerHealth <= 0) {
-        gamePaused = true;
       }
     }
   }
