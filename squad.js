@@ -353,6 +353,7 @@ function drawBridge() {
   translate(0, -10, -BRIDGE_LENGTH/2);
   fill(0);
   textSize(16);
+  rotateY(-cameraAngle); // Make text face camera
   textAlign(LEFT);
   text(`Main Lane: x=${-MAIN_LANE_WIDTH - POWERUP_LANE_WIDTH / 2}, y=50, width=${MAIN_LANE_WIDTH}`, 0, 0);
   pop();
@@ -367,6 +368,7 @@ function drawBridge() {
   translate(0, -10, -BRIDGE_LENGTH/2);
   fill(0);
   textSize(16);
+  rotateY(-cameraAngle); // Make text face camera
   textAlign(LEFT);
   text(`Power-up Lane: x=${-POWERUP_LANE_WIDTH/2}, y=50, width=${POWERUP_LANE_WIDTH}`, 0, 0);
   pop();
@@ -387,6 +389,7 @@ function drawBridge() {
   // Bridge dimensions text
   push();
   translate(-BRIDGE_WIDTH/2, -20, -BRIDGE_LENGTH/2);
+  rotateY(-cameraAngle); // Make text face camera
   fill(0);
   textSize(20);
   textAlign(LEFT);
@@ -396,6 +399,7 @@ function drawBridge() {
   for (let z = 0; z < BRIDGE_LENGTH; z += 1000) {
     push();
     translate(0, 0, z);
+    rotateY(-cameraAngle); // Make text face camera
     text(`Z: ${z}`, 0, 0);
     pop();
   }
@@ -422,6 +426,55 @@ function draw() {
 
   background(200);
   smooth();
+  
+  // Draw camera position marker
+  push();
+  // Calculate camera position based on angle and distance
+  const cameraX = sin(cameraAngle) * cameraDistance;
+  const cameraZ = cos(cameraAngle) * cameraDistance;
+  translate(cameraX, 0, cameraZ);
+  fill(255, 165, 0); // Orange
+  noStroke();
+  sphere(10); // Camera sphere
+  // Camera label
+  push();
+  translate(0, -30, 0); // Move label up
+  rotateY(-PI/2 - cameraAngle); // Make text face forward
+  fill(255, 165, 0);
+  textSize(16);
+  textAlign(CENTER);
+  text(`Camera (${Math.round(cameraX)}, 0, ${Math.round(cameraZ)})`, 0, 0);
+  pop();
+  pop();
+  
+  // Draw origin marker (0,0,0)
+  push();
+  translate(0, 50, 0); // Same Y level as bridge
+  // Draw axes
+  strokeWeight(3);
+  // X axis - Red
+  stroke(255, 0, 0);
+  line(-30, 0, 0, 30, 0, 0);
+  // Y axis - Green
+  stroke(0, 255, 0);
+  line(0, -30, 0, 0, 30, 0);
+  // Z axis - Blue
+  stroke(0, 0, 255);
+  line(0, 0, -30, 0, 0, 30);
+  // Origin sphere
+  noStroke();
+  fill(255, 255, 255);
+  sphere(5);
+  // Origin label
+  push();
+  translate(0, -100, 0); // Move label much higher up
+  rotateY(-PI - cameraAngle); // Make text face camera directly
+  fill(255);
+  textSize(20); // Larger text
+  textAlign(CENTER);
+  text('Origin (0,0,0)', 0, 0);
+  pop();
+  pop();
 
   // Update power-ups
   spawnPowerup();
@@ -429,9 +482,9 @@ function draw() {
 
   // Set up fixed camera view
   let camX = 0; // Fixed X position at center
-  let camZ = -cameraDistance - 120; // Fixed distance behind
-  camera(camX, cameraHeight - 70, camZ,
-    0, cameraHeight - 70, BRIDGE_LENGTH / 2, // Look straight ahead
+  let camZ = -cameraDistance - 300; // Further back for better view
+  camera(camX, cameraHeight - 50, camZ, // Higher camera for better visibility
+    0, cameraHeight - 50, BRIDGE_LENGTH * 0.75, // Look further ahead
     0, 1, 0);
 
   // Update game state
@@ -1329,7 +1382,7 @@ function spawnEnemy(type) {
   const enemyType = ENEMY_TYPES[type];
   const enemy = {
     x: random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2),
-    z: squad.z + 1000, // Spawn ahead of squad
+    z: squad.z + 1500, // Spawn further ahead of squad
     type: enemyType,
     health: enemyType.health,
     lastShot: 0

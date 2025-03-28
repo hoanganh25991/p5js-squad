@@ -48,6 +48,73 @@ body {
 }
 
 
+/* Coordinate Guide */
+.coordinate-guide {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 10px;
+  color: white;
+  font-family: Arial, sans-serif;
+  z-index: 1000;
+}
+
+.axis {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.axis-line {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  width: 60px;
+}
+
+.arrow {
+  height: 2px;
+  width: 40px;
+  position: relative;
+  margin: 0 5px;
+}
+
+.arrow::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -4px;
+  border: 4px solid transparent;
+  border-left-width: 6px;
+}
+
+.x-axis .arrow {
+  background-color: #ff0000;
+}
+
+.x-axis .arrow::after {
+  border-left-color: #ff0000;
+}
+
+.y-axis .arrow {
+  background-color: #00ff00;
+}
+
+.y-axis .arrow::after {
+  border-left-color: #00ff00;
+}
+
+.z-axis .arrow {
+  background-color: #0000ff;
+}
+
+.z-axis .arrow::after {
+  border-left-color: #0000ff;
+}
+
 /* Github */
 .github-link {
   position: absolute;
