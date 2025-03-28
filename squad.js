@@ -347,11 +347,29 @@ function drawBridge() {
   noStroke();
   translate(-MAIN_LANE_WIDTH - POWERUP_LANE_WIDTH / 2, 0, 0); // Shift main lane left to make room for power-up lane
   box(MAIN_LANE_WIDTH, 1, BRIDGE_LENGTH);
+  
+  // Main lane coordinates
+  push();
+  translate(0, -10, -BRIDGE_LENGTH/2);
+  fill(0);
+  textSize(16);
+  textAlign(LEFT);
+  text(`Main Lane: x=${-MAIN_LANE_WIDTH - POWERUP_LANE_WIDTH / 2}, y=50, width=${MAIN_LANE_WIDTH}`, 0, 0);
+  pop();
 
   // Draw power-up lane on right
   translate(MAIN_LANE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, 0, 0);
   fill(150, 200, 255); // Light blue for power-up lane
   box(POWERUP_LANE_WIDTH, 2, BRIDGE_LENGTH);
+  
+  // Power-up lane coordinates
+  push();
+  translate(0, -10, -BRIDGE_LENGTH/2);
+  fill(0);
+  textSize(16);
+  textAlign(LEFT);
+  text(`Power-up Lane: x=${-POWERUP_LANE_WIDTH/2}, y=50, width=${POWERUP_LANE_WIDTH}`, 0, 0);
+  pop();
   pop();
 
   // Draw side barriers
@@ -364,6 +382,23 @@ function drawBridge() {
   // Right barrier
   translate(BRIDGE_WIDTH, 0, 0);
   box(10, 20, BRIDGE_LENGTH);
+  pop();
+  
+  // Bridge dimensions text
+  push();
+  translate(-BRIDGE_WIDTH/2, -20, -BRIDGE_LENGTH/2);
+  fill(0);
+  textSize(20);
+  textAlign(LEFT);
+  text(`Bridge: Width=${BRIDGE_WIDTH}, Length=${BRIDGE_LENGTH}, Y=50`, 0, 0);
+  
+  // Add coordinate markers every 1000 units on Z-axis
+  for (let z = 0; z < BRIDGE_LENGTH; z += 1000) {
+    push();
+    translate(0, 0, z);
+    text(`Z: ${z}`, 0, 0);
+    pop();
+  }
   pop();
 
   // Draw power-ups
@@ -634,6 +669,18 @@ function drawSquad() {
     translate(member.x, 10, member.z);
     noStroke();
     drawSoldier(index === 0); // First member is the leader
+    
+    // Add coordinates for squad leader only
+    if (index === 0) {
+      push();
+      translate(0, 30, 0);
+      fill(0);
+      textSize(16);
+      textAlign(LEFT);
+      rotateY(-cameraAngle); // Make text face camera but maintain left-to-right
+      text(`Leader: x=${Math.round(member.x)}, y=10, z=${Math.round(member.z)}`, 0, 0);
+      pop();
+    }
     pop();
   });
   pop();
