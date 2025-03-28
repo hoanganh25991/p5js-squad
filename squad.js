@@ -7,6 +7,7 @@ let effects = [];
 const INITIAL_SQUAD_SIZE = 1;
 const MAX_SQUAD_SIZE = 10;
 const SQUAD_SPACING = 40; // Space between squad members
+const SQUAD_MEMBER_SIZE = 30; // Size of each squad member
 
 // Bridge Settings
 const BRIDGE_WIDTH = 300;
@@ -52,8 +53,8 @@ const ENEMY_TYPES = {
 const MIN_CAMERA_DISTANCE = 100;
 const MAX_CAMERA_DISTANCE = 1000; // Maximum distance camera can be from player
 const PLAYER_MOVE_SPEED = 4;
-const MIN_X = -BRIDGE_WIDTH / 2;
-const MAX_X = BRIDGE_WIDTH / 2;
+const MIN_X = -BRIDGE_WIDTH / 2 + 50; // Add margin for squad
+const MAX_X = BRIDGE_WIDTH / 2 - 50; // Add margin for squad
 
 // Visual Settings
 const AIM_LINE_LENGTH = 2000;
@@ -235,15 +236,7 @@ function drawBridge() {
   noStroke();
   box(BRIDGE_WIDTH, 1, BRIDGE_LENGTH);
 
-  // Draw road lines
-  fill(255); // White for road lines
-  translate(0, 1, 0);
-  for (let z = -BRIDGE_LENGTH/2; z < BRIDGE_LENGTH/2; z += 100) {
-    push();
-    translate(0, 0, z);
-    box(5, 1, 50); // Road line
-    pop();
-  }
+
   pop();
 
   // Draw side barriers
@@ -260,7 +253,7 @@ function drawBridge() {
 
   // Draw powerup lane (blue section on the right)
   push();
-  translate(BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0);
+  translate(BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0); // Right side of main bridge
   fill(100, 150, 255, 100); // Light blue for powerup lane
   box(POWERUP_LANE_WIDTH, 1, BRIDGE_LENGTH);
   pop();
@@ -276,11 +269,11 @@ function draw() {
   background(200);
   smooth();
 
-  // Set up camera for vertical view
-  let camX = squad.x;
-  let camZ = squad.z - cameraDistance - 100; // Camera behind the squad
+  // Set up fixed camera view
+  let camX = 0; // Fixed X position at center
+  let camZ = -cameraDistance - 120; // Fixed distance behind
   camera(camX, cameraHeight - 70, camZ,
-    squad.x, cameraHeight, squad.z + BRIDGE_LENGTH/2, // Look towards the end of bridge
+    0, cameraHeight - 70, BRIDGE_LENGTH/2, // Look straight ahead
     0, 1, 0);
 
   // Update game state
@@ -301,23 +294,31 @@ function draw() {
 }
 
 function updateSquadPosition() {
-  // Auto move squad horizontally
-  squad.x = constrain(squad.x + squad.speed * squad.direction, MIN_X, MAX_X);
-
-  // Reverse direction if hitting bridge boundaries
-  if (squad.x <= MIN_X || squad.x >= MAX_X) {
-    squad.direction *= -1;
+  // Move squad based on arrow keys
+  if (keyIsDown(LEFT_ARROW)) {
+    squad.x = constrain(squad.x + PLAYER_MOVE_SPEED, MIN_X, MAX_X);
+    squad.direction = 1;
   }
+  if (keyIsDown(RIGHT_ARROW)) {
+    squad.x = constrain(squad.x - PLAYER_MOVE_SPEED, MIN_X, MAX_X);
+    squad.direction = -1;
+  }
+  if (keyIsDown(UP_ARROW)) {
+    squad.z += PLAYER_MOVE_SPEED;
+  }
+  if (keyIsDown(DOWN_ARROW)) {
+    squad.z -= PLAYER_MOVE_SPEED;
+  }
+  
+  // Update squad members positions
+  squad.members.forEach((member, index) => {
+    member.x = squad.x - index * SQUAD_SPACING * squad.direction;
+    member.z = squad.z;
+  });
 
-  // Keep squad at bottom of screen
-  squad.z = BRIDGE_LENGTH * 0.1; // Stay at 10% from bottom
 
-  // Update squad members positions in vertical formation
-  squad.members = squad.members.map((member, index) => ({
-    ...member,
-    x: squad.x,
-    z: squad.z + index * SQUAD_SPACING // Stack vertically
-  }));
+
+
 }
 
 function autoFireSquad() {
@@ -375,17 +376,14 @@ function updatePowerups() {
     }
   }
 
-  // Spawn new powerups in the power-up lane
+  // Spawn mirror powerup in the right lane
   if (frameCount % POWERUP_SPAWN_INTERVAL === 0) {
-    const powerupTypes = Object.values(POWERUP_TYPES);
-    const randomType = powerupTypes[Math.floor(random(powerupTypes.length))];
-    
     powerups.push({
-      x: BRIDGE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, // Always in power-up lane
+      x: BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, // Right side power-up lane
       z: squad.z + 1000,
       speed: 2,
       size: 20,
-      type: randomType
+      type: POWERUP_TYPES.MIRROR // Always spawn mirror powerup
     });
   }
   powerups = powerups.filter(powerup => {
@@ -891,7 +889,7 @@ function updatePlayerPosition() {
   playerZ += moveZ;
 }
 
-function spawnMiniTank() {
+function spawnSquadMember() {
   let x = random(
     playerX - 200,
     playerX + 200
@@ -921,7 +919,7 @@ function spawnMiniTank() {
   });
 }
 
-function updateMiniTankPosition(miniTank) {
+function updateSquadMemberPosition(squadMember) {
   // Move in same direction as player
   if (moving.up || moving.down || moving.left || moving.right) {
     // Calculate movement direction based on camera angle
@@ -943,19 +941,19 @@ function updateMiniTankPosition(miniTank) {
       moveX += sin(cameraAngle) * PLAYER_MOVE_SPEED;
       moveZ -= cos(cameraAngle) * PLAYER_MOVE_SPEED;
     }
-    // Update ally tank position with same movement
-    miniTank.x += moveX;
-    miniTank.z += moveZ;
+    // Update squad member position with same movement
+    squadMember.x += moveX;
+    squadMember.z += moveZ;
   }
 
   // Calculate angle towards nearest enemy for shooting
   let nearestEnemy = findNearestEnemies(1)[0];
   if (nearestEnemy && frameCount % 30 === 0) {
-    let bulletAngle = atan2(nearestEnemy.z - miniTank.z, nearestEnemy.x - miniTank.x);
+    let bulletAngle = atan2(nearestEnemy.z - squadMember.z, nearestEnemy.x - squadMember.x);
     bullets.push({
-      x: miniTank.x,
+      x: squadMember.x,
       y: 0,
-      z: miniTank.z,
+      z: squadMember.z,
       dx: cos(bulletAngle),
       dz: sin(bulletAngle),
       distanceTraveled: 0,
@@ -1105,9 +1103,9 @@ function castSkill(type, numTargets, sizeFactor, skillSound) {
     skillSound.play();
   }
 
-  // Special handling for ally tanks (type 'g')
+  // Special handling for squad members (type 'g')
   if (type === "g") {
-    spawnMiniTank();
+    spawnSquadMember();
     return;
   }
 
@@ -1196,7 +1194,7 @@ function checkCollisions() {
         const dx = member.x - powerup.x;
         const dz = member.z - powerup.z;
         const distance = sqrt(dx * dx + dz * dz);
-        if (distance < tankSize) {
+        if (distance < SQUAD_MEMBER_SIZE) {
           powerup.collected = true;
           applyPowerup(powerup.type);
         }
