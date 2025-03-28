@@ -796,18 +796,47 @@ function drawEnemies() {
 
     // Body
     fill(...enemy.type.color); // Use enemy type color
-    sphere(enemy.type.size); // Size from enemy type
-
-    // Hat
-    translate(0, -enemy.type.size * 0.8, 0);
-    fill(200, 0, 0); // Dark red hat for all enemies
-    rotateX(PI / 6);
-    cylinder(enemy.type.size * 0.7, enemy.type.size * 0.5);
-
-    // White details
-    fill(255);
-    translate(0, enemy.type.size * 0.3, enemy.type.size * 0.2);
-    box(enemy.type.size * 0.3, enemy.type.size * 0.1, enemy.type.size * 0.1);
+    
+    if (enemy.type.size >= 30) { // Boss types
+      // Taller rectangular body for bosses
+      push();
+      box(enemy.type.size * 1.2, enemy.type.size * 2, enemy.type.size * 0.8);
+      
+      // Shoulder pads
+      translate(0, -enemy.type.size * 0.7, 0);
+      box(enemy.type.size * 1.8, enemy.type.size * 0.3, enemy.type.size * 0.6);
+      
+      // Head
+      translate(0, -enemy.type.size * 0.4, 0);
+      fill(enemy.type.color[0] * 0.8, enemy.type.color[1] * 0.8, enemy.type.color[2] * 0.8); // Darker color for head
+      box(enemy.type.size * 0.6, enemy.type.size * 0.6, enemy.type.size * 0.6);
+      
+      // Crown
+      translate(0, -enemy.type.size * 0.4, 0);
+      fill(255, 200, 0); // Gold color
+      rotateX(PI/6);
+      for (let i = 0; i < 4; i++) {
+        rotateY(PI/2);
+        translate(enemy.type.size * 0.2, 0, 0);
+        cone(enemy.type.size * 0.15, enemy.type.size * 0.3);
+        translate(-enemy.type.size * 0.2, 0, 0);
+      }
+      pop();
+    } else {
+      // Regular enemies remain spherical
+      sphere(enemy.type.size);
+      
+      // Hat for regular enemies
+      translate(0, -enemy.type.size * 0.8, 0);
+      fill(200, 0, 0);
+      rotateX(PI / 6);
+      cylinder(enemy.type.size * 0.7, enemy.type.size * 0.5);
+      
+      // White details
+      fill(255);
+      translate(0, enemy.type.size * 0.3, enemy.type.size * 0.2);
+      box(enemy.type.size * 0.3, enemy.type.size * 0.1, enemy.type.size * 0.1);
+    }
 
     // Health bar if damaged
     if (enemy.health < enemy.type.health) {
