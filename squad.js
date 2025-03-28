@@ -5,7 +5,7 @@ let effects = [];
 
 // Squad Mechanics
 const INITIAL_SQUAD_SIZE = 1;
-const MAX_SQUAD_SIZE = 10;
+const MAX_SQUAD_SIZE = 20;
 const SQUAD_SPACING = 40; // Space between squad members
 const SQUAD_MEMBER_SIZE = 30; // Size of each squad member
 
@@ -142,22 +142,58 @@ function checkPowerupCollision() {
 }
 
 let lastSquadAddTime = 0;
-const SQUAD_ADD_COOLDOWN = 2000; // 2 seconds cooldown
+const SQUAD_ADD_COOLDOWN = 0; // 2 seconds cooldown
 
 function keyPressed() {
+  if (gamePaused) {
+    if (key === ' ') {
+      gamePaused = !gamePaused;
+    }
+    return;
+  }
+
   if (key === ' ') {
     gamePaused = !gamePaused;
   } else if ((key === 'a' || key === 'A') && millis() - lastSquadAddTime > SQUAD_ADD_COOLDOWN) {
     // Add new squad member when 'a' is pressed and cooldown is over
     if (squad.size < MAX_SQUAD_SIZE) {
       squad.size++;
+      // Calculate position in circle formation
+      const radius = SQUAD_SPACING;
+      const angle = TWO_PI / squad.size * (squad.size - 1);
       squad.members.push({
-        x: squad.x - squad.size * SQUAD_SPACING * squad.direction,
-        z: squad.z,
+        x: squad.x + radius * cos(angle),
+        z: squad.z + radius * sin(angle),
         health: 100
       });
+      // Reposition all squad members in circle
+      for (let i = 0; i < squad.members.length; i++) {
+        const memberAngle = TWO_PI / squad.size * i;
+        squad.members[i].x = squad.x + radius * cos(memberAngle);
+        squad.members[i].z = squad.z + radius * sin(memberAngle);
+      }
       lastSquadAddTime = millis(); // Update last add time
     }
+  } else if (keyCode === LEFT_ARROW) {
+    moving.left = true;
+  } else if (keyCode === RIGHT_ARROW) {
+    moving.right = true;
+  } else if (keyCode === UP_ARROW) {
+    moving.up = true;
+  } else if (keyCode === DOWN_ARROW) {
+    moving.down = true;
+  } else if (key.toLowerCase() === "q") {
+    rotatingLeft = true;
+  } else if (key.toLowerCase() === "w") {
+    rotatingRight = true;
+  } else if (key.toLowerCase() === "e") {
+    increasingHeight = true;
+  } else if (key.toLowerCase() === "r") {
+    decreasingHeight = true;
+  } else if (key.toLowerCase() === "t") {
+    movingCloser = true;
+  } else if (key.toLowerCase() === "y") {
+    movingFarther = true;
   }
 }
 
@@ -382,26 +418,36 @@ function draw() {
 }
 
 function updateSquadPosition() {
-  // Move squad based on arrow keys
-  if (keyIsDown(LEFT_ARROW)) {
-    squad.x = constrain(squad.x + PLAYER_MOVE_SPEED, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
-    squad.direction = 1;
+  // Calculate movement based on camera angle
+  let moveX = 0;
+  let moveZ = 0;
+  if (moving.right) {
+    moveX -= cos(cameraAngle) * PLAYER_MOVE_SPEED;
+    moveZ -= sin(cameraAngle) * PLAYER_MOVE_SPEED;
   }
-  if (keyIsDown(RIGHT_ARROW)) {
-    squad.x = constrain(squad.x - PLAYER_MOVE_SPEED, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
-    squad.direction = -1;
+  if (moving.left) {
+    moveX += cos(cameraAngle) * PLAYER_MOVE_SPEED;
+    moveZ += sin(cameraAngle) * PLAYER_MOVE_SPEED;
   }
-  if (keyIsDown(UP_ARROW)) {
-    squad.z += PLAYER_MOVE_SPEED;
+  if (moving.up) {
+    moveX -= sin(cameraAngle) * PLAYER_MOVE_SPEED;
+    moveZ += cos(cameraAngle) * PLAYER_MOVE_SPEED;
   }
-  if (keyIsDown(DOWN_ARROW)) {
-    squad.z -= PLAYER_MOVE_SPEED;
+  if (moving.down) {
+    moveX += sin(cameraAngle) * PLAYER_MOVE_SPEED;
+    moveZ -= cos(cameraAngle) * PLAYER_MOVE_SPEED;
   }
-  
-  // Update squad members positions
+
+  // Update squad center position
+  squad.x = constrain(squad.x + moveX, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
+  squad.z += moveZ;
+
+  // Update squad members positions in circle formation
+  const radius = SQUAD_SPACING;
   squad.members.forEach((member, index) => {
-    member.x = squad.x - index * SQUAD_SPACING * squad.direction;
-    member.z = squad.z;
+    const memberAngle = TWO_PI / squad.size * index;
+    member.x = squad.x + radius * cos(memberAngle);
+    member.z = squad.z + radius * sin(memberAngle);
   });
 
 
@@ -996,31 +1042,9 @@ function spawnSquadMember() {
 }
 
 function updateSquadMemberPosition(squadMember) {
-  // Move in same direction as player
-  if (moving.up || moving.down || moving.left || moving.right) {
-    // Calculate movement direction based on camera angle
-    let moveX = 0;
-    let moveZ = 0;
-    if (moving.up) {
-      moveX -= cos(cameraAngle) * PLAYER_MOVE_SPEED;
-      moveZ -= sin(cameraAngle) * PLAYER_MOVE_SPEED;
-    }
-    if (moving.down) {
-      moveX += cos(cameraAngle) * PLAYER_MOVE_SPEED;
-      moveZ += sin(cameraAngle) * PLAYER_MOVE_SPEED;
-    }
-    if (moving.left) {
-      moveX -= sin(cameraAngle) * PLAYER_MOVE_SPEED;
-      moveZ += cos(cameraAngle) * PLAYER_MOVE_SPEED;
-    }
-    if (moving.right) {
-      moveX += sin(cameraAngle) * PLAYER_MOVE_SPEED;
-      moveZ -= cos(cameraAngle) * PLAYER_MOVE_SPEED;
-    }
-    // Update squad member position with same movement
-    squadMember.x += moveX;
-    squadMember.z += moveZ;
-  }
+  // Squad member positions are now handled in updateSquadPosition
+  // This function is kept for compatibility but does nothing
+  return;
 
   // Calculate angle towards nearest enemy for shooting
   let nearestEnemy = findNearestEnemies(1)[0];
@@ -1050,34 +1074,6 @@ function updateEnemiesPosition() {
       enemy.x += cos(angle) * ENEMY_MOVE_SPEED;
       enemy.z += sin(angle) * ENEMY_MOVE_SPEED;
     }
-  }
-}
-
-function keyPressed() {
-  if (gamePaused) {
-    return;
-  }
-  if (keyCode === LEFT_ARROW) {
-    moving.left = true;
-  } else if (keyCode === RIGHT_ARROW) {
-    moving.right = true;
-  } else if (keyCode === UP_ARROW) {
-    moving.up = true;
-  } else if (keyCode === DOWN_ARROW) {
-    moving.down = true;
-
-  } else if (key.toLowerCase() === "q") {
-    rotatingLeft = true;
-  } else if (key.toLowerCase() === "w") {
-    rotatingRight = true;
-  } else if (key.toLowerCase() === "e") {
-    increasingHeight = true;
-  } else if (key.toLowerCase() === "r") {
-    decreasingHeight = true;
-  } else if (key.toLowerCase() === "t") {
-    movingCloser = true;
-  } else if (key.toLowerCase() === "y") {
-    movingFarther = true;
   }
 }
 
