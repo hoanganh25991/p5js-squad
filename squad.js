@@ -92,20 +92,20 @@ let lastPowerupSpawnTime = 0;
 function spawnPowerup() {
   if (millis() - lastPowerupSpawnTime > POWERUP_SPAWN_INTERVAL) {
     // Spawn in power-up lane (right side of bridge)
-    const x = MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH/2; // Center of power-up lane
+    const x = MAIN_LANE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2; // Center of power-up lane
     const z = squad.z + random(300, 800);
-    
+
     // Random power-up type
     const types = Object.keys(POWERUP_TYPES);
     const type = POWERUP_TYPES[types[floor(random(types.length))]];
-    
+
     powerups.push({
       x,
       z,
       type,
       collected: false
     });
-    
+
     lastPowerupSpawnTime = millis();
   }
 }
@@ -117,10 +117,10 @@ function checkPowerupCollision() {
       const dx = squad.x - powerup.x;
       const dz = squad.z - powerup.z;
       const distance = sqrt(dx * dx + dz * dz);
-      
+
       if (distance < 30) { // Collection radius
         powerup.collected = true;
-        
+
         // Apply power-up effect
         if (powerup.type.effect === 'squad_size' && squad.size < MAX_SQUAD_SIZE) {
           squad.size++;
@@ -132,7 +132,7 @@ function checkPowerupCollision() {
         } else if (powerup.type.effect === 'weapon') {
           squad.weapon = WEAPON_TYPES[powerup.type.nextWeapon];
         }
-        
+
         // Remove collected powerup
         powerups.splice(i, 1);
       }
@@ -207,7 +207,7 @@ let zoomLevel = 0.2;
 let soldierSize = 75;
 
 // Share state with window for external access
-window.getState = function() {
+window.getState = function () {
   return {
     squadSize: squad.size,
     currentWeapon: squad.weapon.name,
@@ -266,10 +266,10 @@ const cooldown = {
 
 window.getState = function () {
   // Calculate average health of squad members
-  const avgHealth = squad.members.length > 0 
-    ? squad.members.reduce((sum, member) => sum + member.health, 0) / squad.members.length 
+  const avgHealth = squad.members.length > 0
+    ? squad.members.reduce((sum, member) => sum + member.health, 0) / squad.members.length
     : 0;
-  
+
   return {
     squadHealth: Math.round(avgHealth),
     enemiesKilled,
@@ -315,7 +315,7 @@ function setupBridge() {
 function createBridgeTexture() {
   let pg = createGraphics(200, 200);
   pg.background(150);
-  
+
   // Add stone pattern
   pg.noStroke();
   for (let i = 0; i < 20; i++) {
@@ -324,7 +324,7 @@ function createBridgeTexture() {
       pg.rect(i * 10, j * 10, 10, 10);
     }
   }
-  
+
   // Add some noise for texture
   pg.loadPixels();
   for (let i = 0; i < pg.pixels.length; i += 4) {
@@ -339,17 +339,17 @@ function createBridgeTexture() {
 
 function drawBridge() {
   push();
-  translate(0, 50, BRIDGE_LENGTH/2); // Move bridge down by 50 units
+  translate(0, 50, BRIDGE_LENGTH / 2); // Move bridge down by 50 units
 
   // Draw main road
   push();
   fill(200); // Light gray for the road
   noStroke();
-  translate(-MAIN_LANE_WIDTH-POWERUP_LANE_WIDTH/2, 0, 0); // Shift main lane left to make room for power-up lane
+  translate(-MAIN_LANE_WIDTH - POWERUP_LANE_WIDTH / 2, 0, 0); // Shift main lane left to make room for power-up lane
   box(MAIN_LANE_WIDTH, 1, BRIDGE_LENGTH);
 
   // Draw power-up lane on right
-  translate(MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0);
+  translate(MAIN_LANE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, 0, 0);
   fill(150, 200, 255); // Light blue for power-up lane
   box(POWERUP_LANE_WIDTH, 2, BRIDGE_LENGTH);
   pop();
@@ -357,7 +357,7 @@ function drawBridge() {
   // Draw side barriers
   push();
   // Left barrier
-  translate(-BRIDGE_WIDTH/2, 10, 0);
+  translate(-BRIDGE_WIDTH / 2, 10, 0);
   fill(150); // Gray for barriers
   box(10, 20, BRIDGE_LENGTH);
 
@@ -370,7 +370,7 @@ function drawBridge() {
   for (let powerup of powerups) {
     if (!powerup.collected) {
       push();
-      translate(powerup.x, -20, powerup.z - BRIDGE_LENGTH/2);
+      translate(powerup.x, -20, powerup.z - BRIDGE_LENGTH / 2);
       fill(255, 255, 0); // Yellow for power-ups
       sphere(15);
       pop();
@@ -384,7 +384,7 @@ function draw() {
   if (gamePaused) {
     return;
   }
-  
+
   background(200);
   smooth();
 
@@ -396,7 +396,7 @@ function draw() {
   let camX = 0; // Fixed X position at center
   let camZ = -cameraDistance - 120; // Fixed distance behind
   camera(camX, cameraHeight - 70, camZ,
-    0, cameraHeight - 70, BRIDGE_LENGTH/2, // Look straight ahead
+    0, cameraHeight - 70, BRIDGE_LENGTH / 2, // Look straight ahead
     0, 1, 0);
 
   // Update game state
@@ -438,19 +438,19 @@ function updateSquadPosition() {
   }
 
   // Update squad center position
-  squad.x = constrain(squad.x + moveX, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
+  squad.x = constrain(squad.x + moveX, -MAIN_LANE_WIDTH / 2, MAIN_LANE_WIDTH / 2 + POWERUP_LANE_WIDTH);
   squad.z += moveZ;
 
   // Update squad members positions in filled circle formation
   const baseRadius = SQUAD_SPACING;
   let membersPlaced = 0;
   let ring = 0;
-  
+
   while (membersPlaced < squad.members.length) {
     const radius = baseRadius * (ring + 1);
     // Calculate how many members can fit in this ring
     const membersInRing = ring === 0 ? 1 : floor(TWO_PI * radius / (SQUAD_MEMBER_SIZE * 1.2));
-    
+
     // Place members in this ring
     for (let i = 0; i < membersInRing && membersPlaced < squad.members.length; i++) {
       const member = squad.members[membersPlaced];
@@ -525,7 +525,7 @@ function updatePowerups() {
   // Spawn mirror powerup in the right lane
   if (frameCount % POWERUP_SPAWN_INTERVAL === 0) {
     powerups.push({
-      x: BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, // Right side power-up lane
+      x: BRIDGE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, // Right side power-up lane
       z: squad.z + 1000,
       speed: 2,
       size: 20,
@@ -554,7 +554,7 @@ function drawPowerups() {
       // Blue powerup box with plus sign
       fill(100, 150, 255);
       box(30);
-      
+
       // White plus sign
       fill(255);
       push();
@@ -581,23 +581,23 @@ function drawEffects() {
   for (let effect of effects) {
     push();
     translate(effect.x, 0, effect.z);
-    
+
     if (effect.type === 'hit') {
       fill(255, 255, 0, map(effect.life, 10, 0, 255, 0));
       noStroke();
-      sphere(effect.size * (1 - effect.life/10));
+      sphere(effect.size * (1 - effect.life / 10));
     } else if (effect.type === 'explosion') {
       fill(255, 100, 0, map(effect.life, 20, 0, 255, 0));
       noStroke();
-      sphere(effect.size * (1 - effect.life/20));
+      sphere(effect.size * (1 - effect.life / 20));
     } else if (effect.type === 'melee') {
       fill(255, 0, 0, map(effect.life, 5, 0, 255, 0));
       noStroke();
       rotateX(random(TWO_PI));
       rotateY(random(TWO_PI));
-      box(effect.size, effect.size/4, effect.size/4);
+      box(effect.size, effect.size / 4, effect.size / 4);
     }
-    
+
     pop();
   }
 }
@@ -610,13 +610,13 @@ function drawSoldier(isLeader = false) {
   // Hat
   translate(0, -12, 0);
   fill(isLeader ? color(255, 255, 0) : color(50, 100, 255)); // Yellow for leader, blue for others
-  rotateX(PI/6);
+  rotateX(PI / 6);
   cylinder(10, 8); // Baseball cap style
 
   // Health bar if damaged
   if (squad.health < 100) {
     translate(0, -10, 0);
-    rotateX(-PI/6);
+    rotateX(-PI / 6);
     noStroke();
     fill(100);
     rect(-20, 0, 40, 5); // Background
@@ -641,7 +641,7 @@ function drawSquad() {
 function updateEnemies() {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
-    
+
     // Move downward towards squad
     enemy.z -= enemy.type.speed;
 
@@ -654,7 +654,7 @@ function updateEnemies() {
       let distance = dist(enemy.x, enemy.z, member.x, member.z);
       if (distance < enemy.type.meleeRange) {
         member.health -= enemy.type.damage * 0.1; // Reduced per-frame damage
-        
+
         // Melee effect
         effects.push({
           type: 'melee',
@@ -667,7 +667,7 @@ function updateEnemies() {
         if (member.health <= 0) {
           squad.members = squad.members.filter(m => m !== member);
           squad.size--;
-          
+
           // Death effect
           for (let k = 0; k < 8; k++) {
             effects.push({
@@ -678,7 +678,7 @@ function updateEnemies() {
               life: 15
             });
           }
-          
+
           if (squad.size <= 0) {
             gamePaused = true;
           }
@@ -690,11 +690,11 @@ function updateEnemies() {
     // Check for collisions with bullets
     for (let j = bullets.length - 1; j >= 0; j--) {
       const bullet = bullets[j];
-      if (dist(bullet.x, bullet.z, enemy.x, enemy.z) < enemy.type.size/2 + bullet.size/2) {
+      if (dist(bullet.x, bullet.z, enemy.x, enemy.z) < enemy.type.size / 2 + bullet.size / 2) {
         // Multiple hits effect
         for (let hit = 0; hit < 3; hit++) {
           enemy.health -= bullet.damage * (hit === 0 ? 1 : 0.5); // First hit full damage, subsequent hits half damage
-          
+
           // Create hit effect
           effects.push({
             type: 'hit',
@@ -704,12 +704,12 @@ function updateEnemies() {
             life: 10
           });
         }
-        
+
         bullets.splice(j, 1);
-        
+
         if (enemy.health <= 0) {
           score += enemy.type.points;
-          
+
           // Death effect
           for (let k = 0; k < 10; k++) {
             effects.push({
@@ -720,7 +720,7 @@ function updateEnemies() {
               life: 20
             });
           }
-          
+
           enemies.splice(i, 1);
           enemiesKilled++;
         }
@@ -729,19 +729,19 @@ function updateEnemies() {
     }
 
 
-      // Check for collisions with squad members
-      for (let j = squad.members.length - 1; j >= 0; j--) {
-        const member = squad.members[j];
-        if (dist(member.x, member.z, enemy.x, enemy.z) < enemy.type.size/2 + 20) {
-          member.health -= enemy.type.damage;
-          if (member.health <= 0) {
-            squad.members.splice(j, 1);
-            squad.size--;
-            if (squad.size <= 0) {
-              gamePaused = true;
-            }
+    // Check for collisions with squad members
+    for (let j = squad.members.length - 1; j >= 0; j--) {
+      const member = squad.members[j];
+      if (dist(member.x, member.z, enemy.x, enemy.z) < enemy.type.size / 2 + 20) {
+        member.health -= enemy.type.damage;
+        if (member.health <= 0) {
+          squad.members.splice(j, 1);
+          squad.size--;
+          if (squad.size <= 0) {
+            gamePaused = true;
           }
         }
+      }
     }
 
     // Remove enemies that are off screen
@@ -755,7 +755,7 @@ function updateEnemies() {
     const wave = Math.floor(enemiesKilled / 50); // Every 50 kills increases wave
     const types = Object.keys(ENEMY_TYPES);
     const type = types[Math.min(wave, types.length - 1)];
-    
+
     // Spawn boss every 200 kills
     if (enemiesKilled % 200 === 0 && enemiesKilled > 0) {
       const bossLevel = Math.min(Math.floor(wave / 3), 3);
@@ -771,11 +771,11 @@ function updateEnemies() {
       // Spawn regular enemies across main lane width
       const numEnemies = random(2, 4); // Spawn 2-4 enemies at once
       const spacing = MAIN_LANE_WIDTH / (numEnemies + 1);
-      
+
       for (let i = 1; i <= numEnemies; i++) {
-        const x = -MAIN_LANE_WIDTH/2 + spacing * i; // Evenly space enemies
+        const x = -MAIN_LANE_WIDTH / 2 + spacing * i; // Evenly space enemies
         const z = squad.z + random(500, 1000);
-        
+
         enemies.push({
           x,
           z,
@@ -800,7 +800,7 @@ function drawEnemies() {
     // Hat
     translate(0, -enemy.type.size * 0.8, 0);
     fill(200, 0, 0); // Dark red hat for all enemies
-    rotateX(PI/6);
+    rotateX(PI / 6);
     cylinder(enemy.type.size * 0.7, enemy.type.size * 0.5);
 
     // White details
@@ -811,7 +811,7 @@ function drawEnemies() {
     // Health bar if damaged
     if (enemy.health < enemy.type.health) {
       translate(0, -enemy.type.size, 0);
-      rotateX(-PI/6);
+      rotateX(-PI / 6);
       noStroke();
       fill(100);
       rect(-20, 0, 40, 5); // Background
@@ -840,11 +840,11 @@ function spawnEnemies() {
     const numEnemies = random(2, 4); // Spawn 2-4 enemies at once
     const spacing = BRIDGE_WIDTH / (numEnemies + 1);
     const minDistance = 50; // Minimum distance between enemies
-    
+
     for (let i = 1; i <= numEnemies; i++) {
-      let x = -BRIDGE_WIDTH/2 + spacing * i; // Base position
+      let x = -BRIDGE_WIDTH / 2 + spacing * i; // Base position
       let z = squad.z + random(500, 1000);
-      
+
       // Adjust position if too close to other enemies
       let validPosition = false;
       let attempts = 0;
@@ -856,7 +856,7 @@ function spawnEnemies() {
           const distance = sqrt(dx * dx + dz * dz);
           if (distance < minDistance) {
             validPosition = false;
-            x += random(-spacing/2, spacing/2);
+            x += random(-spacing / 2, spacing / 2);
             z += random(-100, 100);
             break;
           }
@@ -893,7 +893,7 @@ function drawSoldier(isLeader = false) {
   // Hat
   translate(0, -12, 0);
   fill(isLeader ? color(255, 255, 0) : color(50, 100, 255)); // Yellow for leader, blue for others
-  rotateX(PI/6);
+  rotateX(PI / 6);
   cylinder(10, 8); // Baseball cap style
 
   // Gun
@@ -1230,12 +1230,12 @@ function spawnEnemy(type) {
 function spawnEnemies(count = 1) {
   for (let i = 0; i < count; i++) {
     // Spawn at top of screen
-    const x = random(-BRIDGE_WIDTH/2, BRIDGE_WIDTH/2);
+    const x = random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2);
     const z = BRIDGE_LENGTH * 0.9; // Spawn at 90% of bridge length
-    
+
     const types = Object.keys(ENEMY_TYPES);
     const type = types[Math.floor(Math.random() * types.length)];
-    
+
     enemies.push({
       x: x,
       z: z,
@@ -1307,7 +1307,7 @@ function checkCollisions() {
         // Bullet hit enemy
         enemy.health -= bullet.damage;
         bullets.splice(i, 1);
-        
+
         if (enemy.health <= 0) {
           enemies.splice(j, 1);
           enemiesKilled++;
@@ -1320,15 +1320,15 @@ function checkCollisions() {
   // Enemy collision with squad members
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
-    
+
     for (let j = squad.members.length - 1; j >= 0; j--) {
       const member = squad.members[j];
       const dist = dist3D(enemy.x, enemy.z, member.x, member.z);
-      
+
       if (dist < (enemy.type.size + 30) / 2) { // 30 is squad member size
         // Enemy collides with squad member
         member.health -= enemy.type.damage;
-        
+
         if (member.health <= 0) {
           squad.members.splice(j, 1);
         }
