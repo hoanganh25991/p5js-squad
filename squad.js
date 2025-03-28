@@ -632,6 +632,7 @@ function drawSquad() {
   squad.members.forEach((member, index) => {
     push();
     translate(member.x, 10, member.z);
+    noStroke();
     drawSoldier(index === 0); // First member is the leader
     pop();
   });
@@ -1249,28 +1250,38 @@ function spawnEnemies(count = 1) {
 
 function checkCollisions() {
   // Check bullet collisions with enemies
-  bullets = bullets.filter((bullet) => {
-    let hit = false;
-    enemies = enemies.filter((enemy) => {
-      const dx = enemy.x - bullet.x;
-      const dz = enemy.z - bullet.z;
-      const distance = sqrt(dx * dx + dz * dz);
-      if (distance < enemy.type.size / 2) {
-        hit = true;
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+    const bulletSize = bullet.size || 5; // Default bullet size if not specified
+
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const enemy = enemies[j];
+      const dist = dist3D(bullet.x, bullet.z, enemy.x, enemy.z);
+
+      if (dist < (bulletSize + enemy.type.size) / 2) {
+        // Bullet hit enemy
         enemy.health -= bullet.damage;
+        bullets.splice(i, 1);
+
+        // Create hit effect
+        effects.push({
+          type: 'hit',
+          x: enemy.x,
+          z: enemy.z,
+          size: 20,
+          duration: 10,
+          age: 0
+        });
+
         if (enemy.health <= 0) {
+          enemies.splice(j, 1);
           enemiesKilled++;
           score += enemy.type.health; // Score based on enemy health
-          return false;
         }
-        return true;
+        break;
       }
-      return true;
-    });
-    return !hit;
-  });
-
-
+    }
+  }
 
   // Check powerup collisions with squad
   powerups.forEach(powerup => {
@@ -1286,36 +1297,6 @@ function checkCollisions() {
       });
     }
   });
-
-  // Check if all squad members are dead
-  if (squad.members.length === 0) {
-    gamePaused = true;
-    alert('Game Over! Score: ' + enemiesKilled);
-    return;
-  }
-
-  // Bullet collision with enemies
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const bullet = bullets[i];
-    const bulletSize = bullet.size || 5; // Default bullet size if not specified
-
-    for (let j = enemies.length - 1; j >= 0; j--) {
-      const enemy = enemies[j];
-      const dist = dist3D(bullet.x, bullet.z, enemy.x, enemy.z);
-
-      if (dist < (bulletSize + enemy.type.size) / 2) {
-        // Bullet hit enemy
-        enemy.health -= bullet.damage;
-        bullets.splice(i, 1);
-
-        if (enemy.health <= 0) {
-          enemies.splice(j, 1);
-          enemiesKilled++;
-        }
-        break;
-      }
-    }
-  }
 
   // Enemy collision with squad members
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -1335,6 +1316,13 @@ function checkCollisions() {
         break;
       }
     }
+  }
+
+  // Check if all squad members are dead
+  if (squad.members.length === 0) {
+    gamePaused = true;
+    alert('Game Over! Score: ' + enemiesKilled);
+    return;
   }
 }
 
