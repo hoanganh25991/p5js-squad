@@ -221,11 +221,11 @@ function draw() {
   background(200);
   smooth();
 
-  // Set up camera
-  let camX = squad.x + cos(cameraAngle) * cameraDistance;
-  let camZ = squad.z + sin(cameraAngle) * cameraDistance;
+  // Set up camera for vertical view
+  let camX = squad.x;
+  let camZ = squad.z - cameraDistance; // Camera behind the squad
   camera(camX, cameraHeight, camZ,
-    squad.x, cameraHeight, squad.z,
+    squad.x, cameraHeight, squad.z + BRIDGE_LENGTH/2, // Look towards the end of bridge
     0, 1, 0);
 
   // Update game state
@@ -253,11 +253,14 @@ function updateSquadPosition() {
     squad.direction *= -1;
   }
 
-  // Update squad members positions with spacing
+  // Keep squad at bottom of screen
+  squad.z = BRIDGE_LENGTH * 0.1; // Stay at 10% from bottom
+
+  // Update squad members positions in vertical formation
   squad.members = squad.members.map((member, index) => ({
     ...member,
-    x: squad.x - index * SQUAD_SPACING * squad.direction,
-    z: squad.z
+    x: squad.x,
+    z: squad.z + index * SQUAD_SPACING // Stack vertically
   }));
 }
 
@@ -406,8 +409,12 @@ function updateEnemies() {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
     
-    // Move towards squad on bridge
-    enemy.z -= enemy.type.speed; // Always move towards squad
+    // Move downward towards squad
+    enemy.z -= enemy.type.speed;
+
+    // Move horizontally towards squad's x position
+    let dx = squad.x - enemy.x;
+    enemy.x += Math.sign(dx) * enemy.type.speed * 0.5; // Slower horizontal movement
 
     // Check for collisions with bullets
     for (let j = bullets.length - 1; j >= 0; j--) {
@@ -627,7 +634,7 @@ function drawBullets() {
 
     // Update bullet position
     bullet.z += bullet.speed; // Only move forward
-    bullet.distance += bullet.speed;
+    bullet.distance = (bullet.distance || 0) + bullet.speed;
 
     // Remove bullet if it has traveled too far
     return bullet.distance < 1000;
@@ -642,20 +649,13 @@ function drawBullets() {
     pop();
 
     // Update bullet position
-    bullet.x += cos(bullet.angle) * bullet.speed;
-    bullet.z += sin(bullet.angle) * bullet.speed;
+    bullet.x += bullet.dx * bullet.speed;
+    bullet.z += bullet.dz * bullet.speed;
+    bullet.distance = (bullet.distance || 0) + bullet.speed;
 
     // Remove bullets that are too far behind the squad
-    return bullet.z > squad.z - 1000;
+    return bullet.distance < 1000;
   });
-  translate(bullet.x, bullet.y, bullet.z);
-  sphere(BULLET_SIZE);
-  pop();
-
-  // Remove bullets that have traveled beyond the maximum distance
-  if (bullet.distanceTraveled > BULLET_MAX_DISTANCE) {
-    bullets.splice(i, 1);
-  }
 }
 
 function drawEnemyBullets() {
@@ -677,169 +677,7 @@ function drawEnemyBullets() {
   }
 }
 
-// Wave effect for skill h
-let waves = [];
 
-class Wave {
-  constructor(x, z, size) {
-    this.x = x;
-    this.z = z;
-    this.waves = [
-      { radius: 50, alpha: 255 },
-      { radius: 50, alpha: 255 },
-      { radius: 50, alpha: 255 },
-      { radius: 50, alpha: 255 },
-      { radius: 50, alpha: 255 }
-    ];
-    this.maxRadius = size;
-    this.speed = 16;
-    this.waveGap = 100; // Gap between waves
-    this.startTimes = [0, 10, 20, 30, 40]; // Stagger start times
-    this.frameCount = 0;
-  }
-
-  update() {
-    this.frameCount++;
-    let anyWaveActive = false;
-
-    for (let i = 0; i < this.waves.length; i++) {
-      if (this.frameCount > this.startTimes[i]) {
-        let wave = this.waves[i];
-        if (wave.radius < this.maxRadius) {
-          wave.radius += this.speed;
-          wave.alpha = map(wave.radius, 50, this.maxRadius, 255, 0);
-          anyWaveActive = true;
-        }
-      } else {
-        anyWaveActive = true;
-      }
-    }
-
-    return anyWaveActive;
-  }
-
-  draw() {
-    push();
-    translate(this.x, 0, this.z);
-    rotateX(HALF_PI);
-
-    // Draw each wave
-    for (let wave of this.waves) {
-      if (wave.radius <= this.maxRadius) {
-        noFill();
-        stroke(0, 180, 255, wave.alpha);
-        strokeWeight(20);
-        circle(0, 0, wave.radius * 2);
-
-        // Check collision with enemies for each wave
-        for (let i = enemies.length - 1; i >= 0; i--) {
-          let enemy = enemies[i];
-          let d = dist(enemy.x, enemy.z, this.x, this.z);
-          if (d <= wave.radius) {
-            // Kill enemy and add score
-            enemies.splice(i, 1);
-            enemiesKilled++;
-            if (enemies.length < MAX_ENEMIES) {
-              spawnEnemies(1);
-            }
-          }
-        }
-      }
-    }
-    pop();
-  }
-}
-
-function drawSkills() {
-  // Draw waves
-  for (let i = waves.length - 1; i >= 0; i--) {
-    let wave = waves[i];
-    wave.draw();
-    if (!wave.update()) {
-      waves.splice(i, 1);
-    }
-  }
-
-  for (let i = skills.length - 1; i >= 0; i--) {
-    let skill = skills[i];
-
-    if (skill.type === "g") {
-      updateMiniTankPosition(skill);
-
-      // Find nearest enemy for turret rotation
-      let nearestEnemy = findNearestEnemies(1)[0];
-      let turretAngle = 0;
-
-      if (nearestEnemy) {
-        turretAngle = atan2(nearestEnemy.z - skill.z, nearestEnemy.x - skill.x);
-      }
-
-      push();
-      translate(skill.x, skill.y, skill.z);
-      fill(0, 255, 0, skill.lifetime);
-      scale(0.5); // Fixed scale for ally tank
-
-      // Draw tank with turret rotation
-      push();
-      // Tank body
-      texture(tankTexture);
-      box(tankSize, 20, tankSize);
-
-      // Turret with rotation
-      translate(0, -15, 0);
-      rotateY(turretAngle);
-      box(30, 10, 30);
-
-      // Gun barrel
-      translate(0, 0, -20);
-      rotateX(HALF_PI);
-      fill(100);
-      cylinder(5, 40);
-      pop();
-
-      pop();
-
-      skill.lifetime--;
-    } else {
-      // Original behavior for other skills
-      skill.x += skill.dx * SKILL_SPEED;
-      skill.z += skill.dz * SKILL_SPEED;
-      skill.lifetime--;
-      skill.distanceTraveled += SKILL_SPEED;
-
-      push();
-      translate(skill.x, skill.y, skill.z);
-      let size = map(
-        skill.distanceTraveled,
-        0,
-        SKILL_EXPAND_DISTANCE,
-        10,
-        SKILL_BASE_SIZE * skill.sizeFactor
-      );
-      size = constrain(size, 10, SKILL_BASE_SIZE * skill.sizeFactor);
-
-      rotateY(skillAngle);
-      if (skill.type === "a") {
-        fill(255, 0, 0, skill.lifetime * 5);
-        drawFireball(size / 100);
-      } else if (skill.type === "s") {
-        fill(0, 255, 255, skill.lifetime * 5);
-        box(size, size, size);
-      } else if (skill.type === "d") {
-        fill(255, 165, 0, skill.lifetime * 5);
-        cone(size, size * 2);
-      } else if (skill.type === "f") {
-        fill(255, 255, 0, skill.lifetime * 5);
-        drawShuriken((size / 100) * 1);
-      }
-      pop();
-    }
-
-    if (skill.distanceTraveled > SKILL_MAX_DISTANCE || skill.lifetime <= 0) {
-      skills.splice(i, 1);
-    }
-  }
-}
 
 function drawCastSkills() {
   let currentTime = millis();
@@ -1030,18 +868,7 @@ function keyPressed() {
     moving.up = true;
   } else if (keyCode === DOWN_ARROW) {
     moving.down = true;
-  } else if (key.toLowerCase() === "a") {
-    casting.a = true;
-  } else if (key.toLowerCase() === "s") {
-    casting.s = true;
-  } else if (key.toLowerCase() === "d") {
-    casting.d = true;
-  } else if (key.toLowerCase() === "f") {
-    casting.f = true;
-  } else if (key.toLowerCase() === "g") {
-    casting.g = true;
-  } else if (key.toLowerCase() === "h") {
-    casting.h = true;
+
   } else if (key.toLowerCase() === "q") {
     rotatingLeft = true;
   } else if (key.toLowerCase() === "w") {
@@ -1096,15 +923,18 @@ function keyReleased() {
   }
 }
 
-function mouseWheel(event) {
-  // Prevent default behavior (page scrolling)
-  event.preventDefault();
+// Mouse state tracking
+let isMiddleMouseDown = false;
 
-  // Adjust zoom level with mouse wheel when middle mouse is not held
-  if (!isMiddleMouseDown) {
-    let zoomChange = event.delta > 0 ? 0.01 : -0.01;
-    zoomLevel = constrain(zoomLevel + zoomChange, MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
-  }
+function mouseWheel(event) {
+  // Zoom with mouse wheel
+  let zoomSpeed = 50;
+  cameraDistance = constrain(
+    cameraDistance + event.delta * 0.1,
+    MIN_CAMERA_DISTANCE,
+    MAX_CAMERA_DISTANCE
+  );
+  return false; // Prevent default scrolling
 }
 
 function mousePressed() {
@@ -1193,9 +1023,21 @@ function spawnEnemy(type) {
 
 function spawnEnemies(count = 1) {
   for (let i = 0; i < count; i++) {
+    // Spawn at top of screen
+    const x = random(-BRIDGE_WIDTH/2, BRIDGE_WIDTH/2);
+    const z = BRIDGE_LENGTH * 0.9; // Spawn at 90% of bridge length
+    
     const types = Object.keys(ENEMY_TYPES);
     const type = types[Math.floor(Math.random() * types.length)];
-    spawnEnemy(type);
+    
+    enemies.push({
+      x: x,
+      z: z,
+      type: ENEMY_TYPES[type],
+      health: ENEMY_TYPES[type].health,
+      speed: ENEMY_TYPES[type].speed,
+      lastFireTime: 0
+    });
   }
 }
 
@@ -1252,50 +1094,60 @@ function checkCollisions() {
     }
   });
 
-  // Check if game over
-  if (squad.health <= 0) {
+  // Check if all squad members are dead
+  if (squad.members.length === 0) {
     gamePaused = true;
-    alert('Game Over! Score: ' + score);
+    alert('Game Over! Score: ' + enemiesKilled);
+    return;
   }
 
-  // Skill collision with enemies
-  for (let i = skills.length - 1; i >= 0; i--) {
-    let skill = skills[i];
-    // For ally tanks, use fixed size. For other skills, use expanding size
-    let skillSize = skill.type === 'g' ?
-      SKILL_BASE_SIZE * 0.5 : // Fixed size for ally tanks
-      constrain(
-        map(skill.distanceTraveled, 0, SKILL_EXPAND_DISTANCE, 10, SKILL_BASE_SIZE * skill.sizeFactor),
-        10,
-        SKILL_BASE_SIZE * skill.sizeFactor
-      );
+  // Bullet collision with enemies
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+    const bulletSize = bullet.size || 5; // Default bullet size if not specified
 
     for (let j = enemies.length - 1; j >= 0; j--) {
-      let enemy = enemies[j];
-      if (isColliding(skill, skillSize, enemy)) {
-        // If the enemy is within the skill's area
-        enemies[j].health -= 10;
-        if (enemies[j].health <= 0) {
+      const enemy = enemies[j];
+      const dist = dist3D(bullet.x, bullet.z, enemy.x, enemy.z);
+
+      if (dist < (bulletSize + enemy.type.size) / 2) {
+        // Bullet hit enemy
+        enemy.health -= bullet.damage;
+        bullets.splice(i, 1);
+        
+        if (enemy.health <= 0) {
           enemies.splice(j, 1);
           enemiesKilled++;
-          if (enemiesKilled >= ENEMIES_TO_KILL) {
-            gamePaused = true;
-          } else {
-            spawnEnemies(1);
-          }
         }
+        break;
+      }
+    }
+  }
+
+  // Enemy collision with squad members
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    
+    for (let j = squad.members.length - 1; j >= 0; j--) {
+      const member = squad.members[j];
+      const dist = dist3D(enemy.x, enemy.z, member.x, member.z);
+      
+      if (dist < (enemy.type.size + 30) / 2) { // 30 is squad member size
+        // Enemy collides with squad member
+        member.health -= enemy.type.damage;
+        
+        if (member.health <= 0) {
+          squad.members.splice(j, 1);
+        }
+        break;
       }
     }
   }
 }
 
-// Function to check if a skill is colliding with an enemy
-function isColliding(skill, skillSize, enemy) {
-  // Check if the bounding boxes of the skill and enemy overlap
-  return (
-    skill.x - skillSize / 2 < enemy.x + 20 &&
-    skill.x + skillSize / 2 > enemy.x - 20 &&
-    skill.z - skillSize / 2 < enemy.z + 20 &&
-    skill.z + skillSize / 2 > enemy.z - 20
-  );
+// Helper function to calculate 3D distance between two points
+function dist3D(x1, z1, x2, z2) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+  return Math.sqrt(dx * dx + dz * dz);
 }
