@@ -993,8 +993,41 @@ function drawEnemies() {
   for (let enemy of enemies) {
     push();
     translate(enemy.x, 0, enemy.z);
-    fill(255, 0, 0); // Red for enemies
-    box(40, 40, 40);
+    
+    // Apply enemy type color
+    const color = enemy.type.color;
+    fill(color[0], color[1], color[2]);
+    
+    // Draw different sizes based on enemy type
+    if (enemy.type.size >= 30) { // Boss types
+      push();
+      // Add spikes or details for bosses
+      rotateY(frameCount * 0.02); // Slow rotation for menacing effect
+      box(enemy.type.size);
+      
+      // Add crown/spikes
+      translate(0, -enemy.type.size/2, 0);
+      fill(255, 200, 0); // Gold color
+      rotateX(PI/4);
+      cone(enemy.type.size/3, enemy.type.size/3);
+      pop();
+    } else { // Regular enemies
+      box(enemy.type.size);
+    }
+    
+    // Health bar
+    push();
+    translate(0, -enemy.type.size, 0);
+    rotateY(-cameraAngle); // Face camera
+    noStroke();
+    fill(255, 0, 0); // Red background
+    box(40, 5, 1);
+    fill(0, 255, 0); // Green health
+    const healthPercent = enemy.health / enemy.type.health;
+    translate(-20 * (1 - healthPercent), 0, 0);
+    box(40 * healthPercent, 5, 1);
+    pop();
+    
     pop();
   }
 }
@@ -1228,14 +1261,27 @@ function spawnEnemy(type) {
   enemies.push(enemy);
 }
 
+let normalEnemyCount = 0;
+const NORMAL_ENEMIES_BEFORE_BOSS = 10;
+
 function spawnEnemies(count = 1) {
   for (let i = 0; i < count; i++) {
     // Spawn at top of screen
     const x = random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2);
     const z = BRIDGE_LENGTH * 0.9; // Spawn at 90% of bridge length
 
-    const types = Object.keys(ENEMY_TYPES);
-    const type = types[Math.floor(Math.random() * types.length)];
+    let type;
+    if (normalEnemyCount >= NORMAL_ENEMIES_BEFORE_BOSS) {
+      // Spawn a boss
+      const bossTypes = ['BOSS1', 'BOSS2', 'BOSS3'];
+      type = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+      normalEnemyCount = 0; // Reset counter after boss
+    } else {
+      // Spawn normal enemies
+      const normalTypes = ['SOLDIER', 'FAST', 'HEAVY'];
+      type = normalTypes[Math.floor(Math.random() * normalTypes.length)];
+      normalEnemyCount++;
+    }
 
     enemies.push({
       x: x,
