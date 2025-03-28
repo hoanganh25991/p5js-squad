@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="p5.js"></script>
+  <script src="p5.sound.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+  <!-- GitHub link with icon -->
+  <a href="https://github.com/hoanganh25991/p5js-tank/" class="github-link" target="_blank">
+    <i class="fab fa-github"></i>
+  </a>
+  <div id="statusBoard"></div>
+  <button class="start-button" onclick="startGame()">START</button>
+  <div class="keyboard">
+    <div class="left">
+      <div class="row">
+        <div class="key" data-key="q">Q</div>
+        <div class="key" data-key="w">W</div>
+        <div class="key" data-key="y">Y</div>
+      </div>
+      <br/>
+      <div class="row">
+        <div class="key" style="margin: 0 6rem;" data-key="arrowUp">↑</div>
+      </div>
+      <div class="row">
+        <div class="key" data-key="arrowLeft">←</div>
+        <div class="key" data-key="arrowDown">↓</div>
+        <div class="key" data-key="arrowRight">→</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="row">
+        <div class="key" data-key="e">E</div>
+        <div class="key" data-key="r">R</div>
+        <div class="key" data-key="y">T</div>
+      </div>
+      <br/>
+      <div class="row">
+        <div class="key" data-key="s">S</div>
+        <div class="key" data-key="g">G</div>
+        <div class="key" data-key="h">H</div>
+      </div>
+      <div class="row">
+        <div class="key" data-key="a">A</div>
+        <div class="key" data-key="f">F</div>
+        <div class="key" data-key="d">D</div>
+      </div>
+    </div>
+  </div>
+  <script src="tank.js"></script>
+  <script src="status-board.js"></script>
+  <script src="keyboard.js"></script>
+  <script src="service-worker-control.js"></script>
+  <script src="control.js"> </script>
+</body>
+
+</html>
