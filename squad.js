@@ -5,8 +5,8 @@ let effects = [];
 
 // Squad Mechanics
 const INITIAL_SQUAD_SIZE = 1;
-const MAX_SQUAD_SIZE = 20;
-const SQUAD_SPACING = 40; // Space between squad members
+const MAX_SQUAD_SIZE = 100;
+const SQUAD_SPACING = 15; // Space between squad members
 const SQUAD_MEMBER_SIZE = 30; // Size of each squad member
 
 // Bridge Settings
@@ -442,13 +442,26 @@ function updateSquadPosition() {
   squad.x = constrain(squad.x + moveX, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
   squad.z += moveZ;
 
-  // Update squad members positions in circle formation
-  const radius = SQUAD_SPACING;
-  squad.members.forEach((member, index) => {
-    const memberAngle = TWO_PI / squad.size * index;
-    member.x = squad.x + radius * cos(memberAngle);
-    member.z = squad.z + radius * sin(memberAngle);
-  });
+  // Update squad members positions in filled circle formation
+  const baseRadius = SQUAD_SPACING;
+  let membersPlaced = 0;
+  let ring = 0;
+  
+  while (membersPlaced < squad.members.length) {
+    const radius = baseRadius * (ring + 1);
+    // Calculate how many members can fit in this ring
+    const membersInRing = ring === 0 ? 1 : floor(TWO_PI * radius / (SQUAD_MEMBER_SIZE * 1.2));
+    
+    // Place members in this ring
+    for (let i = 0; i < membersInRing && membersPlaced < squad.members.length; i++) {
+      const member = squad.members[membersPlaced];
+      const memberAngle = TWO_PI / membersInRing * i;
+      member.x = squad.x + radius * cos(memberAngle);
+      member.z = squad.z + radius * sin(memberAngle);
+      membersPlaced++;
+    }
+    ring++;
+  }
 
 
 
