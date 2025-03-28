@@ -6,7 +6,7 @@ let effects = [];
 // Squad Mechanics
 const INITIAL_SQUAD_SIZE = 1;
 const MAX_SQUAD_SIZE = 100;
-const SQUAD_SPACING = 15; // Space between squad members
+const SQUAD_SPACING = 25; // Space between squad members
 const SQUAD_MEMBER_SIZE = 30; // Size of each squad member
 
 // Bridge Settings
@@ -73,7 +73,6 @@ let squad = {
   size: INITIAL_SQUAD_SIZE,
   members: [
     { x: 0, z: 0, health: 100 }, // Leader
-    { x: -SQUAD_SPACING, z: 0, health: 100 } // First follower
   ],
   weapon: WEAPON_TYPES.BASIC,
   lastFireTime: 0,
@@ -927,8 +926,9 @@ function drawBullets() {
   bullets = bullets.filter((bullet) => {
     push();
     translate(bullet.x, 0, bullet.z);
-    fill(255, 255, 0);
-    sphere(bullet.size);
+    fill(255, 255, 0); // Yellow color
+    noStroke();
+    box(5); // Square bullet
     pop();
 
     // Update bullet position
