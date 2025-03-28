@@ -10,9 +10,10 @@ const SQUAD_SPACING = 40; // Space between squad members
 const SQUAD_MEMBER_SIZE = 30; // Size of each squad member
 
 // Bridge Settings
-const BRIDGE_WIDTH = 300;
-const BRIDGE_LENGTH = 16000;
-const POWERUP_LANE_WIDTH = 100;
+const BRIDGE_LENGTH = 1600 * 10;
+const MAIN_LANE_WIDTH = 700; // Main combat area
+const POWERUP_LANE_WIDTH = 200; // Wider power-up lane
+const BRIDGE_WIDTH = MAIN_LANE_WIDTH + POWERUP_LANE_WIDTH; // 3x wider
 const POWERUP_SPAWN_INTERVAL = 3000; // Spawn power-up every 3 seconds
 
 // Gameplay Mechanics
@@ -70,13 +71,17 @@ let squad = {
   x: 0,
   z: 0,
   size: INITIAL_SQUAD_SIZE,
-  members: [{ x: 0, z: 0, health: 100 }],
+  members: [
+    { x: 0, z: 0, health: 100 }, // Leader
+    { x: -SQUAD_SPACING, z: 0, health: 100 } // First follower
+  ],
   weapon: WEAPON_TYPES.BASIC,
   lastFireTime: 0,
   direction: 1, // 1 for right, -1 for left
   speed: 3,
   health: 100 // Add squad health
 };
+squad.size = squad.members.length; // Start with 2 members
 
 let bullets = [];
 // No enemy bullets, only melee
@@ -88,7 +93,7 @@ let lastPowerupSpawnTime = 0;
 function spawnPowerup() {
   if (millis() - lastPowerupSpawnTime > POWERUP_SPAWN_INTERVAL) {
     // Spawn in power-up lane (right side of bridge)
-    const x = BRIDGE_WIDTH/2 - POWERUP_LANE_WIDTH/2;
+    const x = MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH/2; // Center of power-up lane
     const z = squad.z + random(300, 800);
     
     // Random power-up type
@@ -216,7 +221,7 @@ let lastCastTime = {
 };
 
 const cooldown = {
-  a: 500, // 500 milliseconds
+  a: 0, // 2 seconds cooldown for spawning squad members
   s: 500,
   d: 500,
   f: 500,
@@ -305,10 +310,11 @@ function drawBridge() {
   push();
   fill(200); // Light gray for the road
   noStroke();
-  box(BRIDGE_WIDTH - POWERUP_LANE_WIDTH, 1, BRIDGE_LENGTH);
+  translate(-MAIN_LANE_WIDTH-POWERUP_LANE_WIDTH/2, 0, 0); // Shift main lane left to make room for power-up lane
+  box(MAIN_LANE_WIDTH, 1, BRIDGE_LENGTH);
 
-  // Draw power-up lane
-  translate(BRIDGE_WIDTH/2 - POWERUP_LANE_WIDTH/2, 0, 0);
+  // Draw power-up lane on right
+  translate(MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0);
   fill(150, 200, 255); // Light blue for power-up lane
   box(POWERUP_LANE_WIDTH, 2, BRIDGE_LENGTH);
   pop();
@@ -378,11 +384,11 @@ function draw() {
 function updateSquadPosition() {
   // Move squad based on arrow keys
   if (keyIsDown(LEFT_ARROW)) {
-    squad.x = constrain(squad.x + PLAYER_MOVE_SPEED, MIN_X, MAX_X);
+    squad.x = constrain(squad.x + PLAYER_MOVE_SPEED, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
     squad.direction = 1;
   }
   if (keyIsDown(RIGHT_ARROW)) {
-    squad.x = constrain(squad.x - PLAYER_MOVE_SPEED, MIN_X, MAX_X);
+    squad.x = constrain(squad.x - PLAYER_MOVE_SPEED, -MAIN_LANE_WIDTH/2, MAIN_LANE_WIDTH/2 + POWERUP_LANE_WIDTH);
     squad.direction = -1;
   }
   if (keyIsDown(UP_ARROW)) {
@@ -664,19 +670,20 @@ function updateEnemies() {
       }
     }
 
-    // Check for collisions with squad members
-    for (let j = squad.members.length - 1; j >= 0; j--) {
-      const member = squad.members[j];
-      if (dist(member.x, member.z, enemy.x, enemy.z) < enemy.type.size/2 + 20) {
-        member.health -= enemy.type.damage;
-        if (member.health <= 0) {
-          squad.members.splice(j, 1);
-          squad.size--;
-          if (squad.size <= 0) {
-            gamePaused = true;
+
+      // Check for collisions with squad members
+      for (let j = squad.members.length - 1; j >= 0; j--) {
+        const member = squad.members[j];
+        if (dist(member.x, member.z, enemy.x, enemy.z) < enemy.type.size/2 + 20) {
+          member.health -= enemy.type.damage;
+          if (member.health <= 0) {
+            squad.members.splice(j, 1);
+            squad.size--;
+            if (squad.size <= 0) {
+              gamePaused = true;
+            }
           }
         }
-      }
     }
 
     // Remove enemies that are off screen
@@ -694,9 +701,31 @@ function updateEnemies() {
     // Spawn boss every 200 kills
     if (enemiesKilled % 200 === 0 && enemiesKilled > 0) {
       const bossLevel = Math.min(Math.floor(wave / 3), 3);
-      spawnEnemy(`BOSS${bossLevel}`);
+      // Spawn boss in center of main lane
+      enemies.push({
+        x: 0,
+        z: squad.z + 800,
+        type: ENEMY_TYPES[`BOSS${bossLevel}`],
+        health: ENEMY_TYPES[`BOSS${bossLevel}`].health,
+        lastShot: 0
+      });
     } else {
-      spawnEnemy(type);
+      // Spawn regular enemies across main lane width
+      const numEnemies = random(2, 4); // Spawn 2-4 enemies at once
+      const spacing = MAIN_LANE_WIDTH / (numEnemies + 1);
+      
+      for (let i = 1; i <= numEnemies; i++) {
+        const x = -MAIN_LANE_WIDTH/2 + spacing * i; // Evenly space enemies
+        const z = squad.z + random(500, 1000);
+        
+        enemies.push({
+          x,
+          z,
+          type: ENEMY_TYPES[type],
+          health: ENEMY_TYPES[type].health,
+          lastShot: 0
+        });
+      }
     }
   }
 }
