@@ -389,7 +389,7 @@ function drawBridge() {
   // Bridge dimensions text
   push();
   translate(-BRIDGE_WIDTH/2, -20, -BRIDGE_LENGTH/2);
-  rotateY(-cameraAngle); // Make text face camera
+  // rotateY(-cameraAngle); // Make text face camera
   fill(0);
   textSize(20);
   textAlign(LEFT);
@@ -399,7 +399,7 @@ function drawBridge() {
   for (let z = 0; z < BRIDGE_LENGTH; z += 1000) {
     push();
     translate(0, 0, z);
-    rotateY(-cameraAngle); // Make text face camera
+    rotateY(PI+cameraAngle); // Make text face camera
     text(`Z: ${z}`, 0, 0);
     pop();
   }
