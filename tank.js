@@ -1,5 +1,8 @@
 // Configuration variables
 
+// Visual Effects
+let effects = [];
+
 // Squad Mechanics
 const INITIAL_SQUAD_SIZE = 1;
 const MAX_SQUAD_SIZE = 10;
@@ -13,7 +16,7 @@ const POWERUP_SPAWN_INTERVAL = 3000; // Spawn power-up every 3 seconds
 
 // Gameplay Mechanics
 const ENEMIES_TO_KILL = 1_000_000_000;
-const MAX_ENEMIES = 50;
+const MAX_ENEMIES = 100; // More enemies to fill the bridge
 const AUTO_FIRE_RATE = 500; // Auto fire every 500ms
 
 // Weapon Properties
@@ -37,15 +40,16 @@ const POWERUP_TYPES = {
 
 // Enemy Types
 const ENEMY_TYPES = {
-  BASIC: { health: 30, speed: 2, damage: 10, size: 50, points: 100 },
-  FAST: { health: 20, speed: 3, damage: 8, size: 40, points: 150 },
-  HEAVY: { health: 50, speed: 1, damage: 15, size: 60, points: 200 },
-  BOSS1: { health: 200, speed: 1, damage: 20, size: 100, points: 1000 },
-  BOSS2: { health: 400, speed: 1.2, damage: 25, size: 120, points: 2000 },
-  BOSS3: { health: 800, speed: 1.5, damage: 30, size: 150, points: 5000 }
+  BASIC: { health: 50, speed: 2.5, damage: 15, size: 20, points: 100, meleeRange: 50 }, // Faster enemies
+  FAST: { health: 35, speed: 2.5, damage: 12, size: 20, points: 150, meleeRange: 40 },
+  HEAVY: { health: 80, speed: 1, damage: 20, size: 25, points: 200, meleeRange: 60 },
+  BOSS1: { health: 300, speed: 0.8, damage: 25, size: 30, points: 1000, meleeRange: 80 },
+  BOSS2: { health: 500, speed: 1, damage: 30, size: 35, points: 2000, meleeRange: 90 },
+  BOSS3: { health: 1000, speed: 1.2, damage: 40, size: 40, points: 5000, meleeRange: 100 }
 };
 
 // Movement Settings
+const MIN_CAMERA_DISTANCE = 100; // Add missing camera constant
 const PLAYER_MOVE_SPEED = 4;
 const MIN_X = -BRIDGE_WIDTH / 2;
 const MAX_X = BRIDGE_WIDTH / 2;
@@ -180,34 +184,75 @@ function setup() {
   zoomLevel = getDynamicZoomLevel();
 }
 
+let bridgeTexture;
+
+function setupBridge() {
+  bridgeTexture = createBridgeTexture();
+}
+
+function createBridgeTexture() {
+  let pg = createGraphics(200, 200);
+  pg.background(150);
+  
+  // Add stone pattern
+  pg.noStroke();
+  for (let i = 0; i < 20; i++) {
+    for (let j = 0; j < 20; j++) {
+      pg.fill(random(130, 170));
+      pg.rect(i * 10, j * 10, 10, 10);
+    }
+  }
+  
+  // Add some noise for texture
+  pg.loadPixels();
+  for (let i = 0; i < pg.pixels.length; i += 4) {
+    let noise = random(-10, 10);
+    pg.pixels[i] = constrain(pg.pixels[i] + noise, 0, 255);
+    pg.pixels[i + 1] = constrain(pg.pixels[i + 1] + noise, 0, 255);
+    pg.pixels[i + 2] = constrain(pg.pixels[i + 2] + noise, 0, 255);
+  }
+  pg.updatePixels();
+  return pg;
+}
+
 function drawBridge() {
   push();
-  translate(0, 50, 0);
+  translate(0, 0, BRIDGE_LENGTH/2);
 
-  // Draw main bridge
+  // Draw main road
   push();
-  fill(100);
+  fill(200); // Light gray for the road
   noStroke();
-  rotateX(HALF_PI);
-  rect(-BRIDGE_WIDTH / 2, -BRIDGE_LENGTH / 2, BRIDGE_WIDTH, BRIDGE_LENGTH);
+  box(BRIDGE_WIDTH, 1, BRIDGE_LENGTH);
+
+  // Draw road lines
+  fill(255); // White for road lines
+  translate(0, 1, 0);
+  for (let z = -BRIDGE_LENGTH/2; z < BRIDGE_LENGTH/2; z += 100) {
+    push();
+    translate(0, 0, z);
+    box(5, 1, 50); // Road line
+    pop();
+  }
   pop();
 
-  // Draw power-up lane on the right
+  // Draw side barriers
   push();
-  fill(120);
-  noStroke();
-  translate(BRIDGE_WIDTH / 2 + POWERUP_LANE_WIDTH / 2, 0, 0);
-  rotateX(HALF_PI);
-  rect(-POWERUP_LANE_WIDTH / 2, -BRIDGE_LENGTH / 2, POWERUP_LANE_WIDTH, BRIDGE_LENGTH);
-  pop();
+  // Left barrier
+  translate(-BRIDGE_WIDTH/2, 10, 0);
+  fill(150); // Gray for barriers
+  box(10, 20, BRIDGE_LENGTH);
 
-  // Draw bridge railings
-  push();
-  fill(150);
-  translate(-BRIDGE_WIDTH / 2, -20, 0);
-  box(10, 40, BRIDGE_LENGTH);
+  // Right barrier
   translate(BRIDGE_WIDTH, 0, 0);
-  box(10, 40, BRIDGE_LENGTH);
+  box(10, 20, BRIDGE_LENGTH);
+  pop();
+
+  // Draw powerup lane (blue section on the right)
+  push();
+  translate(BRIDGE_WIDTH/2 + POWERUP_LANE_WIDTH/2, 0, 0);
+  fill(100, 150, 255, 100); // Light blue for powerup lane
+  box(POWERUP_LANE_WIDTH, 1, BRIDGE_LENGTH);
   pop();
 
   pop();
@@ -234,6 +279,7 @@ function draw() {
   updateEnemies();
   autoFireSquad();
   checkCollisions();
+  updateEffects();
 
   // Draw game elements
   drawBridge();
@@ -242,6 +288,7 @@ function draw() {
   drawEnemyBullets();
   drawEnemies();
   drawPowerups();
+  drawEffects();
 }
 
 function updateSquadPosition() {
@@ -265,18 +312,22 @@ function updateSquadPosition() {
 }
 
 function autoFireSquad() {
-  if (millis() - squad.lastFireTime > AUTO_FIRE_RATE) {
+  // Fire more frequently
+  if (millis() - squad.lastFireTime > 100) { // Reduced from 500 to 100ms
     // Each squad member fires forward
     squad.members.forEach(member => {
-      bullets.push({
-        x: member.x,
-        z: member.z,
-        size: squad.weapon.bulletSize,
-        speed: squad.weapon.bulletSpeed,
-        damage: squad.weapon.damage,
-        angle: 0, // Always shoot forward
-        distance: 0
-      });
+      // Fire multiple bullets in spread pattern
+      for (let i = -1; i <= 1; i++) {
+        bullets.push({
+          x: member.x + i * 10,
+          z: member.z,
+          size: squad.weapon.bulletSize,
+          speed: squad.weapon.bulletSpeed * 1.5, // 50% faster bullets
+          damage: squad.weapon.damage,
+          angle: i * 0.1, // Slight spread
+          distance: 0
+        });
+      }
     });
     squad.lastFireTime = millis();
   }
@@ -347,61 +398,84 @@ function drawPowerups() {
       translate(0, 10 + sin(frameCount * 0.05) * 5, 0);
       rotateY(frameCount * 0.02);
 
-      // Different visuals for different powerup types
-      if (powerup.type === POWERUP_TYPES.MIRROR) {
-        fill(200, 200, 255);
-        box(30);
-      } else if (powerup.type === POWERUP_TYPES.GUN_UPGRADE) {
-        fill(255, 200, 200);
-        cylinder(15, 40);
-      } else {
-        fill(200, 255, 200);
-        sphere(20);
-      }
+      // Blue powerup box with plus sign
+      fill(100, 150, 255);
+      box(30);
+      
+      // White plus sign
+      fill(255);
+      push();
+      translate(0, 15.1, 0); // Slightly above the box surface
+      rotateX(HALF_PI);
+      // Horizontal bar
+      box(20, 5, 5);
+      // Vertical bar
+      box(5, 5, 20);
+      pop();
       pop();
     }
   });
 }
-function drawSquad() {
-  const spacing = tankSize * 1.2;
-  const rows = Math.ceil(Math.sqrt(squad.size));
-  const cols = Math.ceil(squad.size / rows);
 
-  push();
-  translate(squad.x, 0, squad.z);
+function updateEffects() {
+  effects = effects.filter(effect => {
+    effect.life--;
+    return effect.life > 0;
+  });
+}
 
-  // Update squad member positions
-  squad.members = [];
-  let memberIndex = 0;
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols && memberIndex < squad.size; col++) {
-      const offsetX = (col - (cols - 1) / 2) * spacing;
-      const offsetZ = (row - (rows - 1) / 2) * spacing;
-      squad.members.push({ x: squad.x + offsetX, z: squad.z + offsetZ });
-
-      // Draw individual tank
-      push();
-      translate(offsetX, 0, offsetZ);
-
-      // Draw tank body
-      fill(200);
-      box(tankSize, tankSize / 2, tankSize * 1.5);
-
-      // Draw tank turret
-      translate(0, -tankSize / 4, 0);
-      fill(180);
-      box(tankSize * 0.8, tankSize / 2, tankSize);
-
-      // Draw tank barrel with current weapon appearance
-      translate(0, 0, tankSize * 0.7);
-      fill(160);
-      const barrelSize = squad.weapon.bulletSize * 2;
-      box(barrelSize, barrelSize, tankSize);
-      pop();
-
-      memberIndex++;
+function drawEffects() {
+  for (let effect of effects) {
+    push();
+    translate(effect.x, 0, effect.z);
+    
+    if (effect.type === 'hit') {
+      fill(255, 255, 0, map(effect.life, 10, 0, 255, 0));
+      noStroke();
+      sphere(effect.size * (1 - effect.life/10));
+    } else if (effect.type === 'explosion') {
+      fill(255, 100, 0, map(effect.life, 20, 0, 255, 0));
+      noStroke();
+      sphere(effect.size * (1 - effect.life/20));
+    } else if (effect.type === 'melee') {
+      fill(255, 0, 0, map(effect.life, 5, 0, 255, 0));
+      noStroke();
+      rotateX(random(TWO_PI));
+      rotateY(random(TWO_PI));
+      box(effect.size, effect.size/4, effect.size/4);
     }
+    
+    pop();
   }
+}
+function drawSquad() {
+  push();
+  translate(squad.x, 10, squad.z); // Raise slightly above ground
+
+  // Draw single player character
+  push();
+  // Body
+  fill(100, 150, 255); // Light blue
+  sphere(15); // Round body
+
+  // Hat
+  translate(0, -12, 0);
+  fill(50, 100, 255); // Darker blue
+  rotateX(PI/6);
+  cylinder(10, 8); // Baseball cap style
+
+  // Health bar if damaged
+  if (squad.health < 100) {
+    translate(0, -10, 0);
+    rotateX(-PI/6);
+    noStroke();
+    fill(100);
+    rect(-20, 0, 40, 5); // Background
+    fill(0, 255, 0);
+    rect(-20, 0, map(squad.health, 0, 100, 0, 40), 5); // Health
+  }
+  pop();
+
   pop();
 }
 
@@ -416,19 +490,82 @@ function updateEnemies() {
     let dx = squad.x - enemy.x;
     enemy.x += Math.sign(dx) * enemy.type.speed * 0.5; // Slower horizontal movement
 
+    // Check for melee combat with squad members
+    for (let member of squad.members) {
+      let distance = dist(enemy.x, enemy.z, member.x, member.z);
+      if (distance < enemy.type.meleeRange) {
+        member.health -= enemy.type.damage * 0.1; // Reduced per-frame damage
+        
+        // Melee effect
+        effects.push({
+          type: 'melee',
+          x: (enemy.x + member.x) / 2,
+          z: (enemy.z + member.z) / 2,
+          size: 15,
+          life: 5
+        });
+
+        if (member.health <= 0) {
+          squad.members = squad.members.filter(m => m !== member);
+          squad.size--;
+          
+          // Death effect
+          for (let k = 0; k < 8; k++) {
+            effects.push({
+              type: 'explosion',
+              x: member.x + random(-15, 15),
+              z: member.z + random(-15, 15),
+              size: random(8, 15),
+              life: 15
+            });
+          }
+          
+          if (squad.size <= 0) {
+            gamePaused = true;
+          }
+          break;
+        }
+      }
+    }
+
     // Check for collisions with bullets
     for (let j = bullets.length - 1; j >= 0; j--) {
       const bullet = bullets[j];
       if (dist(bullet.x, bullet.z, enemy.x, enemy.z) < enemy.type.size/2 + bullet.size/2) {
-        enemy.health -= bullet.damage;
+        // Multiple hits effect
+        for (let hit = 0; hit < 3; hit++) {
+          enemy.health -= bullet.damage * (hit === 0 ? 1 : 0.5); // First hit full damage, subsequent hits half damage
+          
+          // Create hit effect
+          effects.push({
+            type: 'hit',
+            x: enemy.x + random(-10, 10),
+            z: enemy.z + random(-10, 10),
+            size: random(5, 10),
+            life: 10
+          });
+        }
+        
         bullets.splice(j, 1);
         
         if (enemy.health <= 0) {
           score += enemy.type.points;
+          
+          // Death effect
+          for (let k = 0; k < 10; k++) {
+            effects.push({
+              type: 'explosion',
+              x: enemy.x + random(-20, 20),
+              z: enemy.z + random(-20, 20),
+              size: random(10, 20),
+              life: 20
+            });
+          }
+          
           enemies.splice(i, 1);
           enemiesKilled++;
-          break;
         }
+        break;
       }
     }
 
@@ -453,8 +590,8 @@ function updateEnemies() {
     }
   }
 
-  // Spawn new enemies
-  if (frameCount % 120 === 0 && enemies.length < MAX_ENEMIES) {
+  // Spawn new enemies more frequently
+  if (frameCount % 20 === 0 && enemies.length < MAX_ENEMIES) { // Reduced from 120 to 20
     const wave = Math.floor(enemiesKilled / 50); // Every 50 kills increases wave
     const types = Object.keys(ENEMY_TYPES);
     const type = types[Math.min(wave, types.length - 1)];
@@ -472,30 +609,49 @@ function updateEnemies() {
 function drawEnemies() {
   enemies.forEach(enemy => {
     push();
-    translate(enemy.x, 0, enemy.z);
+    translate(enemy.x, 30, enemy.z); // Raise enemies higher above bridge
 
-    // Different visuals for different enemy types
     if (enemy.type === ENEMY_TYPES.BOSS1 ||
-      enemy.type === ENEMY_TYPES.BOSS2 ||
-      enemy.type === ENEMY_TYPES.BOSS3) {
-      // Boss appearance
-      fill(255, 0, 0);
-      box(enemy.type.size, enemy.type.size * 0.6, enemy.type.size * 1.5);
+        enemy.type === ENEMY_TYPES.BOSS2 ||
+        enemy.type === ENEMY_TYPES.BOSS3) {
+      // Boss enemy - larger
+      push();
+      // Body
+      fill(255, 50, 50); // Bright red
+      sphere(20); // Round body
 
-      // Boss turret
-      translate(0, -enemy.type.size * 0.2, 0);
-      fill(200, 0, 0);
-      box(enemy.type.size * 0.8, enemy.type.size * 0.4, enemy.type.size);
+      // Hat
+      translate(0, -15, 0);
+      fill(200, 0, 0); // Darker red
+      rotateX(PI/6);
+      cylinder(15, 10); // Baseball cap style
+      pop();
     } else {
       // Regular enemy
-      fill(150, 0, 0);
-      box(enemy.type.size, enemy.type.size * 0.5, enemy.type.size * 1.2);
+      push();
+      // Body
+      fill(255, 50, 50); // Bright red
+      sphere(15); // Round body
 
-      // Enemy turret
-      translate(0, -enemy.type.size * 0.15, 0);
-      fill(120, 0, 0);
-      box(enemy.type.size * 0.6, enemy.type.size * 0.3, enemy.type.size * 0.8);
+      // Hat
+      translate(0, -12, 0);
+      fill(200, 0, 0); // Darker red
+      rotateX(PI/6);
+      cylinder(10, 8); // Baseball cap style
+      pop();
     }
+
+    // Health bar if damaged
+    if (enemy.health < enemy.type.health) {
+      translate(0, -20, 0);
+      rotateX(-PI/6);
+      noStroke();
+      fill(100);
+      rect(-20, 0, 40, 5); // Background
+      fill(255, 0, 0);
+      rect(-20, 0, map(enemy.health, 0, enemy.type.health, 0, 40), 5); // Health
+    }
+
     pop();
   });
 }
