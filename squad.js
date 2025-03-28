@@ -87,7 +87,7 @@ let moving = { left: false, right: false };
 let enemiesKilled = 0;
 let score = 0;
 let currentWave = 1;
-let gamePaused = true;
+let gamePaused = false;
 
 // Visual settings
 let zoomLevel = 0.2;
@@ -278,8 +278,8 @@ function draw() {
 
   // Set up camera for vertical view
   let camX = squad.x;
-  let camZ = squad.z - cameraDistance; // Camera behind the squad
-  camera(camX, cameraHeight, camZ,
+  let camZ = squad.z - cameraDistance - 100; // Camera behind the squad
+  camera(camX, cameraHeight - 70, camZ,
     squad.x, cameraHeight, squad.z + BRIDGE_LENGTH/2, // Look towards the end of bridge
     0, 1, 0);
 
