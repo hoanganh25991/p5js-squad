@@ -72,11 +72,12 @@ let squad = {
   weapon: WEAPON_TYPES.BASIC,
   lastFireTime: 0,
   direction: 1, // 1 for right, -1 for left
-  speed: 3
+  speed: 3,
+  health: 100 // Add squad health
 };
 
 let bullets = [];
-let enemyBullets = [];
+// No enemy bullets, only melee
 let enemies = [];
 let powerups = [];
 let moving = { left: false, right: false };
@@ -89,18 +90,25 @@ let gamePaused = true;
 
 // Visual settings
 let zoomLevel = 0.2;
-let tankSize = 75;
+let soldierSize = 75;
 
 // Share state with window for external access
-window.squadSize = INITIAL_SQUAD_SIZE;
-window.currentWeapon = WEAPON_TYPES.BASIC.name;
+window.getState = function() {
+  return {
+    squadSize: squad.size,
+    currentWeapon: squad.weapon.name,
+    enemiesKilled: enemiesKilled,
+    squadHealth: squad.members[0].health, // Use first member's health
+    gamePaused: gamePaused
+  };
+};
 
-let playerAngle = 0; // Tank body angle
-let turretAngle = 0; // Turret angle
+let playerAngle = 0; // Player body angle
+let weaponAngle = 0; // Weapon angle
 let cameraAngle = 0; // Camera angle
 let cameraDistance = 200; // Initial distance from the player
 
-let targetTurretAngle = 0;
+let targetWeaponAngle = 0;
 
 let cameraHeight = MAX_CAMERA_HEIGHT - 112; // Initial camera height
 let rotatingLeft = false;
@@ -144,7 +152,9 @@ const cooldown = {
 
 window.getState = function () {
   // Calculate average health of squad members
-  const avgHealth = squad.members.reduce((sum, member) => sum + member.health, 0) / squad.members.length;
+  const avgHealth = squad.members.length > 0 
+    ? squad.members.reduce((sum, member) => sum + member.health, 0) / squad.members.length 
+    : 0;
   
   return {
     squadHealth: Math.round(avgHealth),
@@ -160,8 +170,7 @@ window.setState = function (newState) {
 };
 
 function preload() {
-  groundTexture = loadImage("rocky_terrain_02_diff_4k.jpg"); // Ground texture
-  tankTexture = loadImage("photo-1539538507524-eab6a4184604.jpg"); // Tank texture
+  // No textures needed for modern style
   skillSoundMap = {
     a: loadSound("steampunk-weapon-single-shot-188051.mp3"),
     s: loadSound("barrett-m107-sound-effect-245967.mp3"),
@@ -285,7 +294,6 @@ function draw() {
   drawBridge();
   drawSquad();
   drawBullets();
-  drawEnemyBullets();
   drawEnemies();
   drawPowerups();
   drawEffects();
@@ -699,26 +707,27 @@ function getDynamicZoomLevel() {
   return 0.2;
 }
 
-function drawTank(isPlayer = false) {
+function drawSoldier(isPlayer = false) {
   push();
   if (isPlayer) {
     translate(playerX, 0, playerZ);
     rotateY(playerAngle); // Rotate tank body
   }
-  // Tank body
-  texture(tankTexture);
-  box(tankSize, 20, tankSize);
-  // Turret
+  // Soldier body
+  fill(100, 150, 255);
+  box(soldierSize, 20, soldierSize);
+  // Weapon
   translate(0, -15, 0);
   if (isPlayer) {
-    rotateY(turretAngle - playerAngle); // Rotate turret independently for player
+    rotateY(weaponAngle - playerAngle); // Rotate weapon independently for player
   }
-  box(30, 10, 30);
-  // Gun barrel
-  translate(0, 0, -20); // Position the barrel at the front of the turret
-  rotateX(HALF_PI); // Rotate the barrel 90 degrees to lie horizontally
-  fill(100); // Set a color for the barrel
-  cylinder(5, 40); // Create a cylinder for the barrel
+  fill(50, 100, 255);
+  box(20, 8, 20);
+  // Gun
+  translate(0, 0, -15);
+  rotateX(HALF_PI);
+  fill(80, 130, 255);
+  cylinder(3, 30);
   pop();
 }
 
@@ -760,7 +769,7 @@ function fireBullet() {
     let dx = target.x - playerX;
     let dz = target.z - playerZ;
     let angle = atan2(dz, dx);
-    targetTurretAngle = -atan2(dz, dx) - HALF_PI;
+    targetWeaponAngle = -atan2(dz, dx) - HALF_PI;
     bullets.push({
       x: playerX,
       y: 0,
@@ -775,8 +784,8 @@ function fireBullet() {
   }
 }
 
-function updateTurretAngle() {
-  turretAngle = lerp(turretAngle, targetTurretAngle, 0.1);
+function updateWeaponAngle() {
+  weaponAngle = lerp(weaponAngle, targetWeaponAngle, 0.1);
 }
 
 function drawBullets() {
@@ -796,42 +805,10 @@ function drawBullets() {
     return bullet.distance < 1000;
   });
 
-  // Draw and update enemy bullets
-  enemyBullets = enemyBullets.filter((bullet) => {
-    push();
-    translate(bullet.x, 0, bullet.z);
-    fill(255, 0, 0);
-    sphere(5);
-    pop();
-
-    // Update bullet position
-    bullet.x += bullet.dx * bullet.speed;
-    bullet.z += bullet.dz * bullet.speed;
-    bullet.distance = (bullet.distance || 0) + bullet.speed;
-
-    // Remove bullets that are too far behind the squad
-    return bullet.distance < 1000;
-  });
+  // No enemy bullets, only melee combat
 }
 
-function drawEnemyBullets() {
-  for (let i = enemyBullets.length - 1; i >= 0; i--) {
-    let bullet = enemyBullets[i];
-    bullet.x += bullet.dx * ENEMY_BULLET_SPEED;
-    bullet.z += bullet.dz * ENEMY_BULLET_SPEED;
-    bullet.distanceTraveled += ENEMY_BULLET_SPEED;
-
-    push();
-    translate(bullet.x, bullet.y, bullet.z);
-    sphere(BULLET_SIZE);
-    pop();
-
-    // Remove bullets that have traveled beyond the maximum distance
-    if (bullet.distanceTraveled > BULLET_MAX_DISTANCE) {
-      enemyBullets.splice(i, 1);
-    }
-  }
-}
+// Enemies only use melee attacks
 
 
 
@@ -997,17 +974,6 @@ function updateEnemiesPosition() {
       let angle = atan2(playerZ - enemy.z, playerX - enemy.x);
       enemy.x += cos(angle) * ENEMY_MOVE_SPEED;
       enemy.z += sin(angle) * ENEMY_MOVE_SPEED;
-    } else if (frameCount % 60 === 0) {
-      // Shoot at the player if within shooting distance
-      let bulletAngle = atan2(playerZ - enemy.z, playerX - enemy.x);
-      enemyBullets.push({
-        x: enemy.x,
-        y: 0,
-        z: enemy.z,
-        dx: cos(bulletAngle),
-        dz: sin(bulletAngle),
-        distanceTraveled: 0,
-      });
     }
   }
 }
@@ -1220,20 +1186,7 @@ function checkCollisions() {
     return !hit;
   });
 
-  // Check enemy bullet collisions with squad members
-  enemyBullets = enemyBullets.filter((bullet) => {
-    let hit = false;
-    squad.members.forEach(member => {
-      const dx = member.x - bullet.x;
-      const dz = member.z - bullet.z;
-      const distance = sqrt(dx * dx + dz * dz);
-      if (distance < tankSize / 2) {
-        squad.health -= bullet.damage;
-        hit = true;
-      }
-    });
-    return !hit;
-  });
+
 
   // Check powerup collisions with squad
   powerups.forEach(powerup => {
