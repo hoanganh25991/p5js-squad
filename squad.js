@@ -730,7 +730,7 @@ function drawSquad() {
       fill(0);
       textSize(16);
       textAlign(LEFT);
-      rotateY(-cameraAngle); // Make text face camera but maintain left-to-right
+      rotateY(PI + cameraAngle); // Make text face camera correctly
       text(`Leader: x=${Math.round(member.x)}, y=10, z=${Math.round(member.z)}`, 0, 0);
       pop();
     }
