@@ -201,7 +201,7 @@ function keyPressed() {
 let enemiesKilled = 0;
 let score = 0;
 let currentWave = 1;
-let gamePaused = false;
+let gamePaused = true;
 
 // Visual settings
 let zoomLevel = 0.2;
