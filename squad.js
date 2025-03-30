@@ -246,7 +246,8 @@ function drawGame() {
     box(member.size, member.size, member.size);
     
     // Draw health bar above squad member
-    translate(0, 0, member.size);
+    push(); // Save the current transformation state
+    translate(0, -member.size/2, member.size/2); // Position bar directly above member
     const healthBarWidth = member.size * 1.2;
     const healthBarHeight = 5;
     const healthPercentage = member.health / 100;
@@ -259,6 +260,7 @@ function drawGame() {
     fill(0, 255 * healthPercentage, 0);
     translate(-(healthBarWidth - healthBarWidth * healthPercentage) / 2, 0, 1);
     box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+    pop(); // Restore the transformation state
     pop();
   }
   
@@ -519,30 +521,34 @@ function moveSquad() {
     mainMember.x = constrain(mainMember.x, leftBound, rightBound);
     mainMember.y = constrain(mainMember.y, topBound, bottomBound);
     
-    // Formation - arrange other squad members around the main one
-    if (squad.length > 1) {
-      const spacing = SQUAD_SIZE * 1.1; // Slightly closer spacing to fit 9 in a row
+    // Formation - arrange other squad members around the leader
+    if (squad.length > 0) {
+      const spacing = SQUAD_SIZE * 1.3; // Spacing between members
       
-      for (let i = 1; i < squad.length; i++) {
-        // Horizontal formation first, then stack vertically
-        // Convert to 0-based index for calculation
-        const index = i - 1;
+      // Position all members in grid formation
+      for (let i = 0; i < squad.length; i++) {
+        // Calculate row and column for each member
+        const row = Math.floor(i / MAX_SQUAD_MEMBERS_PER_ROW);
+        const col = i % MAX_SQUAD_MEMBERS_PER_ROW;
         
-        // Calculate row and column based on MAX_SQUAD_MEMBERS_PER_ROW
-        const row = Math.floor(index / MAX_SQUAD_MEMBERS_PER_ROW);
-        const col = index % MAX_SQUAD_MEMBERS_PER_ROW;
-        
-        // Calculate position: center the leader with members on both sides
-        // For 9 members per row, positions would be: -4, -3, -2, -1, 0, 1, 2, 3, 4
-        const colOffset = col - Math.floor(MAX_SQUAD_MEMBERS_PER_ROW / 2);
-        
-        // Position each member
-        squad[i].x = mainMember.x + colOffset * spacing;
-        squad[i].y = mainMember.y + (row + 1) * spacing;
-        
-        // Constrain other members as well
-        squad[i].x = constrain(squad[i].x, leftBound, rightBound);
-        squad[i].y = constrain(squad[i].y, topBound, bottomBound);
+        // For the leader, we don't change position (controlled by arrow keys)
+        // For other members, we position them relative to the leader
+        if (i === 0) {
+          // The leader's position is already set by arrow key movement
+          // Don't override it here or movement will break
+        } else {
+          // Calculate offset from leader's actual position
+          const leaderX = mainMember.x;
+          const leaderY = mainMember.y;
+          
+          // Position based on row and column but relative to leader's actual position
+          squad[i].x = leaderX + (col * spacing);
+          squad[i].y = leaderY + (row * spacing);
+          
+          // Constrain other members to stay on the bridge
+          squad[i].x = constrain(squad[i].x, leftBound, rightBound);
+          squad[i].y = constrain(squad[i].y, topBound, bottomBound);
+        }
       }
     }
     
