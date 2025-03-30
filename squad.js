@@ -783,32 +783,8 @@ function spawnPowerUps() {
       type = weaponTypes.length > 0 ? random(weaponTypes) : 'mirror';
     }
     
-    // Add some randomness to power-up lane position
-    const laneOffset = random(-POWER_UP_LANE_WIDTH/4, POWER_UP_LANE_WIDTH/4);
-    const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
-    const y = random(-BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100, 
-                      BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - 100);
-    
-    // Add value for skill power-ups
-    let value = 1; // Default value
-    if (type === 'fire_rate') value = 3; // +3 fire rate
-    if (type === 'damage') value = 4;   // +4 damage
-    if (type === 'aoe') value = 2;      // +2 area effect
-    
-    powerUps.push({
-      x: x,
-      y: y,
-      z: 0,
-      type: type,
-      value: value,
-      speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
-      size: POWER_UP_SIZE, // Base size
-      rotation: random(0, TWO_PI), // Random starting rotation
-      rotationSpeed: random(0.01, 0.05), // How fast it rotates
-      stackLevel: 1, // Power-ups of same type can stack
-      pulsePhase: random(0, TWO_PI), // For pulsing effect
-      orbitals: type === 'mirror' ? 2 : (type.includes('weapon') ? 3 : 1) // Small orbiting particles
-    });
+    // Spawn the power-up with the determined type
+    spawnSpecificPowerUp(type);
     
     lastPowerUpSpawn = frameCount;
   }
@@ -820,30 +796,57 @@ function spawnPowerUps() {
 // Function to frequently spawn mirror power-ups in the middle of power-up lane
 function spawnMirrorPowerUps() {
   if (frameCount % MIRROR_POWERUP_SPAWN_RATE === 0 && powerUps.length < MAX_POWER_UPS) {
-    // Mirror power-ups spawn in the middle of power-up lane
-    const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2; // Middle of power-up lane
-    
-    // Distribute across the bridge length
-    const spacing = BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER / 10;
-    const offsetFromTop = 100; // Space from the top
-    const y = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2 + offsetFromTop + (frameCount % 10) * spacing;
-    
-    // Add the mirror power-up
-    powerUps.push({
-      x: x,
-      y: y,
-      z: 0,
-      type: 'mirror',
-      value: 1,
-      speed: POWER_UP_SPEED,
-      size: POWER_UP_SIZE * 1.2, // Slightly larger for visibility
-      rotation: random(0, TWO_PI),
-      rotationSpeed: 0.03,
-      stackLevel: 1,
-      pulsePhase: random(0, TWO_PI),
-      orbitals: 3 // More orbitals for mirror power-ups
-    });
+    // Spawn a mirror power-up
+    spawnSpecificPowerUp('mirror');
   }
+}
+
+// Helper function to spawn a specific power-up type
+function spawnSpecificPowerUp(type) {
+  // Add value for skill power-ups
+  let value = 1; // Default value
+  if (type === 'fire_rate') value = 3; // +3 fire rate
+  if (type === 'damage') value = 4;   // +4 damage
+  if (type === 'aoe') value = 2;      // +2 area effect
+  
+  // Calculate position in the center of power-up lane
+  const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2; // Center of power-up lane
+  
+  // Start position is further down the bridge - similar to enemy spawn position
+  let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + BRIDGE_LENGTH*0.3; // ~30% down from top
+  const spacing = POWER_UP_SIZE * 3; // Space between power-ups
+  
+  // Find all existing power-ups in the lane
+  const powerUpsInLane = powerUps.filter(p => Math.abs(p.x - x) < 20);
+  
+  if (powerUpsInLane.length > 0) {
+    // Sort by y position to find the southmost one (furthest down)
+    powerUpsInLane.sort((a, b) => b.y - a.y);
+    
+    // Place the new power-up after the last one in the queue
+    y = powerUpsInLane[0].y + spacing;
+    
+    // If the queue reaches too far down, wrap back to starting position
+    if (y > BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - BRIDGE_LENGTH*0.2) {
+      y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + BRIDGE_LENGTH*0.3;
+    }
+  }
+  
+  // Add the power-up to the game
+  powerUps.push({
+    x: x,
+    y: y,
+    z: 0,
+    type: type,
+    value: value,
+    speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+    size: type === 'mirror' ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
+    rotation: random(0, TWO_PI), // Random starting rotation
+    rotationSpeed: type === 'mirror' ? 0.03 : random(0.01, 0.05), // How fast it rotates
+    stackLevel: 1, // Power-ups of same type can stack
+    pulsePhase: random(0, TWO_PI), // For pulsing effect
+    orbitals: type === 'mirror' ? 3 : (type.includes('weapon') ? 3 : 1) // Small orbiting particles
+  });
 }
 
 function updatePowerUps() {
@@ -1269,23 +1272,13 @@ function activateSkill(skillNumber) {
       let powerUpCount = 3 + Math.floor((fireRateBoost + damageBoost + aoeBoost) / 5);
       let types = ['mirror', 'fire_rate', 'damage', 'aoe'];
       
+      // Use the new organized spawning system for all power-ups
       for (let i = 0; i < powerUpCount; i++) {
-        let laneOffset = random(-POWER_UP_LANE_WIDTH/3, POWER_UP_LANE_WIDTH/3);
-        let x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
-        let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100 + i * (BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER / (powerUpCount + 1)); // Adjusted for full bridge
-        
         // Cycle through power-up types
         let type = types[i % types.length];
-        let value = type === 'mirror' ? 1 : (type === 'fire_rate' ? 3 : (type === 'damage' ? 4 : 2));
         
-        powerUps.push({
-          x: x,
-          y: y,
-          z: 0,
-          type: type,
-          value: value,
-          speed: POWER_UP_SPEED
-        });
+        // Use our new helper function to spawn power-ups in an organized queue
+        spawnSpecificPowerUp(type);
       }
       break;
   }
