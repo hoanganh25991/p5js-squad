@@ -1394,73 +1394,115 @@ function drawHUD() {
 }
 
 function drawStatusBoard() {
-  // Left side board with game status
-  fill(0, 0, 0, 200); // More opaque background
-  rect(10, 10, 300, 250, 10); // Slightly larger with rounded corners
+  // Save current style settings
+  push();
   
-  textSize(22);
+  // Apply vibrant styling to match technical board
+  stroke(0, 255, 0); // Green border
+  strokeWeight(4);
+  fill(30, 50, 30, 250); // Nearly opaque dark green background
+  rect(20, 10, 340, 230, 15); // Left top position with rounded corners
+  
+  // Glow effect
+  noFill();
+  stroke(0, 255, 0, 150); 
+  strokeWeight(8);
+  rect(370, 10, 340, 230, 15);
+  
+  // Reset drawing settings
+  strokeWeight(1);
+  noStroke();
+  
+  // Title with high contrast
+  textSize(28);
   textAlign(LEFT, TOP);
-  fill(255);
-  text("STATUS BOARD", 20, 20);
+  fill(0, 255, 0); // Green text for visibility
+  text("STATUS BOARD", 40, 20);
   
-  textSize(18);
-  text(`Wave: ${currentWave}`, 20, 50);
-  text(`Score: ${score}`, 20, 75);
-  text(`Squad Members: ${squad.length}/${MAX_SQUAD_SIZE}`, 20, 100);
-  text(`Enemies Killed: ${enemiesKilled}`, 20, 125);
+  // Game info with bright colors
+  textSize(22);
+  fill(255, 255, 255); // White text
+  text(`Wave: ${currentWave}`, 40, 60);
+  text(`Score: ${score}`, 40, 90);
+  text(`Squad Members: ${squad.length}/${MAX_SQUAD_SIZE}`, 40, 120);
+  text(`Enemies Killed: ${enemiesKilled}`, 40, 150);
   
   // Add kills needed for next wave
-  fill(255, 255, 0);
-  text(`Kills for Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}`, 20, 150);
+  fill(255, 255, 0); // Yellow text
+  text(`Kills for Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}`, 40, 180);
   
-  // Health status
+  // Health status with color coding
   const avgHealth = squad.length > 0 ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length : 0;
   fill(avgHealth > 50 ? [0, 255, 0] : avgHealth > 25 ? [255, 255, 0] : [255, 0, 0]);
-  text(`Squad Health: ${Math.floor(avgHealth)}%`, 20, 175);
+  text(`Squad Health: ${Math.floor(avgHealth)}%`, 40, 210);
   
-  // Weapon info
-  text(`Weapon: ${currentWeapon}`, 20, 150);
-  const damage = getWeaponDamage(currentWeapon);
-  const fireRate = squadFireRate;
-  const dps = Math.floor((damage * 60) / fireRate);
+  // Draw a health bar
+  stroke(255);
+  strokeWeight(1);
+  noFill();
+  rect(225, 210, 100, 20);
+  noStroke();
+  fill(avgHealth > 50 ? [0, 255, 0] : avgHealth > 25 ? [255, 255, 0] : [255, 0, 0]);
+  rect(225, 210, avgHealth, 20);
   
-  const weaponColor = WEAPON_COLORS[currentWeapon] || [255, 255, 255];
-  fill(...weaponColor);
-  text(`Damage: ${damage} | Fire Rate: ${Math.floor(60/fireRate)} | DPS: ${dps}`, 20, 175);
+  // Pop style settings
+  pop();
 }
 
 function drawTechnicalBoard() {
-  // Right side with technical info
-  fill(0, 0, 0, 200); // More opaque background
-  rect(width - 310, 10, 300, 220, 10); // Larger with rounded corners
+  // Move to RIGHT side of screen for better visibility
+  push(); // Save current style settings
   
-  textSize(24);
+  // Very vibrant styling
+  stroke(255, 0, 255); // Magenta border
+  strokeWeight(4);
+  fill(30, 30, 50, 250); // Nearly opaque dark background
+  rect(700, 10, 340, 230, 15); // Right side position with rounded corners
+  
+  // Glow effect
+  noFill();
+  stroke(255, 0, 255, 150);
+  strokeWeight(8);
+  rect(20, 220, 340, 230, 15);
+  
+  // Reset drawing settings
+  strokeWeight(1);
+  noStroke();
+  
+  // Title with high contrast
+  textSize(28);
   textAlign(LEFT, TOP);
-  fill(255);
-  text("TECHNICAL BOARD", width - 300, 20);
+  fill(255, 0, 255); // Magenta text for visibility
+  text("TECHNICAL BOARD", 720, 30);
   
   // Add debug mode indicator if in debug mode
   if (DEBUG_MODE) {
-    fill(0, 255, 255);
-    text("DEBUG MODE ACTIVE", width - 300, 50);
+    fill(0, 255, 255); // Cyan for debug indicator
+    textSize(22);
+    text("✓ DEBUG MODE ACTIVE", 720, 65);
   }
   
-  textSize(18);
+  textSize(20);
+  fill(255, 255, 255); // Bright white text for maximum visibility
+  
   // Camera position
-  text(`Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}`, width - 300, 85);
+  text(`Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}`, 720, 100);
   
   // Time elapsed
   const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
-  text(`Time: ${minutes}m ${seconds}s`, width - 300, 115);
+  text(`Time: ${minutes}m ${seconds}s`, 720, 130);
   
   // Frame rate
-  text(`Frame Rate: ${Math.floor(frameRate())} fps`, width - 300, 145);
+  text(`Frame Rate: ${Math.floor(frameRate())} fps`, 720, 160);
   
-  // Additional useful info
-  text(`Squad Size: ${squad.length}/${MAX_SQUAD_SIZE}`, width - 300, 175);
-  text(`Wave: ${currentWave}`, width - 300, 205);
+  // Additional useful info with bright highlighting
+  fill(0, 255, 0); // Bright green for important stats
+  text(`Squad Size: ${squad.length}/${MAX_SQUAD_SIZE}`, 720, 190);
+  text(`Wave: ${currentWave}`, 720, 220);
+  
+  pop(); // Restore previous style settings
   
   // Object counts
   const objectCount = squad.length + enemies.length + projectiles.length + powerUps.length;
