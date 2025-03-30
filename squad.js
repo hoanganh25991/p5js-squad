@@ -812,23 +812,24 @@ function spawnSpecificPowerUp(type) {
   // Calculate position in the center of power-up lane
   const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2; // Center of power-up lane
   
-  // Start position is further down the bridge - similar to enemy spawn position
-  let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + BRIDGE_LENGTH*0.3; // ~30% down from top
+  // Start position at the far end of the bridge (where enemies spawn)
+  let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100; // Start at the very beginning of bridge
   const spacing = POWER_UP_SIZE * 3; // Space between power-ups
   
   // Find all existing power-ups in the lane
   const powerUpsInLane = powerUps.filter(p => Math.abs(p.x - x) < 20);
   
   if (powerUpsInLane.length > 0) {
-    // Sort by y position to find the southmost one (furthest down)
-    powerUpsInLane.sort((a, b) => b.y - a.y);
+    // Sort by y position to find the northmost one (furthest up)
+    powerUpsInLane.sort((a, b) => a.y - b.y);
     
-    // Place the new power-up after the last one in the queue
-    y = powerUpsInLane[0].y + spacing;
+    // Place the new power-up behind (north of) the first one in the queue
+    y = powerUpsInLane[0].y - spacing;
     
-    // If the queue reaches too far down, wrap back to starting position
-    if (y > BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - BRIDGE_LENGTH*0.2) {
-      y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + BRIDGE_LENGTH*0.3;
+    // If the queue reaches too far up, wrap back to a lower position
+    if (y < -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 50) {
+      // Start near the bottom of the bridge if we've gone too far up
+      y = BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - 200;
     }
   }
   
