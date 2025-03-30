@@ -157,6 +157,9 @@ function setup() {
   resetGame();
   gameState = 'playing';
   gameStartTime = frameCount;
+  
+  // Create the HUD DOM elements
+  createHUDElements();
 }
 
 function draw() {
@@ -1372,142 +1375,93 @@ function drawGameOverScreen() {
   pop();
 }
 
+// Create DOM elements for HUD
+function createHUDElements() {
+  // Create status board element
+  statusBoard = createDiv('');
+  statusBoard.id('status-board');
+  statusBoard.position(10, 10);
+  statusBoard.style('background-color', 'rgba(0,0,0,0.7)');
+  statusBoard.style('color', 'white');
+  statusBoard.style('padding', '10px');
+  statusBoard.style('border-radius', '5px');
+  statusBoard.style('width', '250px');
+  statusBoard.style('font-family', 'monospace');
+  statusBoard.style('z-index', '1000');
+  
+  // Create technical board element
+  techBoard = createDiv('');
+  techBoard.id('tech-board');
+  techBoard.position(windowWidth - 270, 10);
+  techBoard.style('background-color', 'rgba(0,0,0,0.7)');
+  techBoard.style('color', 'white');
+  techBoard.style('padding', '10px');
+  techBoard.style('border-radius', '5px');
+  techBoard.style('width', '250px');
+  techBoard.style('font-family', 'monospace');
+  techBoard.style('z-index', '1000');
+}
+
+// Update the content of DOM HUD elements
 function drawHUD() {
-  // Reset camera transformations for HUD
+  // Update status board content
+  updateStatusBoard();
+  
+  // Update technical board content
+  updateTechnicalBoard();
+  
+  // Draw skill bar using p5.js canvas (keeps the original functionality)
   push();
+  resetMatrix();
+  ortho();
   camera();
-  perspective();
-  
-  // Need to reset to 2D for proper text rendering
-  textFont(gameFont);
-  
-  // Draw status board on left side
-  drawStatusBoard();
-  
-  // Draw technical board on right side
-  drawTechnicalBoard();
-  
-  // Skill cooldowns at bottom
+  translate(0, 0, 0);
   drawSkillBar();
-  
   pop();
 }
 
-function drawStatusBoard() {
-  // Save current style settings
-  push();
-  
-  // Apply vibrant styling to match technical board
-  stroke(0, 255, 0); // Green border
-  strokeWeight(4);
-  fill(30, 50, 30, 250); // Nearly opaque dark green background
-  rect(20, 10, 340, 230, 15); // Left top position with rounded corners
-  
-  // Glow effect
-  noFill();
-  stroke(0, 255, 0, 150); 
-  strokeWeight(8);
-  rect(370, 10, 340, 230, 15);
-  
-  // Reset drawing settings
-  strokeWeight(1);
-  noStroke();
-  
-  // Title with high contrast
-  textSize(28);
-  textAlign(LEFT, TOP);
-  fill(0, 255, 0); // Green text for visibility
-  text("STATUS BOARD", 40, 20);
-  
-  // Game info with bright colors
-  textSize(22);
-  fill(255, 255, 255); // White text
-  text(`Wave: ${currentWave}`, 40, 60);
-  text(`Score: ${score}`, 40, 90);
-  text(`Squad Members: ${squad.length}/${MAX_SQUAD_SIZE}`, 40, 120);
-  text(`Enemies Killed: ${enemiesKilled}`, 40, 150);
-  
-  // Add kills needed for next wave
-  fill(255, 255, 0); // Yellow text
-  text(`Kills for Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}`, 40, 180);
-  
-  // Health status with color coding
+function updateStatusBoard() {
+  // Calculate average health
   const avgHealth = squad.length > 0 ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length : 0;
-  fill(avgHealth > 50 ? [0, 255, 0] : avgHealth > 25 ? [255, 255, 0] : [255, 0, 0]);
-  text(`Squad Health: ${Math.floor(avgHealth)}%`, 40, 210);
+  const healthColor = avgHealth > 50 ? 'lime' : avgHealth > 25 ? 'yellow' : 'red';
   
-  // Draw a health bar
-  stroke(255);
-  strokeWeight(1);
-  noFill();
-  rect(225, 210, 100, 20);
-  noStroke();
-  fill(avgHealth > 50 ? [0, 255, 0] : avgHealth > 25 ? [255, 255, 0] : [255, 0, 0]);
-  rect(225, 210, avgHealth, 20);
-  
-  // Pop style settings
-  pop();
+  // Update status board with HTML content
+  statusBoard.html(`
+    <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
+    <div>Wave: ${currentWave}</div>
+    <div>Score: ${score}</div>
+    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
+    <div>Enemies Killed: ${enemiesKilled}</div>
+    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
+  `);
 }
 
-function drawTechnicalBoard() {
-  // Move to RIGHT side of screen for better visibility
-  push(); // Save current style settings
-  
-  // Very vibrant styling
-  stroke(255, 0, 255); // Magenta border
-  strokeWeight(4);
-  fill(30, 30, 50, 250); // Nearly opaque dark background
-  rect(700, 10, 340, 230, 15); // Right side position with rounded corners
-  
-  // Glow effect
-  noFill();
-  stroke(255, 0, 255, 150);
-  strokeWeight(8);
-  rect(20, 220, 340, 230, 15);
-  
-  // Reset drawing settings
-  strokeWeight(1);
-  noStroke();
-  
-  // Title with high contrast
-  textSize(28);
-  textAlign(LEFT, TOP);
-  fill(255, 0, 255); // Magenta text for visibility
-  text("TECHNICAL BOARD", 720, 30);
-  
-  // Add debug mode indicator if in debug mode
-  if (DEBUG_MODE) {
-    fill(0, 255, 255); // Cyan for debug indicator
-    textSize(22);
-    text("✓ DEBUG MODE ACTIVE", 720, 65);
-  }
-  
-  textSize(20);
-  fill(255, 255, 255); // Bright white text for maximum visibility
-  
-  // Camera position
-  text(`Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}`, 720, 100);
-  
-  // Time elapsed
+function updateTechnicalBoard() {
+  // Calculate time elapsed
   const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
-  text(`Time: ${minutes}m ${seconds}s`, 720, 130);
   
-  // Frame rate
-  text(`Frame Rate: ${Math.floor(frameRate())} fps`, 720, 160);
-  
-  // Additional useful info with bright highlighting
-  fill(0, 255, 0); // Bright green for important stats
-  text(`Squad Size: ${squad.length}/${MAX_SQUAD_SIZE}`, 720, 190);
-  text(`Wave: ${currentWave}`, 720, 220);
-  
-  pop(); // Restore previous style settings
-  
-  // Object counts
+  // Calculate total objects
   const objectCount = squad.length + enemies.length + projectiles.length + powerUps.length;
-  text(`Objects: ${objectCount}`, width - 250, 125);
+  
+  // Add debug mode indicator if needed
+  const debugModeText = DEBUG_MODE ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>' : '';
+  
+  // Update technical board with HTML content
+  techBoard.html(`
+    <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
+    ${debugModeText}
+    <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}</div>
+    <div>Time: ${minutes}m ${seconds}s</div>
+    <div>FPS: ${Math.floor(frameRate())}</div>
+    <div>Objects: ${objectCount}</div>
+    <div>Wave: ${currentWave}</div>
+  `);
 }
+  
+
 
 function drawSkillBar() {
   // Background for skill bar
