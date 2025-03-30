@@ -33,7 +33,7 @@ const DEBUG_MODE = true; // Set to true for easier testing, false for normal gam
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 5; // Number of squad members in a row before stacking vertically
-const BRIDGE_LENGTH_MULTIPLIER = 2.0; // Make bridge take full screen height (previously 1.5)
+const BRIDGE_LENGTH_MULTIPLIER = 3.0; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 120; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
@@ -221,10 +221,25 @@ function drawGame() {
   pop();
   
   // Draw squad members
-  for (let member of squad) {
+  for (let i = 0; i < squad.length; i++) {
+    const member = squad[i];
     push();
     translate(member.x, member.y, member.z + member.size/2);
-    fill(...SQUAD_COLOR);
+    
+    // Use different color for squad leader (first member)
+    if (i === 0) {
+      fill(255, 215, 0); // Gold color for leader
+      // Draw a small crown or marker on top
+      push();
+      translate(0, 0, member.size/2 + 5);
+      fill(255, 165, 0); // Orange crown
+      rotateX(PI/4);
+      cone(member.size/4, member.size/3);
+      pop();
+    } else {
+      fill(...SQUAD_COLOR);
+    }
+    
     box(member.size, member.size, member.size);
     
     // Draw health bar above squad member
@@ -495,8 +510,8 @@ function moveSquad() {
     // Constrain to bridge boundaries
     const leftBound = -BRIDGE_WIDTH/2;
     const rightBound = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH;
-    const topBound = -BRIDGE_LENGTH/2;
-    const bottomBound = BRIDGE_LENGTH/2;
+    const topBound = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2;
+    const bottomBound = BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2;
     
     mainMember.x = constrain(mainMember.x, leftBound, rightBound);
     mainMember.y = constrain(mainMember.y, topBound, bottomBound);
@@ -781,7 +796,11 @@ function spawnMirrorPowerUps() {
   if (frameCount % MIRROR_POWERUP_SPAWN_RATE === 0 && powerUps.length < MAX_POWER_UPS) {
     // Mirror power-ups spawn in the middle of power-up lane
     const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2; // Middle of power-up lane
-    const y = random(-BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/3, BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/3); // Middle third of bridge
+    
+    // Distribute across the bridge length
+    const spacing = BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER / 10;
+    const offsetFromTop = 100; // Space from the top
+    const y = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2 + offsetFromTop + (frameCount % 10) * spacing;
     
     // Add the mirror power-up
     powerUps.push({
@@ -1345,19 +1364,28 @@ function drawHUD() {
 
 function drawStatusBoard() {
   // Left side board with game status
-  fill(0, 0, 0, 150);
-  rect(10, 10, 250, 200);
+  fill(0, 0, 0, 200); // More opaque background
+  rect(10, 10, 300, 250, 10); // Slightly larger with rounded corners
   
-  textSize(20);
+  textSize(22);
   textAlign(LEFT, TOP);
   fill(255);
   text("STATUS BOARD", 20, 20);
   
-  textSize(16);
+  textSize(18);
   text(`Wave: ${currentWave}`, 20, 50);
   text(`Score: ${score}`, 20, 75);
-  text(`Squad Members: ${squad.length}`, 20, 100);
+  text(`Squad Members: ${squad.length}/${MAX_SQUAD_SIZE}`, 20, 100);
   text(`Enemies Killed: ${enemiesKilled}`, 20, 125);
+  
+  // Add kills needed for next wave
+  fill(255, 255, 0);
+  text(`Kills for Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}`, 20, 150);
+  
+  // Health status
+  const avgHealth = squad.length > 0 ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length : 0;
+  fill(avgHealth > 50 ? [0, 255, 0] : avgHealth > 25 ? [255, 255, 0] : [255, 0, 0]);
+  text(`Squad Health: ${Math.floor(avgHealth)}%`, 20, 175);
   
   // Weapon info
   text(`Weapon: ${currentWeapon}`, 20, 150);
