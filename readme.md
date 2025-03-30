@@ -34,6 +34,11 @@
 7. `Plasma Shotgun`: Spread-fire **AoE** damage weapon
 8. `Photon Pistol`: High-precision light-based weapon
 
+Weapons, skills:
+- Located in middle of power-up lane
+- Auto move in straight direction on the power-up lane, toward close to the squad
+- "Mirror +1" always appear on the line, appear a lot for the squad to pick up
+
 ### Enemy Types
 - **Standard Units**: Regular infantry units
 - **Elite Units**: Enhanced combat capabilities
@@ -135,3 +140,22 @@
    - Maximum visual impact
    - Multi-boss scenarios
    - Legendary power-ups
+
+## Health bar
+
+- Provide health bar to have sense of enemy, and skill damage
+
+## Status board
+
+- Inform: how many member in squad
+- Inform: total enemy killed
+- Inform: current wave
+- Inform: weapon type
+- Inform: how good the gun damage, how fast the gun is
+
+## Technical board
+
+- Inform: camera's x, y, z viewpoint
+- Inform: time lapse
+- Inform: frame rate
+- Inform: memory usage
