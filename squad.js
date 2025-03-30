@@ -290,13 +290,16 @@ function drawGame() {
     push();
     translate(effect.x, effect.y, effect.z);
     
+    // Default color if effect.color is undefined
+    const effectColor = effect.color || [255, 255, 255];
+    
     if (effect.type === 'explosion') {
       // Explosion effect
-      fill(...effect.color, 255 * (effect.life / EFFECT_DURATION));
+      fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
       sphere(effect.size * (1 + (1 - effect.life / EFFECT_DURATION) * 2));
     } else if (effect.type === 'hit') {
       // Hit effect
-      fill(...effect.color, 255 * (effect.life / EFFECT_DURATION));
+      fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
       sphere(effect.size * (1 - effect.life / EFFECT_DURATION));
     } else if (effect.type === 'fire') {
       // Fire effect
