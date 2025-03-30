@@ -27,6 +27,18 @@ const BRIDGE_LENGTH = 1200;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
+// Debug mode for testing
+const DEBUG_MODE = true; // Set to true for easier testing, false for normal gameplay
+
+// Configurable game parameters
+const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
+const MAX_SQUAD_MEMBERS_PER_ROW = 5; // Number of squad members in a row before stacking vertically
+
+// Skill upgrade tracking
+let fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
+let damageBoost = DEBUG_MODE ? 10 : 0;  // Increases damage (starts with some in debug mode)
+let aoeBoost = DEBUG_MODE ? 10 : 0;     // Increases area of effect (starts with some in debug mode)
+
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
 const POWER_UP_LANE_COLOR = [100, 200, 250];
@@ -79,7 +91,8 @@ const EFFECT_DURATION = 30; // frames
 let powerUps = [];
 const POWER_UP_SIZE = 20;
 const POWER_UP_SPAWN_RATE = 90; // frames between power-up spawns (continuous spawning)
-const MIRROR_SPAWN_CHANCE = 0.8; // 80% chance for mirror +1 to spawn
+const MIRROR_SPAWN_CHANCE = 0.3; // 30% chance for mirror +1 to spawn
+const SKILL_SPAWN_CHANCE = 0.4; // 40% chance for skill power-ups
 let lastPowerUpSpawn = 0;
 const POWER_UP_SPEED = 3; // Speed at which power-ups move down the lane
 
@@ -125,19 +138,32 @@ function setup() {
   // Initialize the squad with a single member
   squad.push({
     x: 0,
-    y: BRIDGE_LENGTH / 2 - 100, // Starting near the bottom
+    y: BRIDGE_LENGTH / 2 - 200, // Starting near the bottom
     z: 0,
     size: SQUAD_SIZE,
-    health: 100,
-    weapon: 'blaster'
+    health: SQUAD_HEALTH, // Use configurable health
+    weapon: 'blaster',
+    id: Date.now() // Unique ID for reference
   });
   
   // Set perspective for better 3D view
   perspective(PI / 3.0, width / height, 0.1, 5000);
+  
+  // Auto-start the game (no need to press enter)
+  resetGame();
+  gameState = 'playing';
+  gameStartTime = frameCount;
 }
 
 function draw() {
   background(0);
+  
+  // Draw pause button in top right corner (screen coordinates)
+  if (gameState === 'playing') {
+    drawPauseButton();
+  } else if (gameState === 'paused') {
+    drawResumeButton();
+  }
   
   // Apply camera transformations
   translate(cameraOffsetX, cameraOffsetY, -cameraZoom);
@@ -176,18 +202,18 @@ function updateGame() {
 }
 
 function drawGame() {
-  // Draw the bridge (main lane)
+  // Draw the bridge (main lane) - extending from bottom to top of screen
   push();
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH, 10);
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH * 1.5, 10); // Increased bridge length by 50% to cover more screen space
   pop();
   
-  // Draw the power-up lane
+  // Draw the power-up lane (extended to match main bridge)
   push();
   translate(BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2, 0, 0);
   fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 10);
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * 1.5, 10); // Increased to match main bridge length
   pop();
   
   // Draw squad members
@@ -253,20 +279,73 @@ function drawGame() {
   for (let proj of projectiles) {
     push();
     translate(proj.x, proj.y, proj.z);
+    
     // Add fallback for undefined weapon colors
-    const projColor = WEAPON_COLORS[proj.weapon] || [255, 255, 255];
-    fill(...projColor);
+    let projColor = [...(WEAPON_COLORS[proj.weapon] || [255, 255, 255])];
+    
+    // Enhanced visuals based on power-up levels
+    let enhancedSize = 1.0;
+    let hasGlowEffect = false;
+    
+    // Modify projectile appearance based on power-ups
+    if (damageBoost > 5) {
+      // Add red glow for high damage
+      projColor[0] = min(255, projColor[0] + 50);
+      enhancedSize *= 1.2;
+      hasGlowEffect = true;
+    }
+    if (fireRateBoost > 5) {
+      // Add green glow for high fire rate
+      projColor[1] = min(255, projColor[1] + 50);
+      enhancedSize *= 1.1;
+      hasGlowEffect = true;
+    }
+    if (aoeBoost > 5) {
+      // Add blue glow for high AOE
+      projColor[2] = min(255, projColor[2] + 100);
+      enhancedSize *= 1.3;
+      hasGlowEffect = true;
+    }
+    
+    // Add glow effect for enhanced projectiles
+    if (hasGlowEffect) {
+      // Outer glow
+      push();
+      noStroke();
+      fill(projColor[0], projColor[1], projColor[2], 150);
+      sphere(PROJECTILE_SIZE * 1.5 * enhancedSize);
+      pop();
+      
+      // Add trail effect
+      push();
+      translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
+      fill(projColor[0], projColor[1], projColor[2], 100);
+      sphere(PROJECTILE_SIZE * 1.2 * enhancedSize);
+      pop();
+      
+      // For very powerful bullets, add an additional effect
+      if (damageBoost + fireRateBoost + aoeBoost > 15) {
+        push();
+        translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
+        fill(projColor[0], projColor[1], projColor[2], 70);
+        sphere(PROJECTILE_SIZE * 0.9 * enhancedSize);
+        pop();
+      }
+    }
+    
+    // Main projectile with enhanced color
+    fill(projColor[0], projColor[1], projColor[2]);
     
     // Different projectile shapes based on weapon type
     if (proj.weapon === 'blaster') {
       // Green laser beam
-      sphere(PROJECTILE_SIZE);
+      sphere(PROJECTILE_SIZE * enhancedSize);
     } else if (proj.weapon === 'thunderbolt') {
       // Thunder projectile
-      cone(PROJECTILE_SIZE, PROJECTILE_SIZE * 2);
+      cone(PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * 2 * enhancedSize);
     } else if (proj.weapon === 'inferno') {
       // Fire projectile
-      box(PROJECTILE_SIZE, PROJECTILE_SIZE, PROJECTILE_SIZE);
+      box(PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * enhancedSize);
     } else if (proj.weapon === 'frostbite') {
       // Ice projectile
       sphere(PROJECTILE_SIZE * 0.8);
@@ -349,6 +428,33 @@ function drawGame() {
     if (powerUp.type === 'mirror') {
       fill(WEAPON_COLORS.mirror); // Use the color from WEAPON_COLORS
       box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
+    } else if (powerUp.type === 'fire_rate') {
+      // Fire rate boost - green sphere
+      fill(50, 255, 50);
+      push();
+      rotateX(frameCount * 0.05);
+      rotateY(frameCount * 0.05);
+      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+      sphere(POWER_UP_SIZE/2);
+      pop();
+    } else if (powerUp.type === 'damage') {
+      // Damage boost - red cube
+      fill(255, 50, 50);
+      push();
+      rotateX(frameCount * 0.05);
+      rotateY(frameCount * 0.05);
+      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+      box(POWER_UP_SIZE);
+      pop();
+    } else if (powerUp.type === 'aoe') {
+      // Area effect boost - blue pyramid
+      fill(50, 50, 255);
+      push();
+      rotateX(frameCount * 0.05);
+      rotateY(frameCount * 0.05);
+      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+      cone(POWER_UP_SIZE, POWER_UP_SIZE*1.5);
+      pop();
     } else {
       // Weapon power-ups - use default color if type not found
       const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
@@ -433,16 +539,20 @@ function fireWeapon(squadMember) {
 }
 
 function getWeaponDamage(weapon) {
+  let baseDamage = 0;
   switch(weapon) {
-    case 'blaster': return 20; // Increased base damage
-    case 'thunderbolt': return 45; // Increased damage
-    case 'inferno': return 30; // Plus DoT effect, increased damage
-    case 'frostbite': return 30; // Plus CC effect, increased damage
-    case 'vortex': return 40; // AoE damage, increased damage
-    case 'plasma': return 60; // Spread damage, increased damage
-    case 'photon': return 80; // High precision, increased damage
-    default: return 20;
+    case 'blaster': baseDamage = 20; break; // Base damage
+    case 'thunderbolt': baseDamage = 45; break;
+    case 'inferno': baseDamage = 30; break; // Plus DoT effect
+    case 'frostbite': baseDamage = 30; break; // Plus CC effect
+    case 'vortex': baseDamage = 40; break; // AoE damage
+    case 'plasma': baseDamage = 60; break; // Spread damage
+    case 'photon': baseDamage = 80; break; // High precision
+    default: baseDamage = 20;
   }
+  
+  // Apply damage boost from power-ups
+  return baseDamage + damageBoost;
 }
 
 function updateProjectiles() {
@@ -451,8 +561,8 @@ function updateProjectiles() {
     let proj = projectiles[i];
     proj.y -= proj.speed; // Move upward (toward enemies)
     
-    // Remove projectiles that go off-screen
-    if (proj.y < -BRIDGE_LENGTH/2) {
+    // Remove projectiles that go off-screen (adjusted for longer bridge)
+    if (proj.y < -BRIDGE_LENGTH*1.5/2) {
       projectiles.splice(i, 1);
     }
   }
@@ -486,7 +596,7 @@ function spawnEnemyRow() {
     
     enemies.push({
       x: x,
-      y: -BRIDGE_LENGTH/2 + 100, // Near the top
+      y: -BRIDGE_LENGTH*1.5/2 + 100, // Near the top of extended bridge
       z: 0,
       size: STANDARD_ENEMY_SIZE,
       type: 'standard', // Rows are always standard enemies
@@ -545,7 +655,7 @@ function spawnSingleEnemy() {
   
   enemies.push({
     x: x,
-    y: -BRIDGE_LENGTH/2 + 100, // Near the top
+    y: -BRIDGE_LENGTH*1.5/2 + 100, // Near the top of extended bridge
     z: 0,
     size: size,
     type: type,
@@ -555,19 +665,51 @@ function spawnSingleEnemy() {
 }
 
 function moveEnemies() {
-  for (let enemy of enemies) {
-    // Straight line movement - advance toward the squad
-    enemy.y += enemy.speed;
-    
-    // Only bosses have side-to-side movement (limited)
-    if (enemy.type.includes('boss')) {
-      enemy.x += sin(frameCount * 0.05) * 1;
-      
-      // Keep within bridge boundaries
-      const leftBound = -BRIDGE_WIDTH/2;
-      const rightBound = BRIDGE_WIDTH/2 + (enemy.type.includes('boss') ? POWER_UP_LANE_WIDTH : 0);
-      enemy.x = constrain(enemy.x, leftBound, rightBound);
+  // Find the closest squad member to use as a target
+  let targetX = 0;
+  let targetY = BRIDGE_LENGTH / 2 - 100;
+  if (squad.length > 0) {
+    // Find the average position of squad members as target
+    let avgX = 0;
+    let avgY = 0;
+    for (let member of squad) {
+      avgX += member.x;
+      avgY += member.y;
     }
+    targetX = avgX / squad.length;
+    targetY = avgY / squad.length;
+  }
+  
+  for (let enemy of enemies) {
+    // Check if enemy is close to the base line
+    const distanceToBaseY = BRIDGE_LENGTH/2 - 100 - enemy.y;
+    
+    if (distanceToBaseY < 150) {
+      // When close to base, directly target the squad at consistent speed
+      // Calculate vector to target
+      const dx = targetX - enemy.x;
+      const dy = targetY - enemy.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      
+      // Normalize and apply speed consistently (no acceleration)
+      if (dist > 0) {
+        enemy.x += (dx / dist) * enemy.speed;
+        enemy.y += (dy / dist) * enemy.speed;
+      }
+    } else {
+      // Regular downward movement when far from base
+      enemy.y += enemy.speed;
+      
+      // Only bosses have side-to-side movement when far away
+      if (enemy.type.includes('boss')) {
+        enemy.x += sin(frameCount * 0.05) * 1;
+      }
+    }
+    
+    // Keep within bridge boundaries
+    const leftBound = -BRIDGE_WIDTH/2;
+    const rightBound = BRIDGE_WIDTH/2 + (enemy.type.includes('boss') ? POWER_UP_LANE_WIDTH : 0);
+    enemy.x = constrain(enemy.x, leftBound, rightBound);
   }
 }
 
@@ -575,34 +717,49 @@ function moveEnemies() {
 function spawnPowerUps() {
   if (frameCount - lastPowerUpSpawn > POWER_UP_SPAWN_RATE) {
     // Always spawn power-ups (continuous spawning)
-    // Determine if this is a mirror or other powerup
-    const isMirror = random() < MIRROR_SPAWN_CHANCE;
+    const rand = random();
     
-    // Potential power-up types
-    let types = isMirror ? ['mirror'] : [];
-    // Add weapon power-ups once the game progresses if not spawning mirror
-    if (!isMirror) {
-      if (currentWave >= 2) types.push('thunderbolt');
-      if (currentWave >= 3) types.push('inferno');
-      if (currentWave >= 5) types.push('frostbite');
-      if (currentWave >= 7) types.push('vortex');
-      if (currentWave >= 10) types.push('plasma');
-      if (currentWave >= 15) types.push('photon');
+    // Determine power-up type based on probability
+    let type;
+    
+    if (rand < MIRROR_SPAWN_CHANCE) {
+      // Mirror power-up
+      type = 'mirror';
+    } else if (rand < MIRROR_SPAWN_CHANCE + SKILL_SPAWN_CHANCE) {
+      // Skill power-up (fire_rate, damage, or aoe)
+      const skillTypes = ['fire_rate', 'damage', 'aoe'];
+      type = random(skillTypes);
+    } else {
+      // Weapon power-up
+      const weaponTypes = [];
+      if (currentWave >= 2) weaponTypes.push('thunderbolt');
+      if (currentWave >= 3) weaponTypes.push('inferno');
+      if (currentWave >= 5) weaponTypes.push('frostbite');
+      if (currentWave >= 7) weaponTypes.push('vortex');
+      if (currentWave >= 10) weaponTypes.push('plasma');
+      if (currentWave >= 15) weaponTypes.push('photon');
+      
+      // If no weapons available yet, default to a mirror
+      type = weaponTypes.length > 0 ? random(weaponTypes) : 'mirror';
     }
-    
-    // Select a random type (will be mirror if isMirror is true)
-    const type = isMirror ? 'mirror' : random(types);
     
     // Add some randomness to power-up lane position
     const laneOffset = random(-POWER_UP_LANE_WIDTH/4, POWER_UP_LANE_WIDTH/4);
     const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
     const y = -BRIDGE_LENGTH/2 + 100; // Start at the top of the lane
     
+    // Add value for skill power-ups
+    let value = 1; // Default value
+    if (type === 'fire_rate') value = 3; // +3 fire rate
+    if (type === 'damage') value = 4;   // +4 damage
+    if (type === 'aoe') value = 2;      // +2 area effect
+    
     powerUps.push({
       x: x,
       y: y,
       z: 0,
       type: type,
+      value: value,
       speed: POWER_UP_SPEED + random(-0.5, 1) // Slightly varied speeds
     });
     
@@ -704,15 +861,52 @@ function checkCollisions() {
         if (powerUp.type === 'mirror') {
           // Add a new squad member
           if (squad.length < MAX_SQUAD_SIZE) { // Configurable max squad size
+            // Calculate position for new squad member
+            // Arrange in horizontal rows first (up to MAX_SQUAD_MEMBERS_PER_ROW per row)
+            // then stack vertically
+            const squadRow = Math.floor(squad.length / MAX_SQUAD_MEMBERS_PER_ROW);
+            const squadCol = squad.length % MAX_SQUAD_MEMBERS_PER_ROW;
+            
+            // Space to use is 2/3 of bridge width
+            const usableWidth = (BRIDGE_WIDTH * 2/3);
+            const spacing = usableWidth / MAX_SQUAD_MEMBERS_PER_ROW;
+            
+            // Calculate position (centered within usable width)
+            const startX = -usableWidth/2 + spacing/2;
+            const newX = startX + (squadCol * spacing);
+            const newY = BRIDGE_LENGTH/2 - 100 - (squadRow * SQUAD_SIZE * 1.2); // Slight spacing between rows
+            
             squad.push({
-              x: squadMember.x,
-              y: squadMember.y + SQUAD_SIZE,
+              x: newX,
+              y: newY,
               z: 0,
               size: SQUAD_SIZE,
-              health: 100,
-              weapon: currentWeapon
+              health: SQUAD_HEALTH, // Use configurable health
+              weapon: currentWeapon,
+              id: Date.now() + squad.length // Unique ID for reference
             });
           }
+        } else if (powerUp.type === 'fire_rate') {
+          // Accumulate fire rate boost
+          fireRateBoost += powerUp.value;
+          // Create a visual effect
+          createEffect('boost', squadMember.x, squadMember.y, squadMember.z, [50, 255, 50]);
+          // Update score
+          score += 100;
+        } else if (powerUp.type === 'damage') {
+          // Accumulate damage boost
+          damageBoost += powerUp.value;
+          // Create a visual effect
+          createEffect('boost', squadMember.x, squadMember.y, squadMember.z, [255, 50, 50]);
+          // Update score
+          score += 100;
+        } else if (powerUp.type === 'aoe') {
+          // Accumulate area of effect boost
+          aoeBoost += powerUp.value;
+          // Create a visual effect
+          createEffect('boost', squadMember.x, squadMember.y, squadMember.z, [50, 50, 255]);
+          // Update score
+          score += 100;
         } else {
           // Unlock weapon
           weapons[powerUp.type] = true;
@@ -802,24 +996,52 @@ function checkWaveCompletion() {
 
 // Skill system
 function activateSkill(skillNumber) {
-  const skillKey = `skill${skillNumber}`;
+  // Handle both string and number formats
+  let skillKey;
+  if (typeof skillNumber === 'string' && skillNumber.startsWith('skill')) {
+    skillKey = skillNumber;
+    skillNumber = parseInt(skillNumber.replace('skill', ''));
+  } else {
+    skillKey = `skill${skillNumber}`;
+  }
+  
   if (frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown) {
     // Skill on cooldown
     return;
   }
   
-  // Apply skill effect
+  // Apply skill effect with accumulative power-ups
   switch(skillNumber) {
     case 1: // Area damage - damages all enemies in view
+      let aoeRadius = 150 + (aoeBoost * 15); // Base radius expanded by AOE boost
+      let aoeDamage = 30 + (damageBoost * 2); // Damage enhanced by damage boost
+      
+      // Get squad center for AOE effect
+      let squadCenter = {x: 0, y: 0, z: 0};
+      if (squad.length > 0) {
+        squadCenter = {x: squad[0].x, y: squad[0].y, z: squad[0].z};
+      }
+      
+      // Create larger explosion based on AOE boost
+      createExplosion(squadCenter.x, squadCenter.y, squadCenter.z, [255, 200, 0]);
+      
+      // Apply damage to all enemies in radius
       for (let enemy of enemies) {
-        enemy.health -= 30;
-        createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
+        const distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
+        if (distance <= aoeRadius) {
+          enemy.health -= aoeDamage;
+          createHitEffect(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
+        }
       }
       break;
       
     case 2: // Temporary fire rate boost
-      const oldFireRate = SQUAD_FIRE_RATE;
-      SQUAD_FIRE_RATE = Math.floor(SQUAD_FIRE_RATE / 2); // Double fire rate
+      let baseFireRateBoost = 50; // 50% faster
+      let additionalFireRateBoost = fireRateBoost * 5; // Each accumulated point gives 5% additional boost
+      let totalBoostPercent = baseFireRateBoost + additionalFireRateBoost;
+      
+      let oldFireRate = SQUAD_FIRE_RATE;
+      SQUAD_FIRE_RATE = Math.floor(SQUAD_FIRE_RATE * (100 - totalBoostPercent) / 100); // Faster fire rate
       
       // Visual effect around squad members
       for (let member of squad) {
@@ -832,9 +1054,13 @@ function activateSkill(skillNumber) {
       }, 5000);
       break;
       
-    case 3: // Shield - temporary invulnerability
+    case 3: // Shield - temporary invulnerability with enhanced durability
+      let shieldStrength = 100 + (damageBoost * 10); // Shield strength enhanced by damage boost
+      let shieldDuration = 300 + (fireRateBoost * 30); // Duration enhanced by fire rate (5s + boost)
+      
       for (let member of squad) {
         member.shielded = true;
+        member.shieldHealth = shieldStrength;
         
         // Visual shield effect
         effects.push({
@@ -842,82 +1068,124 @@ function activateSkill(skillNumber) {
           y: member.y,
           z: member.z,
           type: 'shield',
-          size: member.size * 1.5,
-          life: 300, // 5 seconds at 60fps
+          size: member.size * (1.5 + (aoeBoost * 0.1)), // Shield size enhanced by AOE
+          life: shieldDuration,
           member: member // reference to follow the member
         });
       }
       
-      // Remove shields after 5 seconds
+      // Remove shields after duration
       setTimeout(() => {
         for (let member of squad) {
           member.shielded = false;
+          member.shieldHealth = 0;
         }
-      }, 5000);
+      }, shieldDuration * (1000/60)); // Convert frames to ms
       break;
       
-    case 4: // Freeze all enemies
+    case 4: // Freeze all enemies with enhanced duration/effect
+      let freezeDuration = 180 + (fireRateBoost * 15); // Base 3s + 0.25s per fire rate boost
+      let freezeStrength = 0.2 - (aoeBoost * 0.02); // More slowdown with AOE boost
+      
       for (let enemy of enemies) {
         if (!enemy.effects) enemy.effects = {};
-        enemy.effects.frozen = { duration: 180, slowFactor: 0.2 };
-        enemy.speed *= 0.2;
+        enemy.effects.frozen = { 
+          duration: freezeDuration, 
+          slowFactor: max(0.05, freezeStrength) // Min 5% of normal speed
+        };
+        enemy.speed *= enemy.effects.frozen.slowFactor;
         createIceEffect(enemy.x, enemy.y, enemy.z);
       }
       break;
       
-    case 5: // Heal all squad members
+    case 5: // Heal all squad members with enhanced healing
+      let healAmount = 50 + (damageBoost * 5); // Base 50 + 5 per damage boost
+      
       for (let member of squad) {
-        member.health = min(100, member.health + 50); // Heal 50 HP, max 100
+        member.health = min(100, member.health + healAmount);
         createHitEffect(member.x, member.y, member.z, [0, 255, 0]);
       }
       break;
       
-    case 6: // Damage boost for 10 seconds
+    case 6: // Damage boost for 10 seconds with enhanced effect
+      let baseDamageBoost = 2; // Double damage
+      let additionalDamageBoost = 0.2 * damageBoost; // 20% more per damage boost
+      let totalDamageMultiplier = baseDamageBoost + additionalDamageBoost;
+      let damageBoostDuration = 600 + (fireRateBoost * 60); // 10s + 1s per fire rate
+      
+      // Store original damage multiplier
+      let originalDamageMultiplier = {};
       for (let member of squad) {
-        member.damageBoost = 2; // Double damage
+        originalDamageMultiplier[member.id] = member.damageBoost || 1;
+        member.damageBoost = totalDamageMultiplier;
         createHitEffect(member.x, member.y, member.z, [255, 0, 0]);
       }
       
-      // Reset after 10 seconds
+      // Reset after duration
       setTimeout(() => {
         for (let member of squad) {
-          member.damageBoost = 1;
+          if (member && originalDamageMultiplier[member.id]) {
+            member.damageBoost = originalDamageMultiplier[member.id];
+          } else if (member) {
+            member.damageBoost = 1;
+          }
         }
-      }, 10000);
+      }, damageBoostDuration * (1000/60)); // Convert frames to ms
       break;
       
-    case 7: // Speed boost for squad
-      const oldSpeed = SQUAD_SPEED;
-      SQUAD_SPEED *= 1.5;
+    case 7: // Speed boost for squad with enhanced effect
+      let baseSpeedBoost = 1.5; // 50% faster
+      let additionalSpeedBoost = 0.1 * fireRateBoost; // 10% more per fire rate boost
+      let totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
+      let speedBoostDuration = 480 + (fireRateBoost * 30); // 8s + 0.5s per fire rate
+      
+      let oldSpeed = SQUAD_SPEED;
+      SQUAD_SPEED *= totalSpeedMultiplier;
       
       // Visual effect
       for (let member of squad) {
         createHitEffect(member.x, member.y, member.z, [0, 255, 255]);
       }
       
-      // Reset after 8 seconds
+      // Reset after duration
       setTimeout(() => {
         SQUAD_SPEED = oldSpeed;
-      }, 8000);
+      }, speedBoostDuration * (1000/60)); // Convert frames to ms
       break;
       
     case 8: // Ultimate - massive damage to all enemies and spawn power-ups
-      // Damage all enemies heavily
+      // Enhanced damage based on accumulated damage boost
+      let ultimateDamage = 100 + (damageBoost * 15);
+      let ultimateAoeRadius = 400 + (aoeBoost * 20);
+      
+      // Enhanced explosion effect
+      createExplosion(0, 0, 0, [255, 255, 255]);
+      
+      // Damage all enemies with enhanced damage
       for (let enemy of enemies) {
-        enemy.health -= 100;
+        enemy.health -= ultimateDamage;
         createExplosion(enemy.x, enemy.y, enemy.z, [255, 255, 255]);
       }
       
-      // Spawn bonus power-ups
-      for (let i = 0; i < 3; i++) {
-        const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2;
-        const y = -BRIDGE_LENGTH/2 + 100 + i * 100;
+      // Spawn enhanced power-ups based on current boosts
+      let powerUpCount = 3 + Math.floor((fireRateBoost + damageBoost + aoeBoost) / 5);
+      let types = ['mirror', 'fire_rate', 'damage', 'aoe'];
+      
+      for (let i = 0; i < powerUpCount; i++) {
+        let laneOffset = random(-POWER_UP_LANE_WIDTH/3, POWER_UP_LANE_WIDTH/3);
+        let x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
+        let y = -BRIDGE_LENGTH*1.5/2 + 100 + i * (BRIDGE_LENGTH*1.5 / (powerUpCount + 1)); // Adjusted for longer bridge
+        
+        // Cycle through power-up types
+        let type = types[i % types.length];
+        let value = type === 'mirror' ? 1 : (type === 'fire_rate' ? 3 : (type === 'damage' ? 4 : 2));
         
         powerUps.push({
           x: x,
           y: y,
           z: 0,
-          type: 'mirror',
+          type: type,
+          value: value,
           speed: POWER_UP_SPEED
         });
       }
@@ -956,6 +1224,45 @@ function drawPauseScreen() {
   text("PAUSED", 0, 0);
   textSize(24);
   text("Press P to Resume", 0, 50);
+  pop();
+}
+
+// Draw pause button in top right corner
+function drawPauseButton() {
+  push();
+  // Reset transformations to draw in screen coordinates
+  resetMatrix();
+  
+  // Pause button background
+  fill(0, 0, 0, 150);
+  rect(width - 60, 10, 50, 50, 5);
+  
+  // Pause icon (two vertical bars)
+  fill(255);
+  rect(width - 45, 20, 7, 30);
+  rect(width - 32, 20, 7, 30);
+  
+  pop();
+}
+
+// Draw resume button in top right corner
+function drawResumeButton() {
+  push();
+  // Reset transformations to draw in screen coordinates
+  resetMatrix();
+  
+  // Resume button background
+  fill(0, 0, 0, 150);
+  rect(width - 60, 10, 50, 50, 5);
+  
+  // Play triangle
+  fill(255);
+  triangle(
+    width - 45, 20,
+    width - 45, 50,
+    width - 20, 35
+  );
+  
   pop();
 }
 
@@ -1119,22 +1426,68 @@ function keyPressed() {
       gameState = 'playing';
       gameStartTime = frameCount;
     }
-  } else if (key === 'p' || key === 'P') {
-    if (gameState === 'playing') {
-      gameState = 'paused';
-    } else if (gameState === 'paused') {
-      gameState = 'playing';
+  }
+  
+  // Toggle pause with Escape key
+  if (keyCode === ESCAPE || key === 'p' || key === 'P') {
+    togglePause();
+  }
+  
+  // Only process skill keys during gameplay
+  if (gameState === 'playing') {
+    // Bottom row skills (A, S, D, F)
+    if (key === 'a' || key === 'A') {
+      try {
+        activateSkill(1);
+      } catch (error) {
+        console.log('Error activating skill 1:', error);
+      }
+    } else if (key === 's' || key === 'S') {
+      try {
+        activateSkill(2);
+      } catch (error) {
+        console.log('Error activating skill 2:', error);
+      }
+    } else if (key === 'd' || key === 'D') {
+      try {
+        activateSkill(3);
+      } catch (error) {
+        console.log('Error activating skill 3:', error);
+      }
+    } else if (key === 'f' || key === 'F') {
+      try {
+        activateSkill(4);
+      } catch (error) {
+        console.log('Error activating skill 4:', error);
+      }
     }
-  } else if (gameState === 'playing') {
-    // Skill activation
-    if (key === 'a' || key === 'A') activateSkill(1);
-    if (key === 's' || key === 'S') activateSkill(2);
-    if (key === 'd' || key === 'D') activateSkill(3);
-    if (key === 'f' || key === 'F') activateSkill(4);
-    if (key === 'q' || key === 'Q') activateSkill(5);
-    if (key === 'w' || key === 'W') activateSkill(6);
-    if (key === 'e' || key === 'E') activateSkill(7);
-    if (key === 'r' || key === 'R') activateSkill(8);
+    
+    // Top row skills (Q, W, E, R)
+    if (key === 'q' || key === 'Q') {
+      try {
+        activateSkill(5);
+      } catch (error) {
+        console.log('Error activating skill 5:', error);
+      }
+    } else if (key === 'w' || key === 'W') {
+      try {
+        activateSkill(6);
+      } catch (error) {
+        console.log('Error activating skill 6:', error);
+      }
+    } else if (key === 'e' || key === 'E') {
+      try {
+        activateSkill(7);
+      } catch (error) {
+        console.log('Error activating skill 7:', error);
+      }
+    } else if (key === 'r' || key === 'R') {
+      try {
+        activateSkill(8);
+      } catch (error) {
+        console.log('Error activating skill 8:', error);
+      }
+    }
   }
 }
 
@@ -1375,6 +1728,19 @@ function createPlasmaEffect(x, y, z) {
     z: z,
     type: 'plasma',
     size: 20,
+    life: EFFECT_DURATION
+  });
+}
+
+// Generic effect creator function
+function createEffect(type, x, y, z, color, size) {
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: type,
+    color: color || [255, 255, 255],
+    size: size || 15,
     life: EFFECT_DURATION
   });
 }
