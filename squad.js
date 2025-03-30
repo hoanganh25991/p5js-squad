@@ -33,6 +33,10 @@ const DEBUG_MODE = true; // Set to true for easier testing, false for normal gam
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 5; // Number of squad members in a row before stacking vertically
+const BRIDGE_LENGTH_MULTIPLIER = 2.0; // Make bridge take full screen height (previously 1.5)
+const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
+const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 120; // Frames between mirror power-up spawns (0.5s in debug)
+const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
 // Skill upgrade tracking
 let fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
@@ -138,7 +142,7 @@ function setup() {
   // Initialize the squad with a single member
   squad.push({
     x: 0,
-    y: BRIDGE_LENGTH / 2 - 200, // Starting near the bottom
+    y: BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER / 2 - 200, // Starting near the bottom of extended bridge
     z: 0,
     size: SQUAD_SIZE,
     health: SQUAD_HEALTH, // Use configurable health
@@ -196,7 +200,7 @@ function updateGame() {
   checkCollisions();
   spawnEnemies();
   moveEnemies();
-  spawnPowerUps();
+  updatePowerUps();
   applyEnemyEffects();
   checkWaveCompletion();
 }
@@ -206,14 +210,14 @@ function drawGame() {
   push();
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH * 1.5, 10); // Increased bridge length by 50% to cover more screen space
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased bridge length to cover full screen
   pop();
   
   // Draw the power-up lane (extended to match main bridge)
   push();
   translate(BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2, 0, 0);
   fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * 1.5, 10); // Increased to match main bridge length
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased to match main bridge length
   pop();
   
   // Draw squad members
@@ -562,7 +566,7 @@ function updateProjectiles() {
     proj.y -= proj.speed; // Move upward (toward enemies)
     
     // Remove projectiles that go off-screen (adjusted for longer bridge)
-    if (proj.y < -BRIDGE_LENGTH*1.5/2) {
+    if (proj.y < -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2) {
       projectiles.splice(i, 1);
     }
   }
@@ -596,7 +600,7 @@ function spawnEnemyRow() {
     
     enemies.push({
       x: x,
-      y: -BRIDGE_LENGTH*1.5/2 + 100, // Near the top of extended bridge
+      y: -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100, // Near the top of extended bridge
       z: 0,
       size: STANDARD_ENEMY_SIZE,
       type: 'standard', // Rows are always standard enemies
@@ -655,7 +659,7 @@ function spawnSingleEnemy() {
   
   enemies.push({
     x: x,
-    y: -BRIDGE_LENGTH*1.5/2 + 100, // Near the top of extended bridge
+    y: -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100, // Near the top of extended bridge
     z: 0,
     size: size,
     type: type,
@@ -715,6 +719,7 @@ function moveEnemies() {
 
 // Power-up system
 function spawnPowerUps() {
+  // Regular power-ups on a timer
   if (frameCount - lastPowerUpSpawn > POWER_UP_SPAWN_RATE) {
     // Always spawn power-ups (continuous spawning)
     const rand = random();
@@ -746,7 +751,8 @@ function spawnPowerUps() {
     // Add some randomness to power-up lane position
     const laneOffset = random(-POWER_UP_LANE_WIDTH/4, POWER_UP_LANE_WIDTH/4);
     const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
-    const y = -BRIDGE_LENGTH/2 + 100; // Start at the top of the lane
+    const y = random(-BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100, 
+                      BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - 100);
     
     // Add value for skill power-ups
     let value = 1; // Default value
@@ -766,12 +772,39 @@ function spawnPowerUps() {
     lastPowerUpSpawn = frameCount;
   }
   
+  // Separate function for frequent mirror power-ups in debug mode
+  spawnMirrorPowerUps();
+}
+
+// Function to frequently spawn mirror power-ups in the middle of power-up lane
+function spawnMirrorPowerUps() {
+  if (frameCount % MIRROR_POWERUP_SPAWN_RATE === 0 && powerUps.length < MAX_POWER_UPS) {
+    // Mirror power-ups spawn in the middle of power-up lane
+    const x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2; // Middle of power-up lane
+    const y = random(-BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/3, BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/3); // Middle third of bridge
+    
+    // Add the mirror power-up
+    powerUps.push({
+      x: x,
+      y: y,
+      z: 0,
+      type: 'mirror',
+      value: 1,
+      speed: POWER_UP_SPEED
+    });
+  }
+}
+
+function updatePowerUps() {
+  // Spawn regular power-ups
+  spawnPowerUps();
+  
   // Move power-ups down the lane
   for (let i = powerUps.length - 1; i >= 0; i--) {
     powerUps[i].y += powerUps[i].speed;
     
-    // Remove power-ups that go off-screen
-    if (powerUps[i].y > BRIDGE_LENGTH/2) {
+    // Remove power-ups that go off-screen (adjusted for longer bridge)
+    if (powerUps[i].y > BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2) {
       powerUps.splice(i, 1);
     }
   }
@@ -959,12 +992,17 @@ function checkCollisions() {
 
 // Game progression
 function checkWaveCompletion() {
-  // Wave is complete when all enemies are defeated
-  // We'll also have a minimum time for each wave
-  const waveTime = 60 * 60; // 60 seconds at 60fps
+  // Wave is complete when enough enemies are defeated or all enemies are defeated after minimum time
+  // Track number of enemies killed in the wave
+  const waveTime = DEBUG_MODE ? 10 * 60 : 60 * 60; // 10 seconds in debug mode, 60 seconds normally
   const timeInWave = frameCount - gameStartTime;
   
-  if (enemies.length === 0 && timeInWave > waveTime) {
+  // In debug mode, progress after killing ENEMIES_TO_KILL_FOR_NEXT_WAVE enemies OR when all enemies are gone
+  // In normal mode, require all enemies to be gone AND minimum time to pass
+  if ((DEBUG_MODE && enemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE) || 
+      (enemies.length === 0 && timeInWave > waveTime)) {
+    // Reset the enemies killed counter for next wave
+    enemiesKilled = 0;
     currentWave++;
     gameStartTime = frameCount;
     
@@ -1174,7 +1212,7 @@ function activateSkill(skillNumber) {
       for (let i = 0; i < powerUpCount; i++) {
         let laneOffset = random(-POWER_UP_LANE_WIDTH/3, POWER_UP_LANE_WIDTH/3);
         let x = BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2 + laneOffset;
-        let y = -BRIDGE_LENGTH*1.5/2 + 100 + i * (BRIDGE_LENGTH*1.5 / (powerUpCount + 1)); // Adjusted for longer bridge
+        let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100 + i * (BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER / (powerUpCount + 1)); // Adjusted for full bridge
         
         // Cycle through power-up types
         let type = types[i % types.length];
