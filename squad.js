@@ -66,11 +66,11 @@ const WEAPON_COLORS = {
 };
 
 // Squad properties
+let SQUAD_SIZE = 30;
+let MAX_SQUAD_SIZE = SQUAD_SIZE * 3; // Maximum number of squad members
 let squad = [];
-const SQUAD_SIZE = 30;
-const SQUAD_SPEED = 5;
-const SQUAD_FIRE_RATE = 30; // frames between shots (faster firing rate)
-const MAX_SQUAD_SIZE = 20; // Maximum number of squad members
+let squadSpeed = 5;
+let squadFireRate = 30; // frames between shots (faster firing rate)
 let lastFireTime = 0;
 
 // Enemy properties
@@ -480,16 +480,16 @@ function moveSquad() {
     
     // Arrow key movement
     if (keyIsDown(LEFT_ARROW)) {
-      mainMember.x -= SQUAD_SPEED;
+      mainMember.x -= squadSpeed;
     }
     if (keyIsDown(RIGHT_ARROW)) {
-      mainMember.x += SQUAD_SPEED;
+      mainMember.x += squadSpeed;
     }
     if (keyIsDown(UP_ARROW)) {
-      mainMember.y -= SQUAD_SPEED;
+      mainMember.y -= squadSpeed;
     }
     if (keyIsDown(DOWN_ARROW)) {
-      mainMember.y += SQUAD_SPEED;
+      mainMember.y += squadSpeed;
     }
     
     // Constrain to bridge boundaries
@@ -518,7 +518,7 @@ function moveSquad() {
     }
     
     // Auto-firing
-    if (frameCount - lastFireTime > SQUAD_FIRE_RATE) {
+    if (frameCount - lastFireTime > squadFireRate) {
       for (let member of squad) {
         fireWeapon(member);
       }
@@ -1043,8 +1043,9 @@ function activateSkill(skillNumber) {
     skillKey = `skill${skillNumber}`;
   }
   
-  if (frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown) {
-    // Skill on cooldown
+  // In debug mode, ignore cooldowns; in normal mode, check cooldowns
+  if (!DEBUG_MODE && frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown) {
+    // Skill on cooldown (only in non-debug mode)
     return;
   }
   
@@ -1065,7 +1066,7 @@ function activateSkill(skillNumber) {
       
       // Apply damage to all enemies in radius
       for (let enemy of enemies) {
-        const distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
+        let distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
         if (distance <= aoeRadius) {
           enemy.health -= aoeDamage;
           createHitEffect(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
@@ -1078,8 +1079,8 @@ function activateSkill(skillNumber) {
       let additionalFireRateBoost = fireRateBoost * 5; // Each accumulated point gives 5% additional boost
       let totalBoostPercent = baseFireRateBoost + additionalFireRateBoost;
       
-      let oldFireRate = SQUAD_FIRE_RATE;
-      SQUAD_FIRE_RATE = Math.floor(SQUAD_FIRE_RATE * (100 - totalBoostPercent) / 100); // Faster fire rate
+      let oldFireRate = squadFireRate;
+      squadFireRate = Math.floor(squadFireRate * (100 - totalBoostPercent) / 100); // Faster fire rate
       
       // Visual effect around squad members
       for (let member of squad) {
@@ -1088,7 +1089,7 @@ function activateSkill(skillNumber) {
       
       // Reset after 5 seconds
       setTimeout(() => { 
-        SQUAD_FIRE_RATE = oldFireRate; 
+        squadFireRate = oldFireRate; 
       }, 5000);
       break;
       
@@ -1140,7 +1141,7 @@ function activateSkill(skillNumber) {
       let healAmount = 50 + (damageBoost * 5); // Base 50 + 5 per damage boost
       
       for (let member of squad) {
-        member.health = min(100, member.health + healAmount);
+        member.health = min(SQUAD_HEALTH, member.health + healAmount); // Use configurable SQUAD_HEALTH instead of hardcoded 100
         createHitEffect(member.x, member.y, member.z, [0, 255, 0]);
       }
       break;
@@ -1149,7 +1150,7 @@ function activateSkill(skillNumber) {
       let baseDamageBoost = 2; // Double damage
       let additionalDamageBoost = 0.2 * damageBoost; // 20% more per damage boost
       let totalDamageMultiplier = baseDamageBoost + additionalDamageBoost;
-      let damageBoostDuration = 600 + (fireRateBoost * 60); // 10s + 1s per fire rate
+      let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + (fireRateBoost * 60); // 30s in debug mode, 10s + 1s per fire rate in normal mode
       
       // Store original damage multiplier
       let originalDamageMultiplier = {};
@@ -1177,8 +1178,8 @@ function activateSkill(skillNumber) {
       let totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
       let speedBoostDuration = 480 + (fireRateBoost * 30); // 8s + 0.5s per fire rate
       
-      let oldSpeed = SQUAD_SPEED;
-      SQUAD_SPEED *= totalSpeedMultiplier;
+      let oldSpeed = squadSpeed;
+      squadSpeed *= totalSpeedMultiplier;
       
       // Visual effect
       for (let member of squad) {
@@ -1187,7 +1188,7 @@ function activateSkill(skillNumber) {
       
       // Reset after duration
       setTimeout(() => {
-        SQUAD_SPEED = oldSpeed;
+        squadSpeed = oldSpeed;
       }, speedBoostDuration * (1000/60)); // Convert frames to ms
       break;
       
@@ -1361,7 +1362,7 @@ function drawStatusBoard() {
   // Weapon info
   text(`Weapon: ${currentWeapon}`, 20, 150);
   const damage = getWeaponDamage(currentWeapon);
-  const fireRate = SQUAD_FIRE_RATE;
+  const fireRate = squadFireRate;
   const dps = Math.floor((damage * 60) / fireRate);
   
   const weaponColor = WEAPON_COLORS[currentWeapon] || [255, 255, 255];
@@ -1475,56 +1476,24 @@ function keyPressed() {
   if (gameState === 'playing') {
     // Bottom row skills (A, S, D, F)
     if (key === 'a' || key === 'A') {
-      try {
-        activateSkill(1);
-      } catch (error) {
-        console.log('Error activating skill 1:', error);
-      }
+      activateSkill(1);
     } else if (key === 's' || key === 'S') {
-      try {
-        activateSkill(2);
-      } catch (error) {
-        console.log('Error activating skill 2:', error);
-      }
+      activateSkill(2);
     } else if (key === 'd' || key === 'D') {
-      try {
-        activateSkill(3);
-      } catch (error) {
-        console.log('Error activating skill 3:', error);
-      }
+      activateSkill(3);
     } else if (key === 'f' || key === 'F') {
-      try {
-        activateSkill(4);
-      } catch (error) {
-        console.log('Error activating skill 4:', error);
-      }
+      activateSkill(4);
     }
     
     // Top row skills (Q, W, E, R)
     if (key === 'q' || key === 'Q') {
-      try {
-        activateSkill(5);
-      } catch (error) {
-        console.log('Error activating skill 5:', error);
-      }
+      activateSkill(5);
     } else if (key === 'w' || key === 'W') {
-      try {
-        activateSkill(6);
-      } catch (error) {
-        console.log('Error activating skill 6:', error);
-      }
+      activateSkill(6);
     } else if (key === 'e' || key === 'E') {
-      try {
-        activateSkill(7);
-      } catch (error) {
-        console.log('Error activating skill 7:', error);
-      }
+      activateSkill(7);
     } else if (key === 'r' || key === 'R') {
-      try {
-        activateSkill(8);
-      } catch (error) {
-        console.log('Error activating skill 8:', error);
-      }
+      activateSkill(8);
     }
   }
 }
