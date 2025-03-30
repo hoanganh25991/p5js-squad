@@ -32,8 +32,8 @@ const DEBUG_MODE = true; // Set to true for easier testing, false for normal gam
 
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
-const MAX_SQUAD_MEMBERS_PER_ROW = 5; // Number of squad members in a row before stacking vertically
-const BRIDGE_LENGTH_MULTIPLIER = 3.0; // Make bridge take full screen height
+const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
+const BRIDGE_LENGTH_MULTIPLIER = 4.0; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 120; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
@@ -518,12 +518,23 @@ function moveSquad() {
     
     // Formation - arrange other squad members around the main one
     if (squad.length > 1) {
-      const spacing = SQUAD_SIZE * 1.2;
+      const spacing = SQUAD_SIZE * 1.1; // Slightly closer spacing to fit 9 in a row
+      
       for (let i = 1; i < squad.length; i++) {
-        // Position in a grid formation around the main member
-        const row = Math.floor((i-1) / 3);
-        const col = (i-1) % 3;
-        squad[i].x = mainMember.x + (col - 1) * spacing;
+        // Horizontal formation first, then stack vertically
+        // Convert to 0-based index for calculation
+        const index = i - 1;
+        
+        // Calculate row and column based on MAX_SQUAD_MEMBERS_PER_ROW
+        const row = Math.floor(index / MAX_SQUAD_MEMBERS_PER_ROW);
+        const col = index % MAX_SQUAD_MEMBERS_PER_ROW;
+        
+        // Calculate position: center the leader with members on both sides
+        // For 9 members per row, positions would be: -4, -3, -2, -1, 0, 1, 2, 3, 4
+        const colOffset = col - Math.floor(MAX_SQUAD_MEMBERS_PER_ROW / 2);
+        
+        // Position each member
+        squad[i].x = mainMember.x + colOffset * spacing;
         squad[i].y = mainMember.y + (row + 1) * spacing;
         
         // Constrain other members as well
@@ -781,7 +792,13 @@ function spawnPowerUps() {
       z: 0,
       type: type,
       value: value,
-      speed: POWER_UP_SPEED + random(-0.5, 1) // Slightly varied speeds
+      speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+      size: POWER_UP_SIZE, // Base size
+      rotation: random(0, TWO_PI), // Random starting rotation
+      rotationSpeed: random(0.01, 0.05), // How fast it rotates
+      stackLevel: 1, // Power-ups of same type can stack
+      pulsePhase: random(0, TWO_PI), // For pulsing effect
+      orbitals: type === 'mirror' ? 2 : (type.includes('weapon') ? 3 : 1) // Small orbiting particles
     });
     
     lastPowerUpSpawn = frameCount;
@@ -809,7 +826,13 @@ function spawnMirrorPowerUps() {
       z: 0,
       type: 'mirror',
       value: 1,
-      speed: POWER_UP_SPEED
+      speed: POWER_UP_SPEED,
+      size: POWER_UP_SIZE * 1.2, // Slightly larger for visibility
+      rotation: random(0, TWO_PI),
+      rotationSpeed: 0.03,
+      stackLevel: 1,
+      pulsePhase: random(0, TWO_PI),
+      orbitals: 3 // More orbitals for mirror power-ups
     });
   }
 }
@@ -1093,23 +1116,31 @@ function activateSkill(skillNumber) {
       }
       break;
       
-    case 2: // Temporary fire rate boost
-      let baseFireRateBoost = 50; // 50% faster
-      let additionalFireRateBoost = fireRateBoost * 5; // Each accumulated point gives 5% additional boost
-      let totalBoostPercent = baseFireRateBoost + additionalFireRateBoost;
-      
-      let oldFireRate = squadFireRate;
-      squadFireRate = Math.floor(squadFireRate * (100 - totalBoostPercent) / 100); // Faster fire rate
+    case 2: // Super shot - fewer but more powerful shots
+      // Create a burst of powerful shots instead of increasing fire rate
+      let superShotBaseDamage = 5; // 5x damage
+      let superShotAdditionalDamage = damageBoost * 0.5; // Each damage boost adds 0.5x
+      let superShotTotalMultiplier = superShotBaseDamage + superShotAdditionalDamage;
       
       // Visual effect around squad members
       for (let member of squad) {
         createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
+        
+        // Fire a single powerful shot
+        let projectile = {
+          x: member.x,
+          y: member.y,
+          z: member.z + member.size/2,
+          weapon: member.weapon || currentWeapon,
+          speed: PROJECTILE_SPEED * 1.5, // Faster projectile
+          damage: getWeaponDamage(member.weapon || currentWeapon) * superShotTotalMultiplier,
+          size: PROJECTILE_SIZE * 2, // Larger projectile
+          isSuperShot: true,
+          color: [255, 255, 0] // Yellow super shot
+        };
+        
+        projectiles.push(projectile);
       }
-      
-      // Reset after 5 seconds
-      setTimeout(() => { 
-        squadFireRate = oldFireRate; 
-      }, 5000);
       break;
       
     case 3: // Shield - temporary invulnerability with enhanced durability
@@ -1166,16 +1197,16 @@ function activateSkill(skillNumber) {
       break;
       
     case 6: // Damage boost for 10 seconds with enhanced effect
-      let baseDamageBoost = 2; // Double damage
-      let additionalDamageBoost = 0.2 * damageBoost; // 20% more per damage boost
-      let totalDamageMultiplier = baseDamageBoost + additionalDamageBoost;
+      let damageBoostBase = 2; // Double damage
+      let damageBoostAdditional = 0.2 * damageBoost; // 20% more per damage boost
+      let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
       let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + (fireRateBoost * 60); // 30s in debug mode, 10s + 1s per fire rate in normal mode
       
       // Store original damage multiplier
       let originalDamageMultiplier = {};
       for (let member of squad) {
         originalDamageMultiplier[member.id] = member.damageBoost || 1;
-        member.damageBoost = totalDamageMultiplier;
+        member.damageBoost = damageBoostTotalMultiplier;
         createHitEffect(member.x, member.y, member.z, [255, 0, 0]);
       }
       
@@ -1400,26 +1431,36 @@ function drawStatusBoard() {
 
 function drawTechnicalBoard() {
   // Right side with technical info
-  fill(0, 0, 0, 150);
-  rect(width - 260, 10, 250, 160);
+  fill(0, 0, 0, 200); // More opaque background
+  rect(width - 310, 10, 300, 220, 10); // Larger with rounded corners
   
-  textSize(20);
+  textSize(24);
   textAlign(LEFT, TOP);
   fill(255);
-  text("TECHNICAL BOARD", width - 250, 20);
+  text("TECHNICAL BOARD", width - 300, 20);
   
-  textSize(16);
+  // Add debug mode indicator if in debug mode
+  if (DEBUG_MODE) {
+    fill(0, 255, 255);
+    text("DEBUG MODE ACTIVE", width - 300, 50);
+  }
+  
+  textSize(18);
   // Camera position
-  text(`Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}`, width - 250, 50);
+  text(`Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(cameraOffsetY)}, z=${Math.floor(cameraZoom)}`, width - 300, 85);
   
   // Time elapsed
   const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
-  text(`Time: ${minutes}m ${seconds}s`, width - 250, 75);
+  text(`Time: ${minutes}m ${seconds}s`, width - 300, 115);
   
   // Frame rate
-  text(`Frame Rate: ${Math.floor(frameRate())} fps`, width - 250, 100);
+  text(`Frame Rate: ${Math.floor(frameRate())} fps`, width - 300, 145);
+  
+  // Additional useful info
+  text(`Squad Size: ${squad.length}/${MAX_SQUAD_SIZE}`, width - 300, 175);
+  text(`Wave: ${currentWave}`, width - 300, 205);
   
   // Object counts
   const objectCount = squad.length + enemies.length + projectiles.length + powerUps.length;
