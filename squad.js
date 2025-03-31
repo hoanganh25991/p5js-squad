@@ -28,7 +28,7 @@ const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
 // Debug mode for testing
-const DEBUG_MODE = true; // Set to true for easier testing, false for normal gameplay
+const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
 
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
