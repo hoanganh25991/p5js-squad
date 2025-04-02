@@ -40,7 +40,7 @@ const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
 const ENEMY_FIGHT_DISTANCE_THRESHOLD =
-  (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 5;
+  (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 15;
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -65,8 +65,8 @@ const WEAPON_COLORS = {
 };
 
 // Squad properties
-let SQUAD_SIZE = 3;
-let MAX_SQUAD_SIZE = SQUAD_SIZE * 3; // Maximum number of squad members
+let SQUAD_SIZE = 30;
+let MAX_SQUAD_SIZE = 9; // Maximum number of squad members
 let squad = [];
 let squadSpeed = 5;
 let squadFireRate = 30; // frames between shots (faster firing rate)
@@ -92,16 +92,16 @@ const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
 
 // Projectiles
 let projectiles = [];
-const PROJECTILE_SPEED = 12; // Faster projectiles
-const PROJECTILE_SIZE = 10;
+const PROJECTILE_SPEED = 12 * 3; // Faster projectiles
+const PROJECTILE_SIZE = STANDARD_ENEMY_SIZE * 1.2;
 
 // Visual effects
 let effects = [];
-const EFFECT_DURATION = 30 * 2; // frames
+const EFFECT_DURATION = 30; // frames
 
 // Power-ups
 let powerUps = [];
-const POWER_UP_SIZE = 20;
+const POWER_UP_SIZE = 40;
 const POWER_UP_SPAWN_RATE = 90 * 1; // frames between power-up spawns (continuous spawning)
 const WEAPON_SPAWN_CHANCE = DEBUG_MODE ? 1 : 0.1; // chance for weapon
 const SKILL_SPAWN_CHANCE = 0.3; // chance for skill
@@ -139,11 +139,11 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER - 200, // Starting near the bottom of extended bridge
+  y: 0, // Starting near the bottom of extended bridge
   z: 0,
   size: SQUAD_SIZE,
-  health: SQUAD_HEALTH, // Use configurable health
-  weapon: "blaster",
+  health: SQUAD_HEALTH * 10, // Use configurable health
+  weapon: WEAPON_TYPES[1],
   id: Date.now(), // Unique ID for reference
 };
 
@@ -377,158 +377,211 @@ function drawGame() {
 
     // Different projectile shapes based on weapon type
     if (proj.weapon === "blaster") {
-      // Green laser beam
-      sphere(PROJECTILE_SIZE * enhancedSize);
+      // Enhanced Green laser beam with a glowing effect
+      for (let i = 0; i < 3; i++) {
+        push();
+        rotateX(frameCount * 0.1 + i);
+        rotateY(frameCount * 0.1 + i);
+        torus(PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * 0.1);
+        pop();
+      }
     } else if (proj.weapon === "thunderbolt") {
-      // Thunder projectile
-      cone(PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * 2 * enhancedSize);
+      // Thunder projectile with a zigzag pattern
+      stroke(255, 255, 0);
+      strokeWeight(2);
+      noFill();
+      beginShape();
+      let x = 0,
+        y = 0,
+        z = 0;
+      for (let i = 0; i < 10; i++) {
+        vertex(x, y, z);
+        x += random(-5, 5);
+        y += random(-5, 5);
+        z += random(5, 15);
+      }
+      endShape();
     } else if (proj.weapon === "inferno") {
-      // Fire projectile
-      box(
-        PROJECTILE_SIZE * enhancedSize,
-        PROJECTILE_SIZE * enhancedSize,
-        PROJECTILE_SIZE * enhancedSize
-      );
+      // Fire projectile with a dynamic flame effect
+      for (let i = 0; i < 5; i++) {
+        push();
+        translate(random(-5, 5), random(-5, 5), random(-5, 5));
+        rotateX(frameCount * 0.1);
+        rotateY(frameCount * 0.1);
+        cone(PROJECTILE_SIZE * 0.5, PROJECTILE_SIZE * enhancedSize);
+        pop();
+      }
     } else if (proj.weapon === "frostbite") {
-      // Ice projectile
-      sphere(PROJECTILE_SIZE * 0.8);
+      // Ice projectile with crystal spikes
+      for (let i = 0; i < 6; i++) {
+        push();
+        rotateX(random(TWO_PI));
+        rotateY(random(TWO_PI));
+        translate(0, 0, PROJECTILE_SIZE * 0.4);
+        box(
+          PROJECTILE_SIZE * 0.2,
+          PROJECTILE_SIZE * 0.2,
+          PROJECTILE_SIZE * 0.8
+        );
+        pop();
+      }
     } else if (proj.weapon === "vortex") {
-      // Vortex projectile
-      torus(PROJECTILE_SIZE * 0.8, PROJECTILE_SIZE * 0.3);
+      // Vortex projectile with swirling rings
+      for (let i = 0; i < 3; i++) {
+        push();
+        rotateX(frameCount * 0.1 + i);
+        rotateY(frameCount * 0.1 + i);
+        torus(PROJECTILE_SIZE * 0.8, PROJECTILE_SIZE * 0.1);
+        pop();
+      }
     } else if (proj.weapon === "plasma") {
-      // Plasma projectile (sphere with random wobble)
-      sphere(PROJECTILE_SIZE * (0.8 + sin(frameCount * 0.2) * 0.2));
+      // Plasma projectile with a pulsating effect
+      for (let i = 0; i < 3; i++) {
+        push();
+        translate(random(-5, 5), random(-5, 5), random(-5, 5));
+        sphere(PROJECTILE_SIZE * (0.8 + sin(frameCount * 0.2 + i) * 0.2));
+        pop();
+      }
     } else if (proj.weapon === "photon") {
-      // Photon projectile (cylinder)
-      cylinder(PROJECTILE_SIZE * 0.5, PROJECTILE_SIZE * 2);
+      // Photon projectile with a rotating disc
+      for (let i = 0; i < 3; i++) {
+        push();
+        rotateX(frameCount * 0.1 + i);
+        rotateY(frameCount * 0.1 + i);
+        cylinder(PROJECTILE_SIZE * 0.5, PROJECTILE_SIZE * 0.2);
+        pop();
+      }
     } else {
+      // Default sphere
       sphere(PROJECTILE_SIZE);
     }
     pop();
   }
 
   // Draw visual effects
-for (let effect of effects) {
-  push();
-  translate(effect.x, effect.y, effect.z);
+  for (let effect of effects) {
+    push();
+    translate(effect.x, effect.y, effect.z);
 
-  // Default color if effect.color is undefined
-  const effectColor = effect.color || [255, 255, 255];
+    // Default color if effect.color is undefined
+    const effectColor = effect.color || [255, 255, 255];
 
-  if (effect.type === "explosion") {
-    // Explosion effect
-    fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 10; i++) {
-      push();
-      rotateX(random(TWO_PI));
-      rotateY(random(TWO_PI));
-      translate(random(-20, 20), random(-20, 20), random(-20, 20));
-      sphere(effect.size * 0.2);
-      pop();
-    }
-    for (let i = 0; i < 5; i++) {
-      push();
-      rotateX(random(TWO_PI));
-      rotateY(random(TWO_PI));
-      translate(random(-30, 30), random(-30, 30), random(-30, 30));
-      cone(effect.size * 0.1, effect.size * 0.5);
-      pop();
-    }
-  } else if (effect.type === "hit") {
-    // Hit effect
-    fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 8; i++) {
-      push();
-      translate(random(-10, 10), random(-10, 10), random(-10, 10));
-      box(effect.size * 0.2);
-      pop();
-    }
-    for (let i = 0; i < 4; i++) {
-      push();
-      translate(random(-15, 15), random(-15, 15), random(-15, 15));
-      cone(effect.size * 0.1, effect.size * 0.3);
-      pop();
-    }
-  } else if (effect.type === "fire") {
-    // Fire effect
-    fill(255, 100 + random(155), 0, 255 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 5; i++) {
-      push();
-      translate(random(-10, 10), random(-10, 10), random(0, 20));
-      rotateX(frameCount * 0.05);
-      torus(5 + random(5), 2);
-      pop();
-    }
-    for (let i = 0; i < 3; i++) {
-      push();
-      translate(random(-10, 10), random(-10, 10), random(0, 20));
-      rotateY(frameCount * 0.05);
-      cylinder(3 + random(3), 10);
-      pop();
-    }
-  } else if (effect.type === "ice") {
-    // Enhanced Ice effect
-    fill(200, 200, 255, 255 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 10; i++) {
-      push();
-      translate(random(-15, 15), random(-15, 15), random(-15, 15));
-      rotateX(frameCount * 0.02);
-      rotateY(frameCount * 0.02);
-      box(effect.size * 0.1, effect.size * 0.1, effect.size * 0.5);
-      pop();
-    }
-    for (let i = 0; i < 5; i++) {
-      push();
-      translate(random(-20, 20), random(-20, 20), random(-20, 20));
-      rotateX(frameCount * 0.02);
-      rotateY(frameCount * 0.02);
-      cone(effect.size * 0.1, effect.size * 0.3);
-      pop();
-    }
-  } else if (effect.type === "thunder") {
-    // Realistic Thunder effect
-    stroke(255, 255, 0, 255 * (effect.life / EFFECT_DURATION));
-    strokeWeight(3);
-    for (let i = 0; i < 3; i++) {
-      push();
-      translate(0, -50, 0); // Start from above
-      beginShape();
-      let x = 0, y = 0, z = 0;
-      for (let j = 0; j < 10; j++) {
-        vertex(x, y, z);
-        x += random(-10, 10);
-        y += random(5, 15); // Move downwards
-        z += random(-10, 10);
+    if (effect.type === "explosion") {
+      // Explosion effect
+      fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 10; i++) {
+        push();
+        rotateX(random(TWO_PI));
+        rotateY(random(TWO_PI));
+        translate(random(-20, 20), random(-20, 20), random(-20, 20));
+        sphere(effect.size * 0.2);
+        pop();
       }
-      endShape();
-      pop();
+      for (let i = 0; i < 5; i++) {
+        push();
+        rotateX(random(TWO_PI));
+        rotateY(random(TWO_PI));
+        translate(random(-30, 30), random(-30, 30), random(-30, 30));
+        cone(effect.size * 0.1, effect.size * 0.5);
+        pop();
+      }
+    } else if (effect.type === "hit") {
+      // Hit effect
+      fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 8; i++) {
+        push();
+        translate(random(-10, 10), random(-10, 10), random(-10, 10));
+        box(effect.size * 0.2);
+        pop();
+      }
+      for (let i = 0; i < 4; i++) {
+        push();
+        translate(random(-15, 15), random(-15, 15), random(-15, 15));
+        cone(effect.size * 0.1, effect.size * 0.3);
+        pop();
+      }
+    } else if (effect.type === "fire") {
+      // Fire effect
+      fill(255, 100 + random(155), 0, 255 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 5; i++) {
+        push();
+        translate(random(-10, 10), random(-10, 10), random(0, 20));
+        rotateX(frameCount * 0.05);
+        torus(5 + random(5), 2);
+        pop();
+      }
+      for (let i = 0; i < 3; i++) {
+        push();
+        translate(random(-10, 10), random(-10, 10), random(0, 20));
+        rotateY(frameCount * 0.05);
+        cylinder(3 + random(3), 10);
+        pop();
+      }
+    } else if (effect.type === "ice") {
+      // Enhanced Ice effect
+      fill(200, 200, 255, 255 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 10; i++) {
+        push();
+        translate(random(-15, 15), random(-15, 15), random(-15, 15));
+        rotateX(frameCount * 0.02);
+        rotateY(frameCount * 0.02);
+        box(effect.size * 0.1, effect.size * 0.1, effect.size * 0.5);
+        pop();
+      }
+      for (let i = 0; i < 5; i++) {
+        push();
+        translate(random(-20, 20), random(-20, 20), random(-20, 20));
+        rotateX(frameCount * 0.02);
+        rotateY(frameCount * 0.02);
+        cone(effect.size * 0.1, effect.size * 0.3);
+        pop();
+      }
+    } else if (effect.type === "thunder") {
+      // Realistic Thunder effect
+      stroke(255, 255, 0, 255 * (effect.life / EFFECT_DURATION));
+      strokeWeight(3);
+      for (let i = 0; i < 3; i++) {
+        push();
+        translate(0, -50, 0); // Start from above
+        beginShape();
+        let x = 0,
+          y = 0,
+          z = 0;
+        for (let j = 0; j < 10; j++) {
+          vertex(x, y, z);
+          x += random(-10, 10);
+          y += random(5, 15); // Move downwards
+          z += random(-10, 10);
+        }
+        endShape();
+        pop();
+      }
+    } else if (effect.type === "vortex") {
+      // Vortex effect
+      rotateZ(frameCount * 0.1);
+      fill(150, 0, 255, 200 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 10; i++) {
+        push();
+        rotateX(frameCount * 0.05);
+        rotateY(frameCount * 0.05);
+        torus(30 * (1 - effect.life / EFFECT_DURATION), 5);
+        pop();
+      }
+    } else if (effect.type === "plasma") {
+      // Plasma effect
+      fill(255, 0, 255, 200 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 4; i++) {
+        push();
+        translate(random(-20, 20), random(-20, 20), random(0, 10));
+        rotateX(frameCount * 0.03);
+        rotateY(frameCount * 0.03);
+        ellipsoid(5 + random(5), 3 + random(3), 3 + random(3));
+        pop();
+      }
     }
-  } else if (effect.type === "vortex") {
-    // Vortex effect
-    rotateZ(frameCount * 0.1);
-    fill(150, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 10; i++) {
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      torus(30 * (1 - effect.life / EFFECT_DURATION), 5);
-      pop();
-    }
-  } else if (effect.type === "plasma") {
-    // Plasma effect
-    fill(255, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-    for (let i = 0; i < 4; i++) {
-      push();
-      translate(random(-20, 20), random(-20, 20), random(0, 10));
-      rotateX(frameCount * 0.03);
-      rotateY(frameCount * 0.03);
-      ellipsoid(5 + random(5), 3 + random(3), 3 + random(3));
-      pop();
-    }
-  }
 
-  pop();
-}
+    pop();
+  }
 
   // Draw power-ups
   for (let powerUp of powerUps) {
@@ -713,7 +766,7 @@ function spawnEnemies() {
   if (frameCount - lastEnemySpawn > ENEMY_SPAWN_RATE) {
     // Always spawn enemies (no chance check, continuous spawning)
     // Sometimes spawn rows of enemies
-    const spawnRow = random() < 0.3;
+    const spawnRow = random() < 0.8;
 
     if (spawnRow) {
       // Spawn a row of enemies
@@ -730,6 +783,7 @@ function spawnEnemies() {
 function spawnEnemyRow() {
   // Spawn a row of enemies across the main lane
   const spacing = BRIDGE_WIDTH / ENEMIES_PER_ROW;
+  // const spacing = STANDARD_ENEMY_SIZE * 1.2;
 
   for (let i = 0; i < ENEMIES_PER_ROW; i++) {
     const x = -BRIDGE_WIDTH / 2 + spacing / 2 + i * spacing;
@@ -767,7 +821,7 @@ function spawnSingleEnemy() {
   const type = random(enemyTypes);
 
   // Determine size based on type
-  let size = STANDARD_ENEMY_SIZE;
+  let size = STANDARD_ENEMY_SIZE * 2;
   let health = 30;
 
   if (type === "elite") {
