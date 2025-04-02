@@ -18,10 +18,11 @@ let isDragging = false;
 let prevMouseX, prevMouseY;
 
 // Game dimensions
-const BRIDGE_LENGTH = 1000 * 1.5;
+const BRIDGE_LENGTH = 1000;
 const BRIDGE_WIDTH = 400 * 2;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
+
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
@@ -34,10 +35,12 @@ const DEBUG_MODE = false; // Set to true for easier testing, false for normal ga
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
-const BRIDGE_LENGTH_MULTIPLIER = 4.0; // Make bridge take full screen height
+const BRIDGE_LENGTH_MULTIPLIER = 6; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
+
+const ENEMY_FIGHT_DISTANCE_THRESHOLD = BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER / 5;
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -750,9 +753,10 @@ function updateEnemies() {
 
   for (let enemy of enemies) {
     // Check if enemy is close to the base line
-    const distanceToBaseY = BRIDGE_LENGTH / 2 - 100 - enemy.y;
+    const distanceToBaseY = Math.abs(BRIDGE_LENGTH / 2 - 100 - enemy.y);
+    const distanceToSquadY = Math.abs(targetY - enemy.y);
 
-    if (distanceToBaseY < 150) {
+    if (distanceToBaseY < ENEMY_FIGHT_DISTANCE_THRESHOLD || distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD) {
       // When close to base, directly target the squad at consistent speed
       // Calculate vector to target
       const dx = targetX - enemy.x;
@@ -761,8 +765,8 @@ function updateEnemies() {
 
       // Normalize and apply speed consistently (no acceleration)
       if (dist > 0) {
-        enemy.x += (dx / dist) * enemy.speed;
-        enemy.y += (dy / dist) * enemy.speed;
+        enemy.x += (dx / dist) * enemy.speed * 2;
+        enemy.y += (dy / dist) * enemy.speed * 2;
       }
     } else {
       // Regular downward movement when far from base
@@ -802,33 +806,33 @@ function spawnPowerUps() {
       type = random(SKILL_TYPES);
     }
 
-  // Add value for skill power-ups
-  let value = 1; // Default value
-  if (type === "fire_rate") value = 3; // +3 fire rate
-  if (type === "damage") value = 4; // +4 damage
-  if (type === "aoe") value = 2; // +2 area effect
+    // Add value for skill power-ups
+    let value = 1; // Default value
+    if (type === "fire_rate") value = 3; // +3 fire rate
+    if (type === "damage") value = 4; // +4 damage
+    if (type === "aoe") value = 2; // +2 area effect
 
-  // Calculate position in the center of power-up lane
-  const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
+    // Calculate position in the center of power-up lane
+    const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
 
-  // Start position at the far end of the bridge (where enemies spawn)
-  let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
+    // Start position at the far end of the bridge (where enemies spawn)
+    let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
 
-  // Add the power-up to the game
-  powerUps.push({
-    x: x,
-    y: y,
-    z: 0,
-    type: type,
-    value: value,
-    speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
-    size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
-    rotation: random(0, TWO_PI), // Random starting rotation
-    rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
-    stackLevel: 1, // Power-ups of same type can stack
-    pulsePhase: random(0, TWO_PI), // For pulsing effect
-    orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
-  });
+    // Add the power-up to the game
+    powerUps.push({
+      x: x,
+      y: y,
+      z: 0,
+      type: type,
+      value: value,
+      speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+      size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
+      rotation: random(0, TWO_PI), // Random starting rotation
+      rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
+      stackLevel: 1, // Power-ups of same type can stack
+      pulsePhase: random(0, TWO_PI), // For pulsing effect
+      orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
+    });
     lastPowerUpSpawn = frameCount;
   }
 }
@@ -1456,7 +1460,7 @@ function createPauseElement() {
   pauseContainer = createDiv("");
   pauseContainer.id("pause-screen");
   pauseContainer.position(width - 60, 10); // Position in the top right corner
-  pauseContainer.style("background-color", 'rgba(50, 50, 50, 0.8)');
+  pauseContainer.style("background-color", "rgba(50, 50, 50, 0.8)");
   pauseContainer.style("border-radius", "5px");
   pauseContainer.style("padding", "1rem");
   pauseContainer.style("cursor", "pointer");
@@ -1475,7 +1479,7 @@ function createResumeElement() {
   resumeContainer = createDiv("");
   resumeContainer.id("resume-button");
   resumeContainer.position(width - 60, 10); // Position in the top right corner
-  resumeContainer.style("background-color", 'rgba(50, 50, 50, 0.8)');
+  resumeContainer.style("background-color", "rgba(50, 50, 50, 0.8)");
   resumeContainer.style("border-radius", "5px");
   resumeContainer.style("padding", "1rem");
   resumeContainer.style("cursor", "pointer");
@@ -1509,33 +1513,37 @@ function createGameOverElement() {
 
 function createSkillBarElement() {
   // Create skill bar container
-  skillBar = createDiv('');
-  skillBar.id('skill-bar');
+  skillBar = createDiv("");
+  skillBar.id("skill-bar");
   skillBar.position(10, height - 90);
-  skillBar.style('background-color', 'rgba(50, 50, 50, 0.8)');
-  skillBar.style('color', 'white');
-  skillBar.style('padding', '10px');
-  skillBar.style('border-radius', '5px');
-  skillBar.style('width', `${width - 20}px`);
-  skillBar.style('display', 'flex');
-  skillBar.style('justify-content', 'space-between');
-  skillBar.style('font-family', 'monospace');
-  skillBar.style('z-index', '1000');
+  skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
+  skillBar.style("color", "white");
+  skillBar.style("padding", "10px");
+  skillBar.style("border-radius", "5px");
+  skillBar.style("width", `${width - 20}px`);
+  skillBar.style("display", "flex");
+  skillBar.style("justify-content", "space-between");
+  skillBar.style("font-family", "monospace");
+  skillBar.style("z-index", "1000");
 
   // Create individual skill elements
   for (let i = 1; i <= 8; i++) {
-    const skillDiv = createDiv('');
+    const skillDiv = createDiv("");
     skillDiv.id(`skill${i}`);
-    skillDiv.style('flex', '1');
-    skillDiv.style('text-align', 'center');
-    skillDiv.style('margin', '0 5px');
-    skillDiv.style('position', 'relative');
-    skillDiv.style('height', '60px');
-    skillDiv.style('background-color', 'rgba(50, 50, 50, 0.8)');
-    skillDiv.style('border-radius', '5px');
+    skillDiv.style("flex", "1");
+    skillDiv.style("text-align", "center");
+    skillDiv.style("margin", "0 5px");
+    skillDiv.style("position", "relative");
+    skillDiv.style("height", "60px");
+    skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
+    skillDiv.style("border-radius", "5px");
     skillDiv.html(`
-      <div id="skillName${i}" style="font-size: 1rem; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 1;">${getSkillName(i)}</div>
-      <div id="skillKey${i}" style="font-size: 2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
+      <div id="skillName${i}" style="font-size: 1rem; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 1;">${getSkillName(
+      i
+    )}</div>
+      <div id="skillKey${i}" style="font-size: 2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      i
+    )}</div>
       <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
       <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0;"></div>
     `);
@@ -1546,19 +1554,27 @@ function createSkillBarElement() {
 function updateSkillBar() {
   for (let i = 1; i <= 8; i++) {
     const skillKey = `skill${i}`;
-    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
-    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
+    const cooldownRemaining =
+      skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
+    const cooldownPercent =
+      max(0, cooldownRemaining) / skills[skillKey].cooldown;
 
     // Update needle rotation
     const needleDiv = select(`#needle${i}`);
     const overlayDiv = select(`#overlay${i}`);
     if (needleDiv && overlayDiv) {
       const rotationDegree = 360 * (1 - cooldownPercent); // Counterclockwise rotation
-      needleDiv.style('transform', `translate(-50%, -100%) rotate(${rotationDegree}deg)`);
-      needleDiv.style('opacity', cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
+      needleDiv.style(
+        "transform",
+        `translate(-50%, -100%) rotate(${rotationDegree}deg)`
+      );
+      needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
 
       // Update overlay gradient
-      overlayDiv.style('background', `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`);
+      overlayDiv.style(
+        "background",
+        `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+      );
     } else {
       console.error(`Needle or overlay element for skill #${i} not found`);
     }
