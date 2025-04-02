@@ -22,8 +22,8 @@ let isDragging = false;
 let prevMouseX, prevMouseY;
 
 // Game dimensions
-const BRIDGE_WIDTH = 400;
-const BRIDGE_LENGTH = 1200;
+const BRIDGE_LENGTH = 1000 * 2;
+const BRIDGE_WIDTH = 400 * 2;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
@@ -35,7 +35,7 @@ const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
 const BRIDGE_LENGTH_MULTIPLIER = 4.0; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
-const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 120; // Frames between mirror power-up spawns (0.5s in debug)
+const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
 // Skill upgrade tracking
@@ -80,7 +80,7 @@ let lastEnemySpawn = 0;
 const STANDARD_ENEMY_SIZE = 25;
 const ELITE_ENEMY_SIZE = 35;
 const BOSS_SIZES = [50, 70, 90];
-const ENEMIES_PER_ROW = 5; // Number of enemies per row when spawning
+const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
 
 // Projectiles
 let projectiles = [];
@@ -94,11 +94,11 @@ const EFFECT_DURATION = 30; // frames
 // Power-ups
 let powerUps = [];
 const POWER_UP_SIZE = 20;
-const POWER_UP_SPAWN_RATE = 90; // frames between power-up spawns (continuous spawning)
-const MIRROR_SPAWN_CHANCE = 0.3; // 30% chance for mirror +1 to spawn
-const SKILL_SPAWN_CHANCE = 0.4; // 40% chance for skill power-ups
+const POWER_UP_SPAWN_RATE = 90 * 1; // frames between power-up spawns (continuous spawning)
+const WEAPON_SPAWN_CHANCE = DEBUG_MODE ? 1 : 0.1; // chance for weapon
+const SKILL_SPAWN_CHANCE = 0.3; // chance for skill
 let lastPowerUpSpawn = 0;
-const POWER_UP_SPEED = 3; // Speed at which power-ups move down the lane
+const POWER_UP_SPEED = 3 * 2; // Speed at which power-ups move down the lane
 
 // Weapons inventory (false means locked, true means available)
 let weapons = {
@@ -111,19 +111,22 @@ let weapons = {
   photon: false
 };
 
+const WEAPON_TYPES = Object.keys(weapons);
+const SKILL_TYPES = ['fire_rate', 'damage', 'aoe'];
+
 // Currently equipped weapon
-let currentWeapon = 'blaster';
+let currentWeapon = WEAPON_TYPES[0];
 
 // Skills cooldowns in frames
 let skills = {
-  skill1: { cooldown: 600, lastUsed: 0 },
-  skill2: { cooldown: 900, lastUsed: 0 },
-  skill3: { cooldown: 1200, lastUsed: 0 },
-  skill4: { cooldown: 1500, lastUsed: 0 },
-  skill5: { cooldown: 1800, lastUsed: 0 },
-  skill6: { cooldown: 2100, lastUsed: 0 },
-  skill7: { cooldown: 2400, lastUsed: 0 },
-  skill8: { cooldown: 3000, lastUsed: 0 }
+  skill1: { cooldown: 0 * 600, lastUsed: 0 },
+  skill2: { cooldown: 0 * 900, lastUsed: 0 },
+  skill3: { cooldown: 0 * 1200, lastUsed: 0 },
+  skill4: { cooldown: 0 * 1500, lastUsed: 0 },
+  skill5: { cooldown: 0 * 1800, lastUsed: 0 },
+  skill6: { cooldown: 0 * 2100, lastUsed: 0 },
+  skill7: { cooldown: 0 * 2400, lastUsed: 0 },
+  skill8: { cooldown: 0 * 3000, lastUsed: 0 }
 };
 
 // Font loading
@@ -197,14 +200,18 @@ function draw() {
 
 // Main game logic functions
 function updateGame() {
-  moveSquad();
-  updateProjectiles();
-  updateEffects();
-  checkCollisions();
   spawnEnemies();
-  moveEnemies();
+  spawnPowerUps();
+
+  updateSquad();
+  updateProjectiles();
+  updateEnemies();
   updatePowerUps();
+  
+  applyEffects();
   applyEnemyEffects();
+
+  checkCollisions();
   checkWaveCompletion();
 }
 
@@ -327,7 +334,7 @@ function drawGame() {
     if (aoeBoost > 5) {
       // Add blue glow for high AOE
       projColor[2] = min(255, projColor[2] + 100);
-      enhancedSize *= 1.3;
+      enhancedSize *= 1 + (aoeBoost / 5);
       hasGlowEffect = true;
     }
     
@@ -493,7 +500,7 @@ function drawGame() {
 }
 
 // Squad Movement and Controls
-function moveSquad() {
+function updateSquad() {
   // Control main squad member (first in the array)
   if (squad.length > 0) {
     let mainMember = squad[0];
@@ -640,7 +647,7 @@ function spawnEnemyRow() {
       size: STANDARD_ENEMY_SIZE,
       type: 'standard', // Rows are always standard enemies
       health: 20, // Easier to defeat in rows
-      speed: 3.5 // Fast moving rows
+      speed: 3 * 1.2 // Fast moving rows
     });
   }
 }
@@ -703,7 +710,7 @@ function spawnSingleEnemy() {
   });
 }
 
-function moveEnemies() {
+function updateEnemies() {
   // Find the closest squad member to use as a target
   let targetX = 0;
   let targetY = BRIDGE_LENGTH / 2 - 100;
@@ -760,44 +767,19 @@ function spawnPowerUps() {
     const rand = random();
     
     // Determine power-up type based on probability
-    let type;
+    let type = 'mirror'
     
-    if (rand < MIRROR_SPAWN_CHANCE) {
-      // Mirror power-up
-      type = 'mirror';
-    } else if (rand < MIRROR_SPAWN_CHANCE + SKILL_SPAWN_CHANCE) {
-      // Skill power-up (fire_rate, damage, or aoe)
-      const skillTypes = ['fire_rate', 'damage', 'aoe'];
-      type = random(skillTypes);
-    } else {
+    if (rand < WEAPON_SPAWN_CHANCE) {
       // Weapon power-up
-      const weaponTypes = [];
-      if (currentWave >= 2) weaponTypes.push('thunderbolt');
-      if (currentWave >= 3) weaponTypes.push('inferno');
-      if (currentWave >= 5) weaponTypes.push('frostbite');
-      if (currentWave >= 7) weaponTypes.push('vortex');
-      if (currentWave >= 10) weaponTypes.push('plasma');
-      if (currentWave >= 15) weaponTypes.push('photon');
-      
-      // If no weapons available yet, default to a mirror
-      type = weaponTypes.length > 0 ? random(weaponTypes) : 'mirror';
+      type = random(WEAPON_TYPES);
+    } else if (rand < SKILL_SPAWN_CHANCE) {
+      // Skill power-up (fire_rate, damage, or aoe)
+     
+      type = random(SKILL_TYPES);
     }
     
-    // Spawn the power-up with the determined type
     spawnSpecificPowerUp(type);
-    
     lastPowerUpSpawn = frameCount;
-  }
-  
-  // Separate function for frequent mirror power-ups in debug mode
-  spawnMirrorPowerUps();
-}
-
-// Function to frequently spawn mirror power-ups in the middle of power-up lane
-function spawnMirrorPowerUps() {
-  if (frameCount % MIRROR_POWERUP_SPAWN_RATE === 0 && powerUps.length < MAX_POWER_UPS) {
-    // Spawn a mirror power-up
-    spawnSpecificPowerUp('mirror');
   }
 }
 
@@ -814,24 +796,6 @@ function spawnSpecificPowerUp(type) {
   
   // Start position at the far end of the bridge (where enemies spawn)
   let y = -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 100; // Start at the very beginning of bridge
-  const spacing = POWER_UP_SIZE * 3; // Space between power-ups
-  
-  // Find all existing power-ups in the lane
-  const powerUpsInLane = powerUps.filter(p => Math.abs(p.x - x) < 20);
-  
-  if (powerUpsInLane.length > 0) {
-    // Sort by y position to find the northmost one (furthest up)
-    powerUpsInLane.sort((a, b) => a.y - b.y);
-    
-    // Place the new power-up behind (north of) the first one in the queue
-    y = powerUpsInLane[0].y - spacing;
-    
-    // If the queue reaches too far up, wrap back to a lower position
-    if (y < -BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 + 50) {
-      // Start near the bottom of the bridge if we've gone too far up
-      y = BRIDGE_LENGTH*BRIDGE_LENGTH_MULTIPLIER/2 - 200;
-    }
-  }
   
   // Add the power-up to the game
   powerUps.push({
@@ -851,8 +815,7 @@ function spawnSpecificPowerUp(type) {
 }
 
 function updatePowerUps() {
-  // Spawn regular power-ups
-  spawnPowerUps();
+
   
   // Move power-ups down the lane
   for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -1052,36 +1015,30 @@ function checkWaveCompletion() {
   const waveTime = DEBUG_MODE ? 10 * 60 : 60 * 60; // 10 seconds in debug mode, 60 seconds normally
   const timeInWave = frameCount - gameStartTime;
   
-  // In debug mode, progress after killing ENEMIES_TO_KILL_FOR_NEXT_WAVE enemies OR when all enemies are gone
-  // In normal mode, require all enemies to be gone AND minimum time to pass
-  if ((DEBUG_MODE && enemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE) || 
-      (enemies.length === 0 && timeInWave > waveTime)) {
+  // Require all enemies to be gone AND minimum time to pass
+  if ((enemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE) || (enemies.length === 0 && timeInWave > waveTime)) {
     // Reset the enemies killed counter for next wave
     enemiesKilled = 0;
     currentWave++;
     gameStartTime = frameCount;
     
     // Spawn some power-ups as rewards
-    for (let i = 0; i < min(currentWave, 3); i++) {
+    for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
       const x = random(BRIDGE_WIDTH/2 + 20, BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH - 20);
       const y = random(-BRIDGE_LENGTH/2 + 100, BRIDGE_LENGTH/2 - 100);
-      
-      // Mix of mirror and weapon power-ups
-      const possibleTypes = ['mirror'];
-      if (currentWave >= 2 && !weapons.thunderbolt) possibleTypes.push('thunderbolt');
-      if (currentWave >= 3 && !weapons.inferno) possibleTypes.push('inferno');
-      if (currentWave >= 5 && !weapons.frostbite) possibleTypes.push('frostbite');
-      if (currentWave >= 7 && !weapons.vortex) possibleTypes.push('vortex');
-      if (currentWave >= 10 && !weapons.plasma) possibleTypes.push('plasma');
-      if (currentWave >= 15 && !weapons.photon) possibleTypes.push('photon');
-      
-      const type = random(possibleTypes);
       
       powerUps.push({
         x: x,
         y: y,
         z: 0,
-        type: type
+        type: random(['thunderbolt', 'inferno', 'frostbite', 'vortex', 'plasma', 'photon'])
+      });
+
+      powerUps.push({
+        x: x,
+        y: y,
+        z: 0,
+        type: random(['thunderbolt', 'inferno', 'frostbite', 'vortex', 'plasma', 'photon'])
       });
     }
   }
@@ -1147,7 +1104,7 @@ function activateSkill(skillNumber) {
           weapon: member.weapon || currentWeapon,
           speed: PROJECTILE_SPEED * 1.5, // Faster projectile
           damage: getWeaponDamage(member.weapon || currentWeapon) * superShotTotalMultiplier,
-          size: PROJECTILE_SIZE * 2, // Larger projectile
+          size: PROJECTILE_SIZE * 2 * 5, // Larger projectile
           isSuperShot: true,
           color: [255, 255, 0] // Yellow super shot
         };
@@ -1260,8 +1217,8 @@ function activateSkill(skillNumber) {
       let ultimateDamage = 100 + (damageBoost * 15);
       let ultimateAoeRadius = 400 + (aoeBoost * 20);
       
-      // Enhanced explosion effect
-      createExplosion(0, 0, 0, [255, 255, 255]);
+      // // Enhanced explosion effect
+      // createExplosion(0, 0, 0, [255, 255, 255]);
       
       // Damage all enemies with enhanced damage
       for (let enemy of enemies) {
@@ -1269,18 +1226,6 @@ function activateSkill(skillNumber) {
         createExplosion(enemy.x, enemy.y, enemy.z, [255, 255, 255]);
       }
       
-      // Spawn enhanced power-ups based on current boosts
-      let powerUpCount = 3 + Math.floor((fireRateBoost + damageBoost + aoeBoost) / 5);
-      let types = ['mirror', 'fire_rate', 'damage', 'aoe'];
-      
-      // Use the new organized spawning system for all power-ups
-      for (let i = 0; i < powerUpCount; i++) {
-        // Cycle through power-up types
-        let type = types[i % types.length];
-        
-        // Use our new helper function to spawn power-ups in an organized queue
-        spawnSpecificPowerUp(type);
-      }
       break;
   }
   
@@ -1290,22 +1235,27 @@ function activateSkill(skillNumber) {
 
 // UI Functions
 function drawMenu() {
-  push();
-  translate(0, 0, 0);
-  textSize(32);
-  textAlign(CENTER, CENTER);
-  fill(255);
-  text("SQUAD SURVIVAL", 0, -100);
-  
-  textSize(24);
-  text("Press ENTER to Start", 0, 0);
-  
-  textSize(16);
-  text("Arrow Keys: Move Squad", 0, 50);
-  text("A/S/D/F/Q/W/E/R: Activate Skills", 0, 80);
-  text("Mouse Scroll: Zoom", 0, 110);
-  text("Mouse Drag: Move Camera", 0, 140);
-  pop();
+  // Create a container for the menu
+  menuContainer = createDiv();
+  menuContainer.style('text-align', 'center');
+  menuContainer.style('color', 'white');
+  menuContainer.style('font-family', 'Arial, sans-serif');
+  menuContainer.position(width / 2 - 150, height / 2 - 150); // Center the menu
+
+  // Create and style the menu items
+  createMenuItem('SQUAD SURVIVAL', '32px', '-100px');
+  createMenuItem('Press ENTER to Start', '24px', '0px');
+  createMenuItem('Arrow Keys: Move Squad', '16px', '50px');
+  createMenuItem('A/S/D/F/Q/W/E/R: Activate Skills', '16px', '80px');
+  createMenuItem('Mouse Scroll: Zoom', '16px', '110px');
+  createMenuItem('Mouse Drag: Move Camera', '16px', '140px');
+}
+
+function createMenuItem(text, fontSize, marginTop) {
+  const item = createDiv(text);
+  item.parent(menuContainer);
+  item.style('font-size', fontSize);
+  item.style('margin-top', marginTop);
 }
 
 function drawPauseScreen() {
@@ -1637,7 +1587,7 @@ function resetGame() {
   cameraZoom = 800;
 }
 
-function updateEffects() {
+function applyEffects() {
   // Update effects lifetimes and remove dead effects
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life--;
