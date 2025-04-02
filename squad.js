@@ -12,7 +12,6 @@ let enemiesKilled = 0;
 // Font
 let gameFont;
 
-
 const MIN_ZOOM = 400;
 const MAX_ZOOM = 1200;
 let isDragging = false;
@@ -39,8 +38,6 @@ const BRIDGE_LENGTH_MULTIPLIER = 4.0; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
-
-
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -138,7 +135,7 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) - 200, // Starting near the bottom of extended bridge
+  y: BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER - 200, // Starting near the bottom of extended bridge
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
@@ -1550,9 +1547,9 @@ function createSkillBarElement() {
     skillDiv.style('height', '60px');
     skillDiv.style('background-color', 'rgba(50, 50, 50, 0.8)');
     skillDiv.style('border-radius', '5px');
-    skillDiv.style('overflow', 'hidden'); // Ensures needle is clipped outside the box
     skillDiv.html(`
-      <div id="skillKey${i}" style="font-size: 24px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
+      <div id="skillName${i}" style="font-size: 1rem; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 1;">${getSkillName(i)}</div>
+      <div id="skillKey${i}" style="font-size: 2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
       <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
       <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0;"></div>
     `);
@@ -1588,10 +1585,6 @@ function updateHUD() {
   updateTechnicalBoard();
   updateSkillBar();
 }
-
-
-
-
 
 function getSkillKey(skillNumber) {
   switch (skillNumber) {
