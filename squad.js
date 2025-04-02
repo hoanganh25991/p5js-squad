@@ -584,6 +584,26 @@ function drawGame() {
         ellipsoid(5 + random(5), 3 + random(3), 3 + random(3));
         pop();
       }
+    } else if (effect.type === "shield") {
+      // Shield effect
+      noFill();
+      stroke(0, 150, 255, 150 * (effect.life / EFFECT_DURATION));
+      strokeWeight(2);
+      for (let i = 0; i < 5; i++) {
+        push();
+        rotateX(frameCount * 0.02 + i);
+        rotateY(frameCount * 0.02 + i);
+        sphere(effect.size * 0.8);
+        pop();
+      }
+      fill(0, 150, 255, 50 * (effect.life / EFFECT_DURATION));
+      for (let i = 0; i < 3; i++) {
+        push();
+        rotateX(frameCount * 0.05 + i);
+        rotateY(frameCount * 0.05 + i);
+        torus(effect.size * 0.6, 5);
+        pop();
+      }
     }
 
     pop();
@@ -883,16 +903,18 @@ function updateEnemies() {
     targetY = avgY / squad.length;
   }
 
+  // Find the shield effect
+  let shieldEffect = effects.find((effect) => effect.type === "shield");
+  let shieldX = shieldEffect ? shieldEffect.x : targetX;
+  let shieldY = shieldEffect ? shieldEffect.y : targetY;
+  let shieldRadius = shieldEffect ? shieldEffect.size : 0; // Adjust size factor as needed
+
   for (let enemy of enemies) {
-    // Check if enemy is close to the base line
-    // const distanceToBaseY = Math.abs(BRIDGE_LENGTH / 2 - 100 - enemy.y);
+    // Check if enemy is close to the squad
     const distanceToSquadY = Math.abs(targetY - enemy.y);
 
-    if (
-      // distanceToBaseY < ENEMY_FIGHT_DISTANCE_THRESHOLD ||
-      distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD
-    ) {
-      // When close to base, directly target the squad at consistent speed
+    if (distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD) {
+      // When close to squad, directly target the squad at consistent speed
       // Calculate vector to target
       const dx = targetX - enemy.x;
       const dy = targetY - enemy.y;
@@ -904,13 +926,25 @@ function updateEnemies() {
         enemy.y += (dy / dist) * enemy.speed * 2;
       }
     } else {
-      // Regular downward movement when far from base
+      // Regular downward movement when far from squad
       enemy.y += enemy.speed;
 
       // Only bosses have side-to-side movement when far away
       if (enemy.type.includes("boss")) {
         enemy.x += sin(frameCount * 0.05) * 1;
       }
+    }
+
+    // Check if enemy is within the shield radius
+    const distanceToShield = Math.sqrt(
+      Math.pow(enemy.x - shieldX, 2) + Math.pow(enemy.y - shieldY, 2)
+    );
+
+    if (distanceToShield < shieldRadius) {
+      // Push enemy out of the shield
+      const pushFactor = (shieldRadius - distanceToShield) / distanceToShield;
+      enemy.x += (enemy.x - shieldX) * pushFactor;
+      enemy.y += (enemy.y - shieldY) * pushFactor;
     }
 
     // Keep within bridge boundaries
@@ -1290,30 +1324,37 @@ function activateSkill(skillNumber) {
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
     case 1: // Area damage - damages all enemies in view
-      let aoeRadius = 150 + aoeBoost * 15; // Base radius expanded by AOE boost
-      let aoeDamage = 30 + damageBoost * 2; // Damage enhanced by damage boost
+      // let aoeRadius = 150 + aoeBoost * 15; // Base radius expanded by AOE boost
+      // let aoeDamage = 30 + damageBoost * 2; // Damage enhanced by damage boost
 
-      // Get squad center for AOE effect
-      let squadCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        squadCenter = { x: squad[0].x, y: squad[0].y, z: squad[0].z };
-      }
+      // // Get squad center for AOE effect
+      // let squadCenter = { x: 0, y: 0, z: 0 };
+      // if (squad.length > 0) {
+      //   squadCenter = { x: squad[0].x, y: squad[0].y, z: squad[0].z };
+      // }
 
-      // Create larger explosion based on AOE boost
-      createExplosion(
-        squadCenter.x,
-        squadCenter.y,
-        squadCenter.z,
-        [255, 200, 0]
+      // // Create larger explosion based on AOE boost
+      // createExplosion(
+      //   squadCenter.x,
+      //   squadCenter.y,
+      //   squadCenter.z,
+      //   [255, 200, 0]
+      // );
+
+      // // Apply damage to all enemies in radius
+      // for (let enemy of enemies) {
+      //   let distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
+      //   if (distance <= aoeRadius) {
+      //     enemy.health -= aoeDamage;
+      //     createHitEffect(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
+      //   }
+      // }
+      currentWeapon = getNextItem(
+        WEAPON_TYPES,
+        WEAPON_TYPES.indexOf(currentWeapon)
       );
-
-      // Apply damage to all enemies in radius
-      for (let enemy of enemies) {
-        let distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
-        if (distance <= aoeRadius) {
-          enemy.health -= aoeDamage;
-          createHitEffect(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
-        }
+      for (let member of squad) {
+        member.weapon = currentWeapon;
       }
       break;
 
@@ -1362,7 +1403,7 @@ function activateSkill(skillNumber) {
           y: member.y,
           z: member.z,
           type: "shield",
-          size: member.size * (1.5 + aoeBoost * 0.1), // Shield size enhanced by AOE
+          size: member.size * (1.5 + aoeBoost * 0.1) * 5, // Shield size enhanced by AOE
           life: shieldDuration,
           member: member, // reference to follow the member
         });
@@ -1462,6 +1503,19 @@ function activateSkill(skillNumber) {
 
   // Set cooldown
   skills[skillKey].lastUsed = frameCount;
+}
+
+function getNextItem(list, currentIndex) {
+  // Ensure the list is not empty
+  if (list.length === 0) {
+    throw new Error("The list is empty.");
+  }
+
+  // Calculate the next index using modulo to loop back to the start
+  const nextIndex = (currentIndex + 1) % list.length;
+
+  // Return the item at the next index
+  return list[nextIndex];
 }
 
 function drawMenu() {
@@ -1751,7 +1805,7 @@ function getSkillKey(skillNumber) {
 function getSkillName(skillNumber) {
   switch (skillNumber) {
     case 1:
-      return "Area Damage";
+      return "Next Weapon";
     case 2:
       return "Machine Gun";
     case 3:
