@@ -12,14 +12,7 @@ let enemiesKilled = 0;
 // Font
 let gameFont;
 
-// Camera settings
-const CAMERA_OFFSET_X = 0
-const CAMERA_OFFSET_Y = 0
-const CAMERA_OFFSET_Z = 800
 
-let cameraOffsetX = CAMERA_OFFSET_X;
-let cameraOffsetY = CAMERA_OFFSET_Y;
-let cameraZoom = CAMERA_OFFSET_Z;
 const MIN_ZOOM = 400;
 const MAX_ZOOM = 1200;
 let isDragging = false;
@@ -30,6 +23,11 @@ const BRIDGE_LENGTH = 1000 * 1.5;
 const BRIDGE_WIDTH = 400 * 2;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
+
+// Camera settings
+const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
+const CAMERA_OFFSET_Y = 0;
+const CAMERA_OFFSET_Z = 800;
 
 // Debug mode for testing
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
@@ -42,10 +40,7 @@ const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies nee
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
-// Skill upgrade tracking
-let fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
-let damageBoost = DEBUG_MODE ? 10 : 0; // Increases damage (starts with some in debug mode)
-let aoeBoost = DEBUG_MODE ? 10 : 0; // Increases area of effect (starts with some in debug mode)
+
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -76,6 +71,14 @@ let squad = [];
 let squadSpeed = 5;
 let squadFireRate = 30; // frames between shots (faster firing rate)
 let lastFireTime = 0;
+
+// Skill upgrade tracking
+let fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
+let damageBoost = DEBUG_MODE ? 10 : 0; // Increases damage (starts with some in debug mode)
+let aoeBoost = DEBUG_MODE ? 10 : 0; // Increases area of effect (starts with some in debug mode)
+let cameraOffsetX = CAMERA_OFFSET_X;
+let cameraOffsetY = CAMERA_OFFSET_Y;
+let cameraZoom = CAMERA_OFFSET_Z;
 
 // Enemy properties
 let enemies = [];
@@ -135,13 +138,13 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 200, // Starting near the bottom of extended bridge
+  y: (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) - 200, // Starting near the bottom of extended bridge
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
   weapon: "blaster",
   id: Date.now(), // Unique ID for reference
-}
+};
 
 // Font loading
 function preload() {
@@ -1327,39 +1330,29 @@ function activateSkill(skillNumber) {
 }
 
 function drawMenu() {
-  gameState == "menu"
-    ? menuContainer.show()
-    : menuContainer.hide();
+  gameState == "menu" ? menuContainer.show() : menuContainer.hide();
 }
 
 function drawPauseContainer() {
-  gameState == "playing"
-    ? pauseContainer.show()
-    : pauseContainer.hide()
+  gameState == "playing" ? pauseContainer.show() : pauseContainer.hide();
 }
 
 function pauseGame() {
   gameState = "paused";
-  console.log({ gameState });
 }
 
 // Draw resume button in top right corner
 function drawResumeContainer() {
-  gameState == "paused"
-    ? resumeContainer.show()
-    : resumeContainer.hide();
+  gameState == "paused" ? resumeContainer.show() : resumeContainer.hide();
 }
 
 function resumeGame() {
   gameState = "playing";
-  console.log({ gameState });
 }
 
 function drawGameOverContainer() {
   // Set the HTML content of the game over screen
-  gameState == "gameOver"
-    ? gameOverContainer.show()
-    : gameOverContainer.hide();
+  gameState == "gameOver" ? gameOverContainer.show() : gameOverContainer.hide();
 }
 
 // Create DOM elements for HUD
@@ -1403,7 +1396,7 @@ function createMenuElement() {
   menuContainer.style("color", "white");
   menuContainer.style("padding", "20px");
   menuContainer.style("border-radius", "10px");
-  menuContainer.style("width", "250px");
+  menuContainer.style("width", "350px");
   menuContainer.style("font-family", "monospace");
   menuContainer.style("text-align", "center");
   menuContainer.style("z-index", "1000");
@@ -1414,7 +1407,7 @@ function createMenuElement() {
     <p style="font-size: 16px; margin: 0 0 10px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
     <p style="font-size: 16px; margin: 0 0 10px 0;">Mouse Scroll: Zoom</p>
     <p style="font-size: 16px; margin: 0;">Mouse Drag: Move Camera</p>
-  `)
+  `);
 }
 
 function createPauseElement() {
@@ -1435,7 +1428,7 @@ function createPauseElement() {
       <div style="background-color: white; width: 7px; height: 30px;"></div>
       <div style="background-color: white; width: 7px; height: 30px;"></div>
     </div>
-  `)
+  `);
   pauseContainer.mousePressed(pauseGame);
 }
 
@@ -1455,7 +1448,7 @@ function createResumeElement() {
   resumeContainer.style("z-index", "1000");
   resumeContainer.html(`
     <div style="width: 0; height: 0; border-left: 15px solid white; border-top: 10px solid transparent; border-bottom: 10px solid transparent;"></div>
-  `)
+  `);
   resumeContainer.mousePressed(resumeGame);
 }
 
@@ -1477,7 +1470,7 @@ function createGameOverElement() {
     <div style="margin-top: 20px;">Wave Reached: <span id="wave-reached">0</span></div>
     <div>Final Score: <span id="final-score">0</span></div>
     <div style="margin-top: 20px; font-size: 18px;">Press ENTER to Restart</div>
-  `)
+  `);
 }
 
 // Update the content of DOM HUD elements
