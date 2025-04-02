@@ -1373,6 +1373,27 @@ function createStatusBoardElements() {
   statusBoard.style("use-select", "none");
 }
 
+function updateStatusBoard() {
+  // Calculate average health
+  const avgHealth =
+    squad.length > 0
+      ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length
+      : 0;
+  const healthColor =
+    avgHealth > 50 ? "lime" : avgHealth > 25 ? "yellow" : "red";
+
+  // Update status board with HTML content
+  statusBoard.html(`
+    <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
+    <div>Wave: ${currentWave}</div>
+    <div>Score: ${score}</div>
+    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
+    <div>Enemies Killed: ${enemiesKilled}</div>
+    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
+  `);
+}
+
 function createTechnicalBoardElements() {
   // Create technical board element
   techBoard = createDiv("");
@@ -1387,6 +1408,34 @@ function createTechnicalBoardElements() {
   techBoard.style("z-index", "1000");
   techBoard.style("text-align", "right");
   techBoard.style("use-select", "none");
+}
+
+function updateTechnicalBoard() {
+  // Calculate time elapsed
+  const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+
+  // Calculate total objects
+  const objectCount =
+    squad.length + enemies.length + projectiles.length + powerUps.length;
+
+  // Add debug mode indicator if needed
+  const debugModeText = DEBUG_MODE
+    ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
+    : "";
+
+  // Update technical board with HTML content
+  techBoard.html(`
+    <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
+    ${debugModeText}
+    <div>FPS: ${Math.floor(frameRate())}</div>
+    <div>Objects: ${objectCount}</div>
+    <div>Time: ${minutes}m ${seconds}s</div>
+    <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
+    cameraOffsetY
+  )}, z=${Math.floor(cameraZoom)}</div>
+  `);
 }
 
 function createMenuElement() {
@@ -1501,9 +1550,11 @@ function createSkillBarElement() {
     skillDiv.style('height', '60px');
     skillDiv.style('background-color', 'rgba(50, 50, 50, 0.8)');
     skillDiv.style('border-radius', '5px');
+    skillDiv.style('overflow', 'hidden'); // Ensures needle is clipped outside the box
     skillDiv.html(`
       <div id="skillKey${i}" style="font-size: 24px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
-      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 20px; background-color: rgba(255, 0, 0, 0.8); transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 0;"></div>
+      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
+      <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0;"></div>
     `);
     skillBar.child(skillDiv);
   }
@@ -1517,11 +1568,16 @@ function updateSkillBar() {
 
     // Update needle rotation
     const needleDiv = select(`#needle${i}`);
-    if (needleDiv) {
-      const rotationDegree = 360 * cooldownPercent; // Full circle is 360 degrees
+    const overlayDiv = select(`#overlay${i}`);
+    if (needleDiv && overlayDiv) {
+      const rotationDegree = 360 * (1 - cooldownPercent); // Counterclockwise rotation
       needleDiv.style('transform', `translate(-50%, -100%) rotate(${rotationDegree}deg)`);
+      needleDiv.style('opacity', cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
+
+      // Update overlay gradient
+      overlayDiv.style('background', `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`);
     } else {
-      console.error(`Needle element #needle${i} not found`);
+      console.error(`Needle or overlay element for skill #${i} not found`);
     }
   }
 }
@@ -1533,54 +1589,9 @@ function updateHUD() {
   updateSkillBar();
 }
 
-function updateStatusBoard() {
-  // Calculate average health
-  const avgHealth =
-    squad.length > 0
-      ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length
-      : 0;
-  const healthColor =
-    avgHealth > 50 ? "lime" : avgHealth > 25 ? "yellow" : "red";
 
-  // Update status board with HTML content
-  statusBoard.html(`
-    <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
-    <div>Wave: ${currentWave}</div>
-    <div>Score: ${score}</div>
-    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
-    <div>Enemies Killed: ${enemiesKilled}</div>
-    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
-    <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
-  `);
-}
 
-function updateTechnicalBoard() {
-  // Calculate time elapsed
-  const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
-  const minutes = Math.floor(elapsedSeconds / 60);
-  const seconds = elapsedSeconds % 60;
 
-  // Calculate total objects
-  const objectCount =
-    squad.length + enemies.length + projectiles.length + powerUps.length;
-
-  // Add debug mode indicator if needed
-  const debugModeText = DEBUG_MODE
-    ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
-    : "";
-
-  // Update technical board with HTML content
-  techBoard.html(`
-    <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
-    ${debugModeText}
-    <div>FPS: ${Math.floor(frameRate())}</div>
-    <div>Objects: ${objectCount}</div>
-    <div>Time: ${minutes}m ${seconds}s</div>
-    <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
-    cameraOffsetY
-  )}, z=${Math.floor(cameraZoom)}</div>
-  `);
-}
 
 function getSkillKey(skillNumber) {
   switch (skillNumber) {
