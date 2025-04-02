@@ -179,7 +179,7 @@ function setup() {
   createPauseElement();
   createResumeElement();
   createGameOverElement();
-  createSkillBarElement();
+  createSkillBarElements();
 }
 
 function draw() {
@@ -1475,7 +1475,7 @@ function createGameOverElement() {
   `);
 }
 
-function createSkillBarElement() {
+function createSkillBarElements() {
   // Create skill bar container
   skillBar = createDiv('');
   skillBar.id('skill-bar');
@@ -1497,13 +1497,13 @@ function createSkillBarElement() {
     skillDiv.style('flex', '1');
     skillDiv.style('text-align', 'center');
     skillDiv.style('margin', '0 5px');
+    skillDiv.style('position', 'relative');
+    skillDiv.style('height', '60px');
     skillDiv.style('background-color', 'rgba(50, 50, 50, 0.8)');
     skillDiv.style('border-radius', '5px');
-    skillDiv.style('padding', '5px');
     skillDiv.html(`
-      <div>${getSkillName(i)}</div>
-      <div id="cooldown${i}" style="height: 40px; background-color: rgba(0, 0, 0, 0.5);"></div>
-      <div>${getSkillKey(i)}</div>
+      <div id="skillKey${i}" style="font-size: 24px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
+      <div id="cooldown${i}" style="position: absolute; bottom: 0; left: 0; right: 0; height: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 0;"></div>
     `);
     skillBar.child(skillDiv);
   }
@@ -1517,24 +1517,23 @@ function updateHUD() {
 }
 
 function updateStatusBoard() {
-  // Calculate average health
-  const avgHealth =
-    squad.length > 0
-      ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length
-      : 0;
-  const healthColor =
-    avgHealth > 50 ? "lime" : avgHealth > 25 ? "yellow" : "red";
+  for (let i = 1; i <= 8; i++) {
+    const skillKey = `skill${i}`;
+    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
+    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
 
-  // Update status board with HTML content
-  statusBoard.html(`
-    <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
-    <div>Wave: ${currentWave}</div>
-    <div>Score: ${score}</div>
-    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
-    <div>Enemies Killed: ${enemiesKilled}</div>
-    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
-    <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
-  `);
+    // Update cooldown overlay
+    const cooldownDiv = select(`#cooldown${i}`);
+    cooldownDiv.style('height', `${40 * cooldownPercent}px`);
+    cooldownDiv.style('background-color', `rgba(0, 0, 0, ${0.5 + 0.5 * cooldownPercent})`);
+
+    // Update skill key visibility
+    const skillKeyDiv = select(`#skillKey${i}`);
+    const opacity = 1 - cooldownPercent; // Clear when cooldown is 0
+    const blurAmount = 5 * cooldownPercent; // More blur when cooldown is active
+    skillKeyDiv.style('opacity', `${opacity}`);
+    skillKeyDiv.style('filter', `blur(${blurAmount}px)`);
+  }
 }
 
 function updateTechnicalBoard() {
@@ -1577,6 +1576,13 @@ function updateSkillBar() {
     const cooldownDiv = select(`#cooldown${i}`);
     cooldownDiv.style('height', `${40 * cooldownPercent}px`);
     cooldownDiv.style('background-color', `rgba(0, 0, 0, ${0.5 + 0.5 * cooldownPercent})`);
+
+    // Update skill key visibility
+    const skillKeyDiv = select(`#skillKey${i}`);
+    const opacity = 1 - cooldownPercent; // Clear when cooldown is 0
+    const blurAmount = 5 * cooldownPercent; // More blur when cooldown is active
+    skillKeyDiv.style('opacity', `${opacity}`);
+    skillKeyDiv.style('filter', `blur(${blurAmount}px)`);
   }
 }
 
