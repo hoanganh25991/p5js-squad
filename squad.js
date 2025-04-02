@@ -1462,17 +1462,13 @@ function createPauseElement() {
   pauseContainer = createDiv("");
   pauseContainer.id("pause-screen");
   pauseContainer.position(width - 60, 10); // Position in the top right corner
-  pauseContainer.style("background-color", "rgba(0, 0, 0, 0.6)");
-  pauseContainer.style("width", "50px");
-  pauseContainer.style("height", "50px");
+  pauseContainer.style("background-color", 'rgba(50, 50, 50, 0.8)');
   pauseContainer.style("border-radius", "5px");
-  pauseContainer.style("display", "flex");
-  pauseContainer.style("align-items", "center");
-  pauseContainer.style("justify-content", "center");
+  pauseContainer.style("padding", "1rem");
   pauseContainer.style("cursor", "pointer");
   pauseContainer.style("z-index", "1000");
   pauseContainer.html(`
-    <div style="display: flex; gap: 5px;">
+    <div style="display: flex; gap: 6px; align-items: center; justify-content: center">
       <div style="background-color: white; width: 7px; height: 30px;"></div>
       <div style="background-color: white; width: 7px; height: 30px;"></div>
     </div>
@@ -1485,17 +1481,13 @@ function createResumeElement() {
   resumeContainer = createDiv("");
   resumeContainer.id("resume-button");
   resumeContainer.position(width - 60, 10); // Position in the top right corner
-  resumeContainer.style("background-color", "rgba(0, 0, 0, 0.6)");
-  resumeContainer.style("width", "50px");
-  resumeContainer.style("height", "50px");
+  resumeContainer.style("background-color", 'rgba(50, 50, 50, 0.8)');
   resumeContainer.style("border-radius", "5px");
-  resumeContainer.style("display", "flex");
-  resumeContainer.style("align-items", "center");
-  resumeContainer.style("justify-content", "center");
+  resumeContainer.style("padding", "1rem");
   resumeContainer.style("cursor", "pointer");
   resumeContainer.style("z-index", "1000");
   resumeContainer.html(`
-    <div style="width: 0; height: 0; border-left: 15px solid white; border-top: 10px solid transparent; border-bottom: 10px solid transparent;"></div>
+    <div style="width: 0; height: 0; border-left: 20px solid white; border-top: 15px solid transparent; border-bottom: 15px solid transparent;"></div>
   `);
   resumeContainer.mousePressed(resumeGame);
 }
@@ -1526,7 +1518,7 @@ function createSkillBarElement() {
   skillBar = createDiv('');
   skillBar.id('skill-bar');
   skillBar.position(10, height - 90);
-  skillBar.style('background-color', 'rgba(0, 0, 0, 0.7)');
+  skillBar.style('background-color', 'rgba(50, 50, 50, 0.8)');
   skillBar.style('color', 'white');
   skillBar.style('padding', '10px');
   skillBar.style('border-radius', '5px');
