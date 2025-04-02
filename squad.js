@@ -126,14 +126,14 @@ let currentWeapon = WEAPON_TYPES[0];
 
 // Skills cooldowns in frames
 let skills = {
-  skill1: { cooldown: 0 * 600, lastUsed: 0 },
-  skill2: { cooldown: 0 * 900, lastUsed: 0 },
-  skill3: { cooldown: 0 * 1200, lastUsed: 0 },
-  skill4: { cooldown: 0 * 1500, lastUsed: 0 },
-  skill5: { cooldown: 0 * 1800, lastUsed: 0 },
-  skill6: { cooldown: 0 * 2100, lastUsed: 0 },
-  skill7: { cooldown: 0 * 2400, lastUsed: 0 },
-  skill8: { cooldown: 0 * 3000, lastUsed: 0 },
+  skill1: { cooldown: 600, lastUsed: 0 },
+  skill2: { cooldown: 900, lastUsed: 0 },
+  skill3: { cooldown: 1200, lastUsed: 0 },
+  skill4: { cooldown: 1500, lastUsed: 0 },
+  skill5: { cooldown: 1800, lastUsed: 0 },
+  skill6: { cooldown: 2100, lastUsed: 0 },
+  skill7: { cooldown: 2400, lastUsed: 0 },
+  skill8: { cooldown: 3000, lastUsed: 0 },
 };
 
 let squadLeader = {
@@ -179,6 +179,7 @@ function setup() {
   createPauseElement();
   createResumeElement();
   createGameOverElement();
+  createSkillBarElement();
 }
 
 function draw() {
@@ -217,6 +218,8 @@ function updateGame() {
 
   checkCollisions();
   checkWaveCompletion();
+
+  updateHUD();
 }
 
 function drawGame() {
@@ -504,7 +507,6 @@ function drawGame() {
   }
 
   // Draw HUD (outside of the 3D transformation)
-  drawHUD();
 }
 
 // Squad Movement and Controls
@@ -1473,22 +1475,45 @@ function createGameOverElement() {
   `);
 }
 
+function createSkillBarElement() {
+  // Create skill bar container
+  skillBar = createDiv('');
+  skillBar.id('skill-bar');
+  skillBar.position(10, height - 90);
+  skillBar.style('background-color', 'rgba(0, 0, 0, 0.7)');
+  skillBar.style('color', 'white');
+  skillBar.style('padding', '10px');
+  skillBar.style('border-radius', '5px');
+  skillBar.style('width', `${width - 20}px`);
+  skillBar.style('display', 'flex');
+  skillBar.style('justify-content', 'space-between');
+  skillBar.style('font-family', 'monospace');
+  skillBar.style('z-index', '1000');
+
+  // Create individual skill elements
+  for (let i = 1; i <= 8; i++) {
+    const skillDiv = createDiv('');
+    skillDiv.id(`skill${i}`);
+    skillDiv.style('flex', '1');
+    skillDiv.style('text-align', 'center');
+    skillDiv.style('margin', '0 5px');
+    skillDiv.style('background-color', 'rgba(50, 50, 50, 0.8)');
+    skillDiv.style('border-radius', '5px');
+    skillDiv.style('padding', '5px');
+    skillDiv.html(`
+      <div>${getSkillName(i)}</div>
+      <div id="cooldown${i}" style="height: 40px; background-color: rgba(0, 0, 0, 0.5);"></div>
+      <div>${getSkillKey(i)}</div>
+    `);
+    skillBar.child(skillDiv);
+  }
+}
+
 // Update the content of DOM HUD elements
-function drawHUD() {
-  // Update status board content
+function updateHUD() {
   updateStatusBoard();
-
-  // Update technical board content
   updateTechnicalBoard();
-
-  // Draw skill bar using p5.js canvas (keeps the original functionality)
-  push();
-  resetMatrix();
-  ortho();
-  camera();
-  translate(0, 0, 0);
-  drawSkillBar();
-  pop();
+  updateSkillBar();
 }
 
 function updateStatusBoard() {
@@ -1540,40 +1565,18 @@ function updateTechnicalBoard() {
   `);
 }
 
-function drawSkillBar() {
-  // Background for skill bar
-  fill(0, 0, 0, 150);
-  rect(10, height - 80, width - 20, 70);
 
-  // Skill cooldowns
-  textSize(16);
+
+function updateSkillBar() {
   for (let i = 1; i <= 8; i++) {
     const skillKey = `skill${i}`;
-    const cooldownRemaining =
-      skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
-    const cooldownPercent =
-      max(0, cooldownRemaining) / skills[skillKey].cooldown;
+    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
+    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
 
-    // Skill name
-    fill(255);
-    text(getSkillName(i), 20 + ((i - 1) * (width - 40)) / 8, height - 75);
-
-    // Draw skill icon and cooldown
-    fill(50, 50, 50);
-    rect(20 + ((i - 1) * (width - 40)) / 8, height - 60, (width - 60) / 8, 40);
-
-    // Cooldown overlay
-    fill(0, 0, 0, 200 * cooldownPercent);
-    rect(
-      20 + ((i - 1) * (width - 40)) / 8,
-      height - 60,
-      (width - 60) / 8,
-      40 * cooldownPercent
-    );
-
-    // Key binding
-    fill(255);
-    text(getSkillKey(i), 30 + ((i - 1) * (width - 40)) / 8, height - 40);
+    // Update cooldown overlay
+    const cooldownDiv = select(`#cooldown${i}`);
+    cooldownDiv.style('height', `${40 * cooldownPercent}px`);
+    cooldownDiv.style('background-color', `rgba(0, 0, 0, ${0.5 + 0.5 * cooldownPercent})`);
   }
 }
 
