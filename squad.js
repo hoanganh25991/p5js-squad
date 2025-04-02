@@ -93,7 +93,7 @@ const PROJECTILE_SIZE = 10;
 
 // Visual effects
 let effects = [];
-const EFFECT_DURATION = 30; // frames
+const EFFECT_DURATION = 30 * 2; // frames
 
 // Power-ups
 let powerUps = [];
@@ -119,7 +119,7 @@ const WEAPON_TYPES = Object.keys(weapons);
 const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Currently equipped weapon
-let currentWeapon = WEAPON_TYPES[0];
+let currentWeapon = WEAPON_TYPES[1];
 
 // Skills cooldowns in frames
 let skills = {
@@ -713,7 +713,7 @@ function spawnSingleEnemy() {
   }
 
   // Scale health with wave number for increasing difficulty but keep it easier
-  health = Math.floor(health * (1 + currentWave * 0.05));
+  health = Math.floor(health * (1 + currentWave * 0.05 * 10));
 
   // Enemies mostly spawn in the main lane, occasionally in power-up lane
   const spawnInPowerUpLane = random() < 0.1; // Less likely to spawn in power-up lane
@@ -802,13 +802,6 @@ function spawnPowerUps() {
       type = random(SKILL_TYPES);
     }
 
-    spawnSpecificPowerUp(type);
-    lastPowerUpSpawn = frameCount;
-  }
-}
-
-// Helper function to spawn a specific power-up type
-function spawnSpecificPowerUp(type) {
   // Add value for skill power-ups
   let value = 1; // Default value
   if (type === "fire_rate") value = 3; // +3 fire rate
@@ -836,6 +829,8 @@ function spawnSpecificPowerUp(type) {
     pulsePhase: random(0, TWO_PI), // For pulsing effect
     orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
   });
+    lastPowerUpSpawn = frameCount;
+  }
 }
 
 function updatePowerUps() {
@@ -1383,6 +1378,7 @@ function updateStatusBoard() {
     <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
     <div>Wave: ${currentWave}</div>
     <div>Score: ${score}</div>
+    <div>Weapon: ${currentWeapon}</div>
     <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
     <div>Enemies Killed: ${enemiesKilled}</div>
     <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
@@ -1735,7 +1731,8 @@ function resetGame() {
     plasma: false,
     photon: false,
   };
-  currentWeapon = "blaster";
+
+  currentWeapon = WEAPON_TYPES[1];
 
   // Reset skills
   for (let i = 1; i <= 8; i++) {
