@@ -101,12 +101,12 @@ const EFFECT_DURATION = 30 * 0.5; // frames
 
 // Power-ups
 let powerUps = [];
-const POWER_UP_SIZE = 45;
+const POWER_UP_SIZE = 60;
 const POWER_UP_SPAWN_RATE = 90 * 1; // frames between power-up spawns (continuous spawning)
 const WEAPON_SPAWN_CHANCE = DEBUG_MODE ? 1 : 0.1; // chance for weapon
 const SKILL_SPAWN_CHANCE = 0.3; // chance for skill
 let lastPowerUpSpawn = 0;
-const POWER_UP_SPEED = 3 * 4; // Speed at which power-ups move down the lane
+const POWER_UP_SPEED = 3 * 2; // Speed at which power-ups move down the lane
 
 // Weapons inventory (false means locked, true means available)
 let weapons = {
