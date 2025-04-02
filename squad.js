@@ -587,21 +587,24 @@ function drawGame() {
     } else if (effect.type === "shield") {
       // Shield effect
       noFill();
-      stroke(0, 150, 255, 150 * (effect.life / EFFECT_DURATION));
-      strokeWeight(2);
-      for (let i = 0; i < 5; i++) {
+      stroke(0, 150, 255, 100 * (effect.life / EFFECT_DURATION)); // Reduced opacity
+      strokeWeight(1); // Thinner lines for less density
+      for (let i = 0; i < 3; i++) {
+        // Fewer spheres for less density
         push();
         rotateX(frameCount * 0.02 + i);
         rotateY(frameCount * 0.02 + i);
         sphere(effect.size * 0.8);
         pop();
       }
-      fill(0, 150, 255, 50 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 3; i++) {
+
+      fill(0, 150, 255, 30 * (effect.life / EFFECT_DURATION)); // Reduced fill opacity
+      for (let i = 0; i < 2; i++) {
+        // Fewer toruses for less density
         push();
         rotateX(frameCount * 0.05 + i);
         rotateY(frameCount * 0.05 + i);
-        torus(effect.size * 0.6, 5);
+        torus(effect.size * 0.6, 3); // Smaller torus for less visual clutter
         pop();
       }
     }
@@ -1393,7 +1396,7 @@ function activateSkill(skillNumber) {
       let shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
       let shieldDuration = 300 + fireRateBoost * 30; // Duration enhanced by fire rate (5s + boost)
 
-      for (let member of squad) {
+      for (let member of [squad[0]]) {
         member.shielded = true;
         member.shieldHealth = shieldStrength;
 
@@ -1404,7 +1407,7 @@ function activateSkill(skillNumber) {
           z: member.z,
           type: "shield",
           size: member.size * (1.5 + aoeBoost * 0.1) * 5, // Shield size enhanced by AOE
-          life: shieldDuration,
+          life: shieldDuration * 5,
           member: member, // reference to follow the member
         });
       }
