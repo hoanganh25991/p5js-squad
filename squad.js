@@ -110,8 +110,8 @@ const POWER_UP_SPEED = 3 * 2; // Speed at which power-ups move down the lane
 
 // Weapons inventory (false means locked, true means available)
 let weapons = {
-  blaster: true, // Default starter weapon
-  thunderbolt: false,
+  thunderbolt: true,
+  blaster: false,
   inferno: false,
   frostbite: false,
   vortex: false,
@@ -123,7 +123,7 @@ const WEAPON_TYPES = Object.keys(weapons);
 const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Currently equipped weapon
-let currentWeapon = WEAPON_TYPES[2];
+let currentWeapon = WEAPON_TYPES[0];
 
 // Skills cooldowns in frames
 // let skills = {
@@ -138,7 +138,7 @@ let currentWeapon = WEAPON_TYPES[2];
 // };
 let skills = {
   skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill2: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill2: { cooldown: 100 * (1 + currentWave / 5), lastUsed: 0 },
   skill3: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill4: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
@@ -427,11 +427,7 @@ function drawGame() {
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
         translate(0, 0, proj.size * 0.4);
-        box(
-          proj.size * 0.2,
-          proj.size * 0.2,
-          proj.size * 0.8
-        );
+        box(proj.size * 0.2, proj.size * 0.2, proj.size * 0.8);
         pop();
       }
     } else if (proj.weapon === "vortex") {
@@ -1323,7 +1319,7 @@ function activateSkill(skillNumber) {
 
     case 2: // Super shot - fewer but more powerful shots
       // Visual effect around squad members
-      for (let member of squad) {
+      for (let member of [squad[0]]) {
         createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
 
         // Fire a single powerful shot
@@ -1333,13 +1329,22 @@ function activateSkill(skillNumber) {
           z: member.z + member.size / 2,
           weapon: currentWeapon,
           speed: PROJECTILE_SPEED * 1.5, // Faster projectile
-          damage:
-            getWeaponDamage(currentWeapon) + 100,
-          size: PROJECTILE_SIZE * 5, // Larger projectile
+          damage: getWeaponDamage(currentWeapon) + 100,
+          size: PROJECTILE_SIZE * 3, // Larger projectile
           color: [255, 255, 0], // Yellow super shot
         };
 
-        projectiles.push(projectile);
+        const spacing = projectile.size + STANDARD_ENEMY_SIZE / 2;
+        const total = Math.floor(BRIDGE_WIDTH / spacing / 2) + 1;
+        for (j = 0; j < 5; j++) {
+          for (i = -total; i < total; i++) {
+            projectiles.push({
+              ...projectile,
+              x: projectile.x - spacing * i,
+              y: projectile.y - 100 * j,
+            });
+          }
+        }
       }
       break;
 
@@ -1748,7 +1753,7 @@ function getSkillName(skillNumber) {
     case 1:
       return "Area Damage";
     case 2:
-      return "Fire Rate+";
+      return "Machine Gun";
     case 3:
       return "Shield";
     case 4:
