@@ -179,7 +179,7 @@ function setup() {
   createPauseElement();
   createResumeElement();
   createGameOverElement();
-  createSkillBarElements();
+  createSkillBarElement();
 }
 
 function draw() {
@@ -1475,7 +1475,7 @@ function createGameOverElement() {
   `);
 }
 
-function createSkillBarElements() {
+function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv('');
   skillBar.id('skill-bar');
@@ -1503,9 +1503,26 @@ function createSkillBarElements() {
     skillDiv.style('border-radius', '5px');
     skillDiv.html(`
       <div id="skillKey${i}" style="font-size: 24px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(i)}</div>
-      <div id="cooldown${i}" style="position: absolute; bottom: 0; left: 0; right: 0; height: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 0;"></div>
+      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 20px; background-color: rgba(255, 0, 0, 0.8); transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 0;"></div>
     `);
     skillBar.child(skillDiv);
+  }
+}
+
+function updateSkillBar() {
+  for (let i = 1; i <= 8; i++) {
+    const skillKey = `skill${i}`;
+    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
+    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
+
+    // Update needle rotation
+    const needleDiv = select(`#needle${i}`);
+    if (needleDiv) {
+      const rotationDegree = 360 * cooldownPercent; // Full circle is 360 degrees
+      needleDiv.style('transform', `translate(-50%, -100%) rotate(${rotationDegree}deg)`);
+    } else {
+      console.error(`Needle element #needle${i} not found`);
+    }
   }
 }
 
@@ -1517,23 +1534,24 @@ function updateHUD() {
 }
 
 function updateStatusBoard() {
-  for (let i = 1; i <= 8; i++) {
-    const skillKey = `skill${i}`;
-    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
-    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
+  // Calculate average health
+  const avgHealth =
+    squad.length > 0
+      ? squad.reduce((sum, member) => sum + member.health, 0) / squad.length
+      : 0;
+  const healthColor =
+    avgHealth > 50 ? "lime" : avgHealth > 25 ? "yellow" : "red";
 
-    // Update cooldown overlay
-    const cooldownDiv = select(`#cooldown${i}`);
-    cooldownDiv.style('height', `${40 * cooldownPercent}px`);
-    cooldownDiv.style('background-color', `rgba(0, 0, 0, ${0.5 + 0.5 * cooldownPercent})`);
-
-    // Update skill key visibility
-    const skillKeyDiv = select(`#skillKey${i}`);
-    const opacity = 1 - cooldownPercent; // Clear when cooldown is 0
-    const blurAmount = 5 * cooldownPercent; // More blur when cooldown is active
-    skillKeyDiv.style('opacity', `${opacity}`);
-    skillKeyDiv.style('filter', `blur(${blurAmount}px)`);
-  }
+  // Update status board with HTML content
+  statusBoard.html(`
+    <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
+    <div>Wave: ${currentWave}</div>
+    <div>Score: ${score}</div>
+    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
+    <div>Enemies Killed: ${enemiesKilled}</div>
+    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
+  `);
 }
 
 function updateTechnicalBoard() {
@@ -1562,28 +1580,6 @@ function updateTechnicalBoard() {
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
   `);
-}
-
-
-
-function updateSkillBar() {
-  for (let i = 1; i <= 8; i++) {
-    const skillKey = `skill${i}`;
-    const cooldownRemaining = skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
-    const cooldownPercent = max(0, cooldownRemaining) / skills[skillKey].cooldown;
-
-    // Update cooldown overlay
-    const cooldownDiv = select(`#cooldown${i}`);
-    cooldownDiv.style('height', `${40 * cooldownPercent}px`);
-    cooldownDiv.style('background-color', `rgba(0, 0, 0, ${0.5 + 0.5 * cooldownPercent})`);
-
-    // Update skill key visibility
-    const skillKeyDiv = select(`#skillKey${i}`);
-    const opacity = 1 - cooldownPercent; // Clear when cooldown is 0
-    const blurAmount = 5 * cooldownPercent; // More blur when cooldown is active
-    skillKeyDiv.style('opacity', `${opacity}`);
-    skillKeyDiv.style('filter', `blur(${blurAmount}px)`);
-  }
 }
 
 function getSkillKey(skillNumber) {
