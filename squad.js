@@ -13,9 +13,13 @@ let enemiesKilled = 0;
 let gameFont;
 
 // Camera settings
-let cameraOffsetX = 0;
-let cameraOffsetY = 0;
-let cameraZoom = 800;
+const CAMERA_OFFSET_X = 0
+const CAMERA_OFFSET_Y = 0
+const CAMERA_OFFSET_Z = 800
+
+let cameraOffsetX = CAMERA_OFFSET_X;
+let cameraOffsetY = CAMERA_OFFSET_Y;
+let cameraZoom = CAMERA_OFFSET_Z;
 const MIN_ZOOM = 400;
 const MAX_ZOOM = 1200;
 let isDragging = false;
@@ -129,6 +133,16 @@ let skills = {
   skill8: { cooldown: 0 * 3000, lastUsed: 0 },
 };
 
+let squadLeader = {
+  x: 0,
+  y: (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 200, // Starting near the bottom of extended bridge
+  z: 0,
+  size: SQUAD_SIZE,
+  health: SQUAD_HEALTH, // Use configurable health
+  weapon: "blaster",
+  id: Date.now(), // Unique ID for reference
+}
+
 // Font loading
 function preload() {
   // Load a default system font
@@ -145,15 +159,7 @@ function setup() {
   textFont(gameFont);
 
   // Initialize the squad with a single member
-  squad.push({
-    x: 0,
-    y: (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 200, // Starting near the bottom of extended bridge
-    z: 0,
-    size: SQUAD_SIZE,
-    health: SQUAD_HEALTH, // Use configurable health
-    weapon: "blaster",
-    id: Date.now(), // Unique ID for reference
-  });
+  squad.push(squadLeader);
 
   // Set perspective for better 3D view
   perspective(PI / 3.0, width / height, 0.1, 5000);
@@ -163,7 +169,9 @@ function setup() {
   gameStartTime = frameCount;
 
   // Create the HUD DOM elements
-  createHUDElements();
+  createStatusBoardElements();
+  createTechnicalBoardElements();
+  // Create Menu - Control
   createMenuElement();
   createPauseElement();
   createResumeElement();
@@ -174,7 +182,7 @@ function draw() {
   background(0);
 
   // Apply camera transformations
-  translate(cameraOffsetX, cameraOffsetY - 200, -cameraZoom - 330);
+  translate(cameraOffsetX, -cameraOffsetY, -cameraZoom);
   rotateX(PI / 4); // Angle the view down to see the bridge
 
   // 3D
@@ -1355,7 +1363,7 @@ function drawGameOverContainer() {
 }
 
 // Create DOM elements for HUD
-function createHUDElements() {
+function createStatusBoardElements() {
   // Create status board element
   statusBoard = createDiv("");
   statusBoard.id("status-board");
@@ -1367,7 +1375,10 @@ function createHUDElements() {
   statusBoard.style("width", "250px");
   statusBoard.style("font-family", "monospace");
   statusBoard.style("z-index", "1000");
+  statusBoard.style("use-select", "none");
+}
 
+function createTechnicalBoardElements() {
   // Create technical board element
   techBoard = createDiv("");
   techBoard.id("tech-board");
@@ -1379,6 +1390,8 @@ function createHUDElements() {
   techBoard.style("width", "250px");
   techBoard.style("font-family", "monospace");
   techBoard.style("z-index", "1000");
+  techBoard.style("text-align", "right");
+  techBoard.style("use-select", "none");
 }
 
 function createMenuElement() {
@@ -1525,13 +1538,12 @@ function updateTechnicalBoard() {
   techBoard.html(`
     <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
     ${debugModeText}
+    <div>FPS: ${Math.floor(frameRate())}</div>
+    <div>Objects: ${objectCount}</div>
+    <div>Time: ${minutes}m ${seconds}s</div>
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
-    <div>Time: ${minutes}m ${seconds}s</div>
-    <div>FPS: ${Math.floor(frameRate())}</div>
-    <div>Objects: ${objectCount}</div>
-    <div>Wave: ${currentWave}</div>
   `);
 }
 
@@ -1739,9 +1751,9 @@ function resetGame() {
   }
 
   // Reset camera
-  cameraOffsetX = 0;
-  cameraOffsetY = 0;
-  cameraZoom = 800;
+  cameraOffsetX = CAMERA_OFFSET_X;
+  cameraOffsetY = CAMERA_OFFSET_Y;
+  cameraZoom = CAMERA_OFFSET_Z;
 }
 
 function applyEffects() {
