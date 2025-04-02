@@ -1360,7 +1360,6 @@ function createStatusBoardElements() {
   statusBoard = createDiv("");
   statusBoard.id("status-board");
   statusBoard.position(10, 10);
-  statusBoard.style("background-color", "rgba(0,0,0,0.7)");
   statusBoard.style("color", "white");
   statusBoard.style("padding", "10px");
   statusBoard.style("border-radius", "5px");
@@ -1396,7 +1395,6 @@ function createTechnicalBoardElements() {
   techBoard = createDiv("");
   techBoard.id("tech-board");
   techBoard.position(windowWidth - 270, 10);
-  techBoard.style("background-color", "rgba(0,0,0,0.7)");
   techBoard.style("color", "white");
   techBoard.style("padding", "10px");
   techBoard.style("border-radius", "5px");
