@@ -40,7 +40,7 @@ const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
 const ENEMY_FIGHT_DISTANCE_THRESHOLD =
-  (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 15;
+  (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 20;
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -92,12 +92,12 @@ const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
 
 // Projectiles
 let projectiles = [];
-const PROJECTILE_SPEED = 12 * 3; // Faster projectiles
+const PROJECTILE_SPEED = 12 * 1.5; // Faster projectiles
 const PROJECTILE_SIZE = STANDARD_ENEMY_SIZE * 1.2;
 
 // Visual effects
 let effects = [];
-const EFFECT_DURATION = 30; // frames
+const EFFECT_DURATION = 30 * 0.5; // frames
 
 // Power-ups
 let powerUps = [];
@@ -123,18 +123,28 @@ const WEAPON_TYPES = Object.keys(weapons);
 const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Currently equipped weapon
-let currentWeapon = WEAPON_TYPES[3];
+let currentWeapon = WEAPON_TYPES[2];
 
 // Skills cooldowns in frames
+// let skills = {
+//   skill1: { cooldown: 600, lastUsed: 0 },
+//   skill2: { cooldown: 900, lastUsed: 0 },
+//   skill3: { cooldown: 1200, lastUsed: 0 },
+//   skill4: { cooldown: 1500, lastUsed: 0 },
+//   skill5: { cooldown: 1800, lastUsed: 0 },
+//   skill6: { cooldown: 2100, lastUsed: 0 },
+//   skill7: { cooldown: 2400, lastUsed: 0 },
+//   skill8: { cooldown: 3000, lastUsed: 0 },
+// };
 let skills = {
-  skill1: { cooldown: 600, lastUsed: 0 },
-  skill2: { cooldown: 900, lastUsed: 0 },
-  skill3: { cooldown: 1200, lastUsed: 0 },
-  skill4: { cooldown: 1500, lastUsed: 0 },
-  skill5: { cooldown: 1800, lastUsed: 0 },
-  skill6: { cooldown: 2100, lastUsed: 0 },
-  skill7: { cooldown: 2400, lastUsed: 0 },
-  skill8: { cooldown: 3000, lastUsed: 0 },
+  skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill2: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill3: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill4: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill6: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill7: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill8: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
 };
 
 let squadLeader = {
@@ -342,7 +352,7 @@ function drawGame() {
     if (aoeBoost > 5) {
       // Add blue glow for high AOE
       projColor[2] = min(255, projColor[2] + 100);
-      enhancedSize *= 1 + aoeBoost / 5;
+      enhancedSize *= 1.3;
       hasGlowEffect = true;
     }
 
@@ -507,7 +517,8 @@ function drawGame() {
         push();
         translate(random(-10, 10), random(-10, 10), random(0, 20));
         rotateX(frameCount * 0.05);
-        torus(5 + random(5), 2);
+        // torus(5 + random(5), 2);
+        sphere(5 + random(5));
         pop();
       }
       for (let i = 0; i < 3; i++) {
@@ -704,15 +715,15 @@ function updateSquad() {
 }
 
 function fireWeapon(squadMember) {
-  const weapon = squadMember.weapon || currentWeapon;
+  // const weapon = squadMember.weapon || currentWeapon;
 
   let projectile = {
     x: squadMember.x,
     y: squadMember.y,
     z: squadMember.z + squadMember.size / 2,
-    weapon: weapon,
+    weapon: currentWeapon,
     speed: PROJECTILE_SPEED,
-    damage: getWeaponDamage(weapon),
+    damage: getWeaponDamage(currentWeapon),
   };
 
   projectiles.push(projectile);
@@ -878,11 +889,11 @@ function updateEnemies() {
 
   for (let enemy of enemies) {
     // Check if enemy is close to the base line
-    const distanceToBaseY = Math.abs(BRIDGE_LENGTH / 2 - 100 - enemy.y);
+    // const distanceToBaseY = Math.abs(BRIDGE_LENGTH / 2 - 100 - enemy.y);
     const distanceToSquadY = Math.abs(targetY - enemy.y);
 
     if (
-      distanceToBaseY < ENEMY_FIGHT_DISTANCE_THRESHOLD ||
+      // distanceToBaseY < ENEMY_FIGHT_DISTANCE_THRESHOLD ||
       distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD
     ) {
       // When close to base, directly target the squad at consistent speed
@@ -1016,22 +1027,23 @@ function checkCollisions() {
           createThunderEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "vortex") {
           // Vortex AoE effect - apply damage to nearby enemies
-          for (let k = enemies.length - 1; k >= 0; k--) {
-            let nearbyEnemy = enemies[k];
-            if (
-              dist(
-                enemy.x,
-                enemy.y,
-                enemy.z,
-                nearbyEnemy.x,
-                nearbyEnemy.y,
-                nearbyEnemy.z
-              ) < 100
-            ) {
-              nearbyEnemy.health -= proj.damage * 0.5;
-              createVortexEffect(enemy.x, enemy.y, enemy.z);
-            }
-          }
+          // for (let k = enemies.length - 1; k >= 0; k--) {
+          //   let nearbyEnemy = enemies[k];
+          //   if (
+          //     dist(
+          //       enemy.x,
+          //       enemy.y,
+          //       enemy.z,
+          //       nearbyEnemy.x,
+          //       nearbyEnemy.y,
+          //       nearbyEnemy.z
+          //     ) < 100
+          //   ) {
+          //     nearbyEnemy.health -= proj.damage * 0.5;
+          //     createVortexEffect(enemy.x, enemy.y, enemy.z);
+          //   }
+          // }
+          createVortexEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "plasma") {
           // Plasma shotgun spread effect
           createPlasmaEffect(enemy.x, enemy.y, enemy.z);
@@ -1875,8 +1887,6 @@ function resetGame() {
     plasma: false,
     photon: false,
   };
-
-  currentWeapon = WEAPON_TYPES[1];
 
   // Reset skills
   for (let i = 1; i <= 8; i++) {
