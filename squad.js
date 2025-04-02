@@ -123,7 +123,7 @@ const WEAPON_TYPES = Object.keys(weapons);
 const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Currently equipped weapon
-let currentWeapon = WEAPON_TYPES[1];
+let currentWeapon = WEAPON_TYPES[3];
 
 // Skills cooldowns in frames
 let skills = {
@@ -143,7 +143,7 @@ let squadLeader = {
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH * 10, // Use configurable health
-  weapon: WEAPON_TYPES[1],
+  weapon: currentWeapon,
   id: Date.now(), // Unique ID for reference
 };
 
@@ -633,71 +633,73 @@ function drawGame() {
 
 // Squad Movement and Controls
 function updateSquad() {
+  if (squad.length == 0) {
+    return;
+  }
   // Control main squad member (first in the array)
+
+  let mainMember = squad[0];
+
+  // Arrow key movement
+  if (keyIsDown(LEFT_ARROW)) {
+    mainMember.x -= squadSpeed;
+  }
+  if (keyIsDown(RIGHT_ARROW)) {
+    mainMember.x += squadSpeed;
+  }
+  if (keyIsDown(UP_ARROW)) {
+    mainMember.y -= squadSpeed;
+  }
+  if (keyIsDown(DOWN_ARROW)) {
+    mainMember.y += squadSpeed;
+  }
+
+  // Constrain to bridge boundaries
+  const leftBound = -BRIDGE_WIDTH / 2;
+  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+
+  mainMember.x = constrain(mainMember.x, leftBound, rightBound);
+  mainMember.y = constrain(mainMember.y, topBound, bottomBound);
+
+  // Formation - arrange other squad members around the leader
   if (squad.length > 0) {
-    let mainMember = squad[0];
+    const spacing = SQUAD_SIZE * 1.3; // Spacing between members
 
-    // Arrow key movement
-    if (keyIsDown(LEFT_ARROW)) {
-      mainMember.x -= squadSpeed;
-    }
-    if (keyIsDown(RIGHT_ARROW)) {
-      mainMember.x += squadSpeed;
-    }
-    if (keyIsDown(UP_ARROW)) {
-      mainMember.y -= squadSpeed;
-    }
-    if (keyIsDown(DOWN_ARROW)) {
-      mainMember.y += squadSpeed;
-    }
+    // Position all members in grid formation
+    for (let i = 0; i < squad.length; i++) {
+      // Calculate row and column for each member
+      const row = Math.floor(i / MAX_SQUAD_MEMBERS_PER_ROW);
+      const col = i % MAX_SQUAD_MEMBERS_PER_ROW;
 
-    // Constrain to bridge boundaries
-    const leftBound = -BRIDGE_WIDTH / 2;
-    const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
-    const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-    const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+      // For the leader, we don't change position (controlled by arrow keys)
+      // For other members, we position them relative to the leader
+      if (i === 0) {
+        // The leader's position is already set by arrow key movement
+        // Don't override it here or movement will break
+      } else {
+        // Calculate offset from leader's actual position
+        const leaderX = mainMember.x;
+        const leaderY = mainMember.y;
 
-    mainMember.x = constrain(mainMember.x, leftBound, rightBound);
-    mainMember.y = constrain(mainMember.y, topBound, bottomBound);
+        // Position based on row and column but relative to leader's actual position
+        squad[i].x = leaderX + col * spacing;
+        squad[i].y = leaderY + row * spacing;
 
-    // Formation - arrange other squad members around the leader
-    if (squad.length > 0) {
-      const spacing = SQUAD_SIZE * 1.3; // Spacing between members
-
-      // Position all members in grid formation
-      for (let i = 0; i < squad.length; i++) {
-        // Calculate row and column for each member
-        const row = Math.floor(i / MAX_SQUAD_MEMBERS_PER_ROW);
-        const col = i % MAX_SQUAD_MEMBERS_PER_ROW;
-
-        // For the leader, we don't change position (controlled by arrow keys)
-        // For other members, we position them relative to the leader
-        if (i === 0) {
-          // The leader's position is already set by arrow key movement
-          // Don't override it here or movement will break
-        } else {
-          // Calculate offset from leader's actual position
-          const leaderX = mainMember.x;
-          const leaderY = mainMember.y;
-
-          // Position based on row and column but relative to leader's actual position
-          squad[i].x = leaderX + col * spacing;
-          squad[i].y = leaderY + row * spacing;
-
-          // Constrain other members to stay on the bridge
-          squad[i].x = constrain(squad[i].x, leftBound, rightBound);
-          squad[i].y = constrain(squad[i].y, topBound, bottomBound);
-        }
+        // Constrain other members to stay on the bridge
+        squad[i].x = constrain(squad[i].x, leftBound, rightBound);
+        squad[i].y = constrain(squad[i].y, topBound, bottomBound);
       }
     }
+  }
 
-    // Auto-firing
-    if (frameCount - lastFireTime > squadFireRate) {
-      for (let member of squad) {
-        fireWeapon(member);
-      }
-      lastFireTime = frameCount;
+  // Auto-firing
+  if (frameCount - lastFireTime > squadFireRate) {
+    for (let member of squad) {
+      fireWeapon(member);
     }
+    lastFireTime = frameCount;
   }
 }
 
