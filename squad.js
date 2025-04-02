@@ -177,20 +177,18 @@ function draw() {
   translate(cameraOffsetX, cameraOffsetY - 200, -cameraZoom - 330);
   rotateX(PI / 4); // Angle the view down to see the bridge
 
+  // 3D
   drawGame();
+
+  if (gameState == "playing") {
+    updateGame();
+  }
+
+  // DOM
   drawMenu();
   drawPauseContainer();
   drawResumeContainer();
   drawGameOverContainer();
-
-  switch (gameState) {
-    case "playing":
-      updateGame();
-      break;
-    case "menu":
-    case "paused":
-    case "gameOver":
-  }
 }
 
 // Main game logic functions
@@ -1322,64 +1320,38 @@ function activateSkill(skillNumber) {
 
 function drawMenu() {
   gameState == "menu"
-    ? menuContainer.html(`
-    <h2 style="margin: 0 0 20px 0;">SQUAD SURVIVAL</h2>
-    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER to Start</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">Arrow Keys: Move Squad</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">Mouse Scroll: Zoom</p>
-    <p style="font-size: 16px; margin: 0;">Mouse Drag: Move Camera</p>
-  `) :  menuContainer.hidden = true;
+    ? menuContainer.show()
+    : menuContainer.hide();
 }
 
 function drawPauseContainer() {
   gameState == "playing"
-    ? pauseContainer.html(`
-    <div style="display: flex; gap: 5px;">
-      <div style="background-color: white; width: 7px; height: 30px;"></div>
-      <div style="background-color: white; width: 7px; height: 30px;"></div>
-    </div>
-  `)
-    : pauseContainer.hidden = true;
-
-  // Add a click event to toggle pause
-  pauseContainer.mousePressed(pauseGame);
+    ? pauseContainer.show()
+    : pauseContainer.hide()
 }
 
 function pauseGame() {
-  console.log("Pausing game");
   gameState = "paused";
-  console.log({ gameState });
-}
-
-function resumeGame() {
-  console.log("Resuming game");
-  gameState = "playing";
   console.log({ gameState });
 }
 
 // Draw resume button in top right corner
 function drawResumeContainer() {
   gameState == "paused"
-    ? resumeContainer.html(`
-      <div style="width: 0; height: 0; border-left: 15px solid white; border-top: 10px solid transparent; border-bottom: 10px solid transparent;"></div>
-    `)
-    : resumeContainer.hidden = true;
+    ? resumeContainer.show()
+    : resumeContainer.hide();
+}
 
-  // Add a click event to toggle resume
-  resumeContainer.mousePressed(resumeGame);
+function resumeGame() {
+  gameState = "playing";
+  console.log({ gameState });
 }
 
 function drawGameOverContainer() {
   // Set the HTML content of the game over screen
   gameState == "gameOver"
-    ? gameOverContainer.html(`
-    <h2 style="color: red; margin: 0;">GAME OVER</h2>
-    <div style="margin-top: 20px;">Wave Reached: <span id="wave-reached">0</span></div>
-    <div>Final Score: <span id="final-score">0</span></div>
-    <div style="margin-top: 20px; font-size: 18px;">Press ENTER to Restart</div>
-  `)
-    : gameOverContainer.hidden = true;
+    ? gameOverContainer.show()
+    : gameOverContainer.hide();
 }
 
 // Create DOM elements for HUD
@@ -1422,19 +1394,36 @@ function createMenuElement() {
   menuContainer.style("font-family", "monospace");
   menuContainer.style("text-align", "center");
   menuContainer.style("z-index", "1000");
+  menuContainer.html(`
+    <h2 style="margin: 0 0 20px 0;">SQUAD SURVIVAL</h2>
+    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER to Start</p>
+    <p style="font-size: 16px; margin: 0 0 10px 0;">Arrow Keys: Move Squad</p>
+    <p style="font-size: 16px; margin: 0 0 10px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
+    <p style="font-size: 16px; margin: 0 0 10px 0;">Mouse Scroll: Zoom</p>
+    <p style="font-size: 16px; margin: 0;">Mouse Drag: Move Camera</p>
+  `)
 }
+
 function createPauseElement() {
   pauseContainer = createDiv("");
   pauseContainer.id("pause-screen");
-  pauseContainer.position(width / 2 - 125, height / 2 - 50); // Center the pause screen
-  pauseContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
-  pauseContainer.style("color", "white");
-  pauseContainer.style("padding", "20px");
-  pauseContainer.style("border-radius", "10px");
-  pauseContainer.style("width", "250px");
-  pauseContainer.style("font-family", "monospace");
-  pauseContainer.style("text-align", "center");
+  pauseContainer.position(width - 60, 10); // Position in the top right corner
+  pauseContainer.style("background-color", "rgba(0, 0, 0, 0.6)");
+  pauseContainer.style("width", "50px");
+  pauseContainer.style("height", "50px");
+  pauseContainer.style("border-radius", "5px");
+  pauseContainer.style("display", "flex");
+  pauseContainer.style("align-items", "center");
+  pauseContainer.style("justify-content", "center");
+  pauseContainer.style("cursor", "pointer");
   pauseContainer.style("z-index", "1000");
+  pauseContainer.html(`
+    <div style="display: flex; gap: 5px;">
+      <div style="background-color: white; width: 7px; height: 30px;"></div>
+      <div style="background-color: white; width: 7px; height: 30px;"></div>
+    </div>
+  `)
+  pauseContainer.mousePressed(pauseGame);
 }
 
 function createResumeElement() {
@@ -1451,6 +1440,10 @@ function createResumeElement() {
   resumeContainer.style("justify-content", "center");
   resumeContainer.style("cursor", "pointer");
   resumeContainer.style("z-index", "1000");
+  resumeContainer.html(`
+    <div style="width: 0; height: 0; border-left: 15px solid white; border-top: 10px solid transparent; border-bottom: 10px solid transparent;"></div>
+  `)
+  resumeContainer.mousePressed(resumeGame);
 }
 
 function createGameOverElement() {
@@ -1466,6 +1459,12 @@ function createGameOverElement() {
   gameOverContainer.style("text-align", "center");
   gameOverContainer.style("font-family", "monospace");
   gameOverContainer.style("z-index", "1000");
+  gameOverContainer.html(`
+    <h2 style="color: red; margin: 0;">GAME OVER</h2>
+    <div style="margin-top: 20px;">Wave Reached: <span id="wave-reached">0</span></div>
+    <div>Final Score: <span id="final-score">0</span></div>
+    <div style="margin-top: 20px; font-size: 18px;">Press ENTER to Restart</div>
+  `)
 }
 
 // Update the content of DOM HUD elements
