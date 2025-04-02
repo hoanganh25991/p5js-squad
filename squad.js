@@ -362,14 +362,14 @@ function drawGame() {
       push();
       noStroke();
       fill(projColor[0], projColor[1], projColor[2], 150);
-      sphere(PROJECTILE_SIZE * 1.5 * enhancedSize);
+      sphere(proj.size * 1.5 * enhancedSize);
       pop();
 
       // Add trail effect
       push();
       translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
       fill(projColor[0], projColor[1], projColor[2], 100);
-      sphere(PROJECTILE_SIZE * 1.2 * enhancedSize);
+      sphere(proj.size * 1.2 * enhancedSize);
       pop();
 
       // For very powerful bullets, add an additional effect
@@ -377,7 +377,7 @@ function drawGame() {
         push();
         translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
         fill(projColor[0], projColor[1], projColor[2], 70);
-        sphere(PROJECTILE_SIZE * 0.9 * enhancedSize);
+        sphere(proj.size * 0.9 * enhancedSize);
         pop();
       }
     }
@@ -392,7 +392,7 @@ function drawGame() {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
-        torus(PROJECTILE_SIZE * enhancedSize, PROJECTILE_SIZE * 0.1);
+        torus(proj.size * enhancedSize, proj.size * 0.1);
         pop();
       }
     } else if (proj.weapon === "thunderbolt") {
@@ -416,9 +416,8 @@ function drawGame() {
       for (let i = 0; i < 5; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
-        rotateX(frameCount * 0.1);
         rotateY(frameCount * 0.1);
-        cone(PROJECTILE_SIZE * 0.5, PROJECTILE_SIZE * enhancedSize);
+        cone(proj.size * 0.5, proj.size * enhancedSize);
         pop();
       }
     } else if (proj.weapon === "frostbite") {
@@ -427,11 +426,11 @@ function drawGame() {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
-        translate(0, 0, PROJECTILE_SIZE * 0.4);
+        translate(0, 0, proj.size * 0.4);
         box(
-          PROJECTILE_SIZE * 0.2,
-          PROJECTILE_SIZE * 0.2,
-          PROJECTILE_SIZE * 0.8
+          proj.size * 0.2,
+          proj.size * 0.2,
+          proj.size * 0.8
         );
         pop();
       }
@@ -441,7 +440,7 @@ function drawGame() {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
-        torus(PROJECTILE_SIZE * 0.8, PROJECTILE_SIZE * 0.1);
+        torus(proj.size * 0.8, proj.size * 0.1);
         pop();
       }
     } else if (proj.weapon === "plasma") {
@@ -449,7 +448,7 @@ function drawGame() {
       for (let i = 0; i < 3; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
-        sphere(PROJECTILE_SIZE * (0.8 + sin(frameCount * 0.2 + i) * 0.2));
+        sphere(proj.size * (0.8 + sin(frameCount * 0.2 + i) * 0.2));
         pop();
       }
     } else if (proj.weapon === "photon") {
@@ -458,12 +457,12 @@ function drawGame() {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
-        cylinder(PROJECTILE_SIZE * 0.5, PROJECTILE_SIZE * 0.2);
+        cylinder(proj.size * 0.5, proj.size * 0.2);
         pop();
       }
     } else {
       // Default sphere
-      sphere(PROJECTILE_SIZE);
+      sphere(proj.size);
     }
     pop();
   }
@@ -724,6 +723,7 @@ function fireWeapon(squadMember) {
     weapon: currentWeapon,
     speed: PROJECTILE_SPEED,
     damage: getWeaponDamage(currentWeapon),
+    size: PROJECTILE_SIZE,
   };
 
   projectiles.push(projectile);
@@ -1322,12 +1322,6 @@ function activateSkill(skillNumber) {
       break;
 
     case 2: // Super shot - fewer but more powerful shots
-      // Create a burst of powerful shots instead of increasing fire rate
-      let superShotBaseDamage = 5; // 5x damage
-      let superShotAdditionalDamage = damageBoost * 0.5; // Each damage boost adds 0.5x
-      let superShotTotalMultiplier =
-        superShotBaseDamage + superShotAdditionalDamage;
-
       // Visual effect around squad members
       for (let member of squad) {
         createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
@@ -1337,13 +1331,11 @@ function activateSkill(skillNumber) {
           x: member.x,
           y: member.y,
           z: member.z + member.size / 2,
-          weapon: member.weapon || currentWeapon,
+          weapon: currentWeapon,
           speed: PROJECTILE_SPEED * 1.5, // Faster projectile
           damage:
-            getWeaponDamage(member.weapon || currentWeapon) *
-            superShotTotalMultiplier,
-          size: PROJECTILE_SIZE * 2 * 5, // Larger projectile
-          isSuperShot: true,
+            getWeaponDamage(currentWeapon) + 100,
+          size: PROJECTILE_SIZE * 5, // Larger projectile
           color: [255, 255, 0], // Yellow super shot
         };
 
