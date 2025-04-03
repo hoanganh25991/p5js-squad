@@ -303,28 +303,39 @@ function drawHuman(size, isLeader) {
   // Hat
   push();
   translate(0, -size * 0.95, 0);
-  isLeader ? fill(255, 215, 0) : fill(50, 255, 50); // Gold for leader, dark gray for others
+  noStroke(); // Remove stroke from the hat
+  isLeader ? fill(255, 215, 0) : fill(50, 50, 50); // Gold for leader, dark gray for others
   cylinder(size * 0.3, size * 0.1);
   pop();
 
   // Body
   push();
   translate(0, -size * 0.25, 0);
-  fill(0, 0, 255); // Blue shirt
+  fill(0, 255, 0); // Green shirt
   box(size * 0.5, size, size * 0.3);
   pop();
 
-  // Arms
+  // Arms raised holding a gun
   push();
   translate(-size * 0.4, -size * 0.25, 0);
-  fill(0, 0, 255); // Blue sleeves
+  fill(0, 255, 0); // Green sleeves
+  rotateZ(-PI / 4);
   box(size * 0.1, size * 0.5, size * 0.1);
   pop();
 
   push();
   translate(size * 0.4, -size * 0.25, 0);
-  fill(0, 0, 255); // Blue sleeves
+  fill(0, 255, 0); // Green sleeves
+  rotateZ(-PI / 4);
   box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
+
+  // Gun rotated 90 degrees towards the top of the screen
+  push();
+  translate(size * 0.6, -size * 0.5, 0);
+  fill(50); // Gun color
+  rotateY(HALF_PI); // Rotate the gun 90 degrees
+  box(size * 0.5, size * 0.1, size * 0.1);
   pop();
 
   // Legs
@@ -338,6 +349,14 @@ function drawHuman(size, isLeader) {
   translate(size * 0.2, size * 0.5, 0);
   fill(128, 128, 128); // Gray pants
   box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
+
+  // Bullet belt
+  push();
+  translate(0, 0, -size * 0.2);
+  fill(255, 223, 0); // Bullet belt color
+  rotateY(PI / 4);
+  cylinder(size * 0.05, size);
   pop();
 }
 
