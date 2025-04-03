@@ -185,6 +185,8 @@ function setup() {
 
 function draw() {
   background(0);
+  ambientLight(200); // Higher value for more brightness
+  directionalLight(255, 255, 255, 0, -1, -1);
 
   // Apply camera transformations
   translate(cameraOffsetX, -cameraOffsetY, -cameraZoom);
@@ -262,28 +264,17 @@ function drawSquad() {
   for (let i = 0; i < squad.length; i++) {
     const member = squad[i];
     push();
-    translate(member.x, member.y, member.z + member.size / 2);
+    translate(member.x, member.y, member.z + 40);
 
-    // Use different color for squad leader (first member)
-    if (i === 0) {
-      fill(255, 215, 0); // Gold color for leader
-      // Draw a small crown or marker on top
-      push();
-      translate(0, 0, member.size / 2 + 5);
-      fill(255, 165, 0); // Orange crown
-      rotateX(PI / 4);
-      cone(member.size / 4, member.size / 3);
-      pop();
-    } else {
-      fill(...SQUAD_COLOR);
-    }
+    // Rotate the member to stand upright
+    rotateX(-HALF_PI); // Rotate 90 degrees to make the box stand upright
 
     // Draw a simple human figure
     drawHuman(member.size, i === 0);
 
     // Draw health bar above squad member
     push(); // Save the current transformation state
-    translate(0, -member.size / 2, member.size / 2); // Position bar directly above member
+    translate(0, -member.size * 1.5, 0); // Position bar directly above member
     const healthBarWidth = member.size * 1.2;
     const healthBarHeight = 5;
     const healthPercentage = member.health / 100;
@@ -312,7 +303,7 @@ function drawHuman(size, isLeader) {
   // Hat
   push();
   translate(0, -size * 0.95, 0);
-  isLeader ? fill(255, 215, 0) : fill(50,50,50); // Gold for leader, dark gray for others
+  isLeader ? fill(255, 215, 0) : fill(50, 50, 50); // Gold for leader, dark gray for others
   cylinder(size * 0.3, size * 0.1);
   pop();
 
