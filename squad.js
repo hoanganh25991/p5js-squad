@@ -126,16 +126,6 @@ const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 let currentWeapon = WEAPON_TYPES[0];
 
 // Skills cooldowns in frames
-// let skills = {
-//   skill1: { cooldown: 600, lastUsed: 0 },
-//   skill2: { cooldown: 900, lastUsed: 0 },
-//   skill3: { cooldown: 1200, lastUsed: 0 },
-//   skill4: { cooldown: 1500, lastUsed: 0 },
-//   skill5: { cooldown: 1800, lastUsed: 0 },
-//   skill6: { cooldown: 2100, lastUsed: 0 },
-//   skill7: { cooldown: 2400, lastUsed: 0 },
-//   skill8: { cooldown: 3000, lastUsed: 0 },
-// };
 let skills = {
   skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill2: { cooldown: 100 * (1 + currentWave / 5), lastUsed: 0 },
@@ -1743,9 +1733,15 @@ function createSkillBarElement() {
     `);
     skillBar.child(skillDiv);
   }
+  skillBar.style("visibility", "hidden");
 }
 
 function updateSkillBar() {
+  if (gameState != "playing") {
+    return;
+  }
+
+  skillBar.style("visibility", "visible");
   for (let i = 1; i <= 8; i++) {
     const skillKey = `skill${i}`;
     const cooldownRemaining =
