@@ -278,7 +278,8 @@ function drawSquad() {
       fill(...SQUAD_COLOR);
     }
 
-    box(member.size, member.size, member.size);
+    // Draw a simple human figure
+    drawHuman(member.size, i === 0);
 
     // Draw health bar above squad member
     push(); // Save the current transformation state
@@ -298,6 +299,55 @@ function drawSquad() {
     pop(); // Restore the transformation state
     pop();
   }
+}
+
+function drawHuman(size, isLeader) {
+  // Head
+  push();
+  translate(0, -size * 0.75, 0);
+  fill(200, 150, 150);
+  sphere(size * 0.25);
+  pop();
+
+  // Hat
+  push();
+  translate(0, -size * 0.95, 0);
+  isLeader ? fill(255, 215, 0) : fill(50,50,50); // Gold for leader, dark gray for others
+  cylinder(size * 0.3, size * 0.1);
+  pop();
+
+  // Body
+  push();
+  translate(0, -size * 0.25, 0);
+  fill(0, 0, 255); // Blue shirt
+  box(size * 0.5, size, size * 0.3);
+  pop();
+
+  // Arms
+  push();
+  translate(-size * 0.4, -size * 0.25, 0);
+  fill(0, 0, 255); // Blue sleeves
+  box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
+
+  push();
+  translate(size * 0.4, -size * 0.25, 0);
+  fill(0, 0, 255); // Blue sleeves
+  box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
+
+  // Legs
+  push();
+  translate(-size * 0.2, size * 0.5, 0);
+  fill(128, 128, 128); // Gray pants
+  box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
+
+  push();
+  translate(size * 0.2, size * 0.5, 0);
+  fill(128, 128, 128); // Gray pants
+  box(size * 0.1, size * 0.5, size * 0.1);
+  pop();
 }
 
 function drawEnemies() {
