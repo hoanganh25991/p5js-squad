@@ -303,7 +303,7 @@ function drawHuman(size, isLeader) {
   // Hat
   push();
   translate(0, -size * 0.95, 0);
-  isLeader ? fill(255, 215, 0) : fill(50, 50, 50); // Gold for leader, dark gray for others
+  isLeader ? fill(255, 215, 0) : fill(50, 255, 50); // Gold for leader, dark gray for others
   cylinder(size * 0.3, size * 0.1);
   pop();
 
