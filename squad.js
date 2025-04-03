@@ -224,20 +224,40 @@ function updateGame() {
 }
 
 function drawGame() {
+  drawMainLane();
+
+  drawPowerUpLane();
+
+  drawSquad();
+
+  drawEnemies();
+
+  drawProjectiles();
+
+  drawEffects();
+
+  drawPowerUps();
+}
+
+function drawMainLane() {
   // Draw the bridge (main lane) - extending from bottom to top of screen
   push();
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
   box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased bridge length to cover full screen
   pop();
+}
 
+function drawPowerUpLane() {
   // Draw the power-up lane (extended to match main bridge)
   push();
   translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
   fill(...POWER_UP_LANE_COLOR);
   box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased to match main bridge length
   pop();
+}
 
+function drawSquad() {
   // Draw squad members
   for (let i = 0; i < squad.length; i++) {
     const member = squad[i];
@@ -278,7 +298,9 @@ function drawGame() {
     pop(); // Restore the transformation state
     pop();
   }
+}
 
+function drawEnemies() {
   // Draw enemies
   for (let enemy of enemies) {
     push();
@@ -313,7 +335,9 @@ function drawGame() {
     box(healthBarWidth * healthPercentage, healthBarHeight, 3);
     pop();
   }
+}
 
+function drawProjectiles() {
   // Draw projectiles
   for (let proj of projectiles) {
     push();
@@ -452,7 +476,9 @@ function drawGame() {
     }
     pop();
   }
+}
 
+function drawEffects() {
   // Draw visual effects
   for (let effect of effects) {
     push();
@@ -601,7 +627,9 @@ function drawGame() {
 
     pop();
   }
+}
 
+function drawPowerUps() {
   // Draw power-ups
   for (let powerUp of powerUps) {
     push();
@@ -646,8 +674,6 @@ function drawGame() {
     }
     pop();
   }
-
-  // Draw HUD (outside of the 3D transformation)
 }
 
 // Squad Movement and Controls
