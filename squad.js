@@ -7,7 +7,8 @@ let currentWave = 1;
 let score = 0;
 let gameStartTime = 0;
 let startTime = 0;
-let enemiesKilled = 0;
+let totalEnemiesKilled = 0; // Total enemies killed across all waves
+let waveEnemiesKilled = 0; // Enemies killed in the current wave
 
 // Font
 let gameFont;
@@ -2155,7 +2156,8 @@ function checkCollisions() {
           else if (enemy.type === "boss3") score += 500;
 
           // Increment enemies killed counter
-          enemiesKilled++;
+          waveEnemiesKilled++;
+          totalEnemiesKilled++;
 
           // Create explosion effect
           createExplosion(enemy.x, enemy.y, enemy.z, ENEMY_COLORS[enemy.type]);
@@ -2324,11 +2326,11 @@ function checkWaveCompletion() {
 
   // Require all enemies to be gone AND minimum time to pass
   if (
-    enemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE ||
+    waveEnemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE ||
     (enemies.length === 0 && timeInWave > waveTime)
   ) {
     // Reset the enemies killed counter for next wave
-    enemiesKilled = 0;
+    waveEnemiesKilled = 0;
     currentWave++;
     gameStartTime = frameCount;
 
@@ -2776,8 +2778,8 @@ function updateStatusBoard() {
     <div>Score: ${score}</div>
     <div>Weapon: ${currentWeapon}</div>
     <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
-    <div>Enemies Killed: ${enemiesKilled}</div>
-    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div>Total Kills: ${totalEnemiesKilled}</div>
+    <div>Wave Kills: ${waveEnemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
     <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
   `);
 }
@@ -3291,7 +3293,7 @@ function mouseWheel(event) {
 function resetGame() {
   currentWave = 1;
   score = 0;
-  enemiesKilled = 0;
+  waveEnemiesKilled = 0;
   startTime = millis();
 
   // Reset squad
@@ -3431,7 +3433,7 @@ function applyEnemyEffects() {
       else if (enemy.type === "boss3") score += 500;
 
       // Increment enemies killed counter
-      enemiesKilled++;
+      waveEnemiesKilled++;
 
       // Create explosion effect
       createExplosion(enemy.x, enemy.y, enemy.z, ENEMY_COLORS[enemy.type]);
