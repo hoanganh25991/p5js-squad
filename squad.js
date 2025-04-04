@@ -156,6 +156,10 @@ function preload() {
 }
 
 // Game setup
+// Track and manage memory issues
+let lastMemoryWarning = 0;
+let memoryWarningShown = false;
+
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
@@ -168,6 +172,16 @@ function setup() {
   // Set perspective for better 3D view
   perspective(PI / 3.0, width / height, 0.1, 5000);
 
+  // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
+  // This can improve performance in some cases
+  setAttributes('antialias', true);
+  
+  // Disable texture mipmapping to save memory
+  textureMode(NORMAL);
+  
+  // Set lower precision to improve performance
+  setAttributes('perPixelLighting', false);
+  
   // Auto-start the game (no need to press enter)
   // resetGame();
   gameStartTime = frameCount;
@@ -181,11 +195,85 @@ function setup() {
   createResumeElement();
   createGameOverElement();
   createSkillBarElement();
+  
+  // Purge any old references
+  setTimeout(function() {
+    // Clear arrays just in case
+    effects = [];
+    projectiles = [];
+    projectilePool = [];
+    
+    // Attempt to trigger garbage collection
+    if (window.gc) {
+      try {
+        window.gc();
+      } catch (e) {
+        // Ignore if gc is not available
+      }
+    }
+  }, 1000);
+}
+
+// Memory warning overlay
+let memoryWarningOverlay = null;
+
+function checkMemoryUsage() {
+  // Check if we need to create memory warning
+  if (!memoryWarningOverlay && window.performance && window.performance.memory) {
+    memoryWarningOverlay = createDiv("");
+    memoryWarningOverlay.position(width/2 - 150, 50);
+    memoryWarningOverlay.style("background-color", "rgba(255, 0, 0, 0.7)");
+    memoryWarningOverlay.style("color", "white");
+    memoryWarningOverlay.style("padding", "10px");
+    memoryWarningOverlay.style("border-radius", "5px");
+    memoryWarningOverlay.style("width", "300px");
+    memoryWarningOverlay.style("text-align", "center");
+    memoryWarningOverlay.style("font-family", "monospace");
+    memoryWarningOverlay.style("z-index", "2000");
+    memoryWarningOverlay.style("display", "none");
+  }
+
+  // Check for high memory usage
+  if (memoryWarningOverlay && window.performance && window.performance.memory) {
+    const currentMemory = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+    
+    // Show warning if memory usage is too high
+    if (currentMemory > 800 && !memoryWarningShown) {
+      memoryWarningShown = true;
+      memoryWarningOverlay.html(`
+        <h3>HIGH MEMORY USAGE!</h3>
+        <p>Game is using ${currentMemory.toFixed(1)} MB</p>
+        <p>Consider refreshing</p>
+      `);
+      memoryWarningOverlay.style("display", "block");
+      
+      // Emergency cleanup
+      projectiles = [];
+      projectilePool = [];
+      effects = [];
+      
+      // Reduce enemies to essential minimum
+      if (enemies.length > 20) {
+        enemies.splice(20, enemies.length - 20);
+      }
+    }
+    
+    // Hide warning if memory usage drops
+    if (currentMemory < 600 && memoryWarningShown) {
+      memoryWarningShown = false;
+      memoryWarningOverlay.style("display", "none");
+    }
+  }
 }
 
 function draw() {
+  // Check memory usage each frame
+  checkMemoryUsage();
+  
   background(0);
   ambientLight(200); // Higher value for more brightness
+  
+  // Optimize lighting - only one light source to save performance
   directionalLight(255, 255, 255, 0, -1, -1);
 
   // Apply camera transformations
@@ -204,6 +292,22 @@ function draw() {
   drawPauseContainer();
   drawResumeContainer();
   drawGameOverContainer();
+  
+  // Periodically try to clear memory
+  if (frameCount % 900 === 0) { // Every 15 seconds
+    // Delete unused references that might be causing memory leaks
+    fpsHistory = fpsHistory.slice(-5); // Keep only last 5 samples
+    memoryUsageSamples = memoryUsageSamples.slice(-3); // Keep only last 3 samples
+    
+    // Force texture cache cleanup if possible
+    if (typeof p5 !== 'undefined' && p5._renderer) {
+      try {
+        p5._renderer._clearTextures();
+      } catch (e) {
+        // Ignore if method doesn't exist
+      }
+    }
+  }
 }
 
 // Memory leak tracking and prevention
@@ -323,8 +427,34 @@ function drawPowerUpLane() {
   // Draw the power-up lane (extended to match main bridge)
   push();
   translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
+  
+  // Use a slightly different fill color for better contrast
   fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased to match main bridge length
+  
+  // Draw the base power-up lane
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10);
+  
+  // Add lane markers/decorations for better visual guidance
+  const laneMarkers = 20; // Number of lane markers
+  const stepSize = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / laneMarkers;
+  
+  // Draw lane markers
+  for (let i = 0; i < laneMarkers; i++) {
+    const yPos = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2 + i * stepSize + stepSize/2;
+    push();
+    translate(0, yPos, 5.1); // Position slightly above the lane
+    fill(180, 220, 255, 150); // Lighter blue with transparency
+    box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
+    pop();
+  }
+  
+  // Draw a more visible edge between main bridge and power-up lane for clarity
+  push();
+  translate(-POWER_UP_LANE_WIDTH/2, 0, 5.1);
+  fill(200, 230, 255, 200); // Bright edge color
+  box(2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 1);
+  pop();
+  
   pop();
 }
 
@@ -858,48 +988,161 @@ function drawEffects() {
   }
 }
 
+// Power-up pool for object reuse
+let powerUpPool = [];  
+
 function drawPowerUps() {
-  // Draw power-ups
+  // Clear any remaining visual artifacts at the beginning of each frame
+  // by drawing a clean overlay over the power-up lane
+  push();
+  translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, -1); // Position just behind the power-up lane
+  fill(...POWER_UP_LANE_COLOR);
+  box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 8); // Slightly narrower than the lane
+  pop();
+  
+  // Draw power-ups with proper depth testing
   for (let powerUp of powerUps) {
+    // Distance-based Level of Detail
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = powerUp.x - mainMember.x;
+      const dy = powerUp.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance
+    }
+    
     push();
     translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
+    
+    // Rotate slowly to make power-ups look interesting
+    let rotationAmount = powerUp.rotation || 0;
+    rotationAmount += powerUp.rotationSpeed || 0.02;
+    powerUp.rotation = rotationAmount; // Store updated rotation
+    
+    rotateX(rotationAmount);
+    rotateY(rotationAmount * 0.7);
+    
+    // Add a slight hover effect
+    const hoverOffset = sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
+    translate(0, 0, hoverOffset);
 
-    // Different shapes for different power-up types
-    if (powerUp.type === "mirror") {
-      fill(WEAPON_COLORS.mirror); // Use the color from WEAPON_COLORS
-      box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
-    } else if (powerUp.type === "fire_rate") {
-      // Fire rate boost - green sphere
-      fill(50, 255, 50);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      sphere(POWER_UP_SIZE / 2);
-      pop();
-    } else if (powerUp.type === "damage") {
-      // Damage boost - red cube
-      fill(255, 50, 50);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      box(POWER_UP_SIZE);
-      pop();
-    } else if (powerUp.type === "aoe") {
-      // Area effect boost - blue pyramid
-      fill(50, 50, 255);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
-      pop();
+    // Different shapes for different power-up types - with simplified rendering for distant power-ups
+    if (distToCamera > 800*800) {
+      // Very distant power-ups - ultra simplified
+      if (powerUp.type === "mirror") {
+        fill(WEAPON_COLORS.mirror); 
+        box(POWER_UP_SIZE);
+      } else if (powerUp.type === "fire_rate" || powerUp.type === "damage" || powerUp.type === "aoe") {
+        // Skill power-ups - use distinctive colors
+        const color = powerUp.type === "fire_rate" ? [50, 255, 50] : 
+                     powerUp.type === "damage" ? [255, 50, 50] : [50, 50, 255];
+        fill(...color);
+        sphere(POWER_UP_SIZE / 2);
+      } else {
+        // Weapon power-ups
+        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+        fill(...powerUpColor);
+        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+      }
     } else {
-      // Weapon power-ups - use default color if type not found
-      const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
-      fill(...powerUpColor);
-      cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+      // Fully detailed power-ups for nearby ones
+      if (powerUp.type === "mirror") {
+        // Mirror - white cube with sparkle effect
+        fill(WEAPON_COLORS.mirror);
+        box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
+        
+        // Add sparkle effect
+        if (distToCamera < 500*500) {
+          push();
+          noStroke();
+          fill(255, 255, 255, 150 + sin(frameCount * 0.1) * 50);
+          for (let i = 0; i < 3; i++) {
+            push();
+            rotateX(frameCount * 0.1 + i * TWO_PI/3);
+            rotateY(frameCount * 0.15 + i * TWO_PI/3);
+            translate(0, 0, POWER_UP_SIZE/2 + 5);
+            sphere(3);
+            pop();
+          }
+          pop();
+        }
+      } else if (powerUp.type === "fire_rate") {
+        // Fire rate boost - green sphere
+        fill(50, 255, 50);
+        
+        // Add a pulsating effect
+        const pulseScale = 1 + sin(frameCount * 0.1) * 0.1;
+        sphere(POWER_UP_SIZE / 2 * pulseScale);
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else if (powerUp.type === "damage") {
+        // Damage boost - red cube
+        fill(255, 50, 50);
+        
+        // Add a rotating effect
+        box(POWER_UP_SIZE * (1 + sin(frameCount * 0.05) * 0.1));
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else if (powerUp.type === "aoe") {
+        // Area effect boost - blue pyramid
+        fill(50, 50, 255);
+        
+        // Add a subtle rotation
+        cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else {
+        // Weapon power-ups - use default color if type not found
+        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+        fill(...powerUpColor);
+        
+        // Add interesting shape with orbital effect
+        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+        
+        // Add orbital particles
+        if (distToCamera < 600*600 && powerUp.orbitals > 0) {
+          push();
+          noStroke();
+          fill(...powerUpColor, 200);
+          const orbitalCount = Math.min(3, powerUp.orbitals || 0);
+          for (let i = 0; i < orbitalCount; i++) {
+            push();
+            const angle = frameCount * 0.05 + i * TWO_PI/orbitalCount;
+            const orbitalRadius = POWER_UP_SIZE * 0.8;
+            translate(cos(angle) * orbitalRadius, sin(angle) * orbitalRadius, 0);
+            sphere(4);
+            pop();
+          }
+          pop();
+        }
+      }
     }
     pop();
   }
@@ -1043,7 +1286,7 @@ function getWeaponDamage(weapon) {
 
 // Maximum number of projectiles to maintain performance
 const MAX_PROJECTILES = 200;
-const projectilePool = [];
+let projectilePool = [];
 
 function updateProjectiles() {
   // Move projectiles
@@ -1239,61 +1482,111 @@ function updateEnemies() {
 function spawnPowerUps() {
   // Regular power-ups on a timer
   if (frameCount - lastPowerUpSpawn > POWER_UP_SPAWN_RATE) {
-    // Always spawn power-ups (continuous spawning)
-    const rand = random();
-
-    // Determine power-up type based on probability
-    let type = "mirror";
-
-    if (rand < WEAPON_SPAWN_CHANCE) {
-      // Weapon power-up
-      type = random(WEAPON_TYPES);
-    } else if (rand < SKILL_SPAWN_CHANCE) {
-      // Skill power-up (fire_rate, damage, or aoe)
-
-      type = random(SKILL_TYPES);
+    // Check if we're under the limit to avoid too many power-ups
+    if (powerUps.length < MAX_POWER_UPS) {
+      // Determine power-up type based on probability
+      const rand = random();
+      let type = "mirror";
+  
+      if (rand < WEAPON_SPAWN_CHANCE) {
+        // Weapon power-up
+        type = random(WEAPON_TYPES);
+      } else if (rand < SKILL_SPAWN_CHANCE) {
+        // Skill power-up (fire_rate, damage, or aoe)
+        type = random(SKILL_TYPES);
+      }
+  
+      // Add value for skill power-ups
+      let value = 1; // Default value
+      if (type === "fire_rate") value = 3; // +3 fire rate
+      if (type === "damage") value = 4; // +4 damage
+      if (type === "aoe") value = 2; // +2 area effect
+  
+      // Calculate position in the center of power-up lane
+      const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
+  
+      // Start position at the far end of the bridge (where enemies spawn)
+      let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
+  
+      // Use object from pool if available to reduce memory allocations
+      let powerUp;
+      if (powerUpPool.length > 0) {
+        powerUp = powerUpPool.pop();
+        // Reset the pooled power-up properties
+        powerUp.x = x;
+        powerUp.y = y;
+        powerUp.z = 0;
+        powerUp.type = type;
+        powerUp.value = value;
+        powerUp.speed = POWER_UP_SPEED + random(-0.5, 1);
+        powerUp.size = type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE;
+        powerUp.rotation = random(0, TWO_PI);
+        powerUp.rotationSpeed = type === "mirror" ? 0.03 : random(0.01, 0.05);
+        powerUp.stackLevel = 1;
+        powerUp.pulsePhase = random(0, TWO_PI);
+        powerUp.orbitals = type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1;
+      } else {
+        // Create a new power-up object
+        powerUp = {
+          x: x,
+          y: y,
+          z: 0,
+          type: type,
+          value: value,
+          speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+          size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
+          rotation: random(0, TWO_PI), // Random starting rotation
+          rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
+          stackLevel: 1, // Power-ups of same type can stack
+          pulsePhase: random(0, TWO_PI), // For pulsing effect
+          orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
+        };
+      }
+  
+      // Add the power-up to the game
+      powerUps.push(powerUp);
     }
-
-    // Add value for skill power-ups
-    let value = 1; // Default value
-    if (type === "fire_rate") value = 3; // +3 fire rate
-    if (type === "damage") value = 4; // +4 damage
-    if (type === "aoe") value = 2; // +2 area effect
-
-    // Calculate position in the center of power-up lane
-    const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
-
-    // Start position at the far end of the bridge (where enemies spawn)
-    let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
-
-    // Add the power-up to the game
-    powerUps.push({
-      x: x,
-      y: y,
-      z: 0,
-      type: type,
-      value: value,
-      speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
-      size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
-      rotation: random(0, TWO_PI), // Random starting rotation
-      rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
-      stackLevel: 1, // Power-ups of same type can stack
-      pulsePhase: random(0, TWO_PI), // For pulsing effect
-      orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
-    });
+    
     lastPowerUpSpawn = frameCount;
   }
 }
 
 function updatePowerUps() {
   // Move power-ups down the lane
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + POWER_UP_SIZE;
+  
   for (let i = powerUps.length - 1; i >= 0; i--) {
-    powerUps[i].y += powerUps[i].speed;
+    let powerUp = powerUps[i];
+    
+    // Update rotation and animation states
+    powerUp.rotation = (powerUp.rotation || 0) + (powerUp.rotationSpeed || 0.02);
+    powerUp.pulsePhase = (powerUp.pulsePhase || 0) + 0.01;
+    
+    // Move down the lane at varying speeds
+    powerUp.y += powerUp.speed;
 
-    // Remove power-ups that go off-screen (adjusted for longer bridge)
-    if (powerUps[i].y > (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2) {
+    // Remove power-ups that go off-screen 
+    if (powerUp.y > bottomBound) {
+      // Add to object pool for reuse if it's not at capacity
+      if (powerUpPool.length < 20) {
+        // Reset the powerUp properties before storing
+        powerUp = {
+          type: powerUp.type,
+          value: powerUp.value,
+          rotationSpeed: powerUp.rotationSpeed,
+          orbitals: powerUp.orbitals
+        };
+        powerUpPool.push(powerUp);
+      }
       powerUps.splice(i, 1);
     }
+  }
+  
+  // Limit total power-ups to avoid performance issues
+  if (powerUps.length > MAX_POWER_UPS) {
+    // Remove oldest power-ups when exceeding limit
+    const excessCount = powerUps.length - MAX_POWER_UPS;
+    powerUps.splice(0, excessCount);
   }
 }
 
@@ -1889,6 +2182,11 @@ function createTechnicalBoardElements() {
 let fpsHistory = [];
 const FPS_HISTORY_LENGTH = 10;
 
+// Track actual memory usage over time
+let memoryUsageSamples = [];
+const MAX_MEMORY_SAMPLES = 5;
+let peakMemoryUsage = 0;
+
 function updateTechnicalBoard() {
   // Only update DOM elements every few frames for better performance
   if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
@@ -1913,11 +2211,38 @@ function updateTechnicalBoard() {
 
   // Calculate total objects (game complexity metric)
   const objectCount =
-    squad.length + enemies.length + projectiles.length + powerUps.length;
+    squad.length + enemies.length + projectiles.length + powerUps.length + effects.length;
   
-  // Memory usage estimate based on object count
-  const estimatedMemory = (objectCount * 0.5).toFixed(1); // rough estimate in MB
-
+  // Memory usage tracking - attempt to get actual heap size if available
+  let memoryUsage = 0;
+  
+  // Try to get accurate memory usage if performance.memory is available
+  if (window.performance && window.performance.memory) {
+    memoryUsage = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+    memoryUsageSamples.push(memoryUsage);
+    
+    // Keep a rolling window of samples
+    if (memoryUsageSamples.length > MAX_MEMORY_SAMPLES) {
+      memoryUsageSamples.shift();
+    }
+    
+    // Track peak memory
+    if (memoryUsage > peakMemoryUsage) {
+      peakMemoryUsage = memoryUsage;
+    }
+  } else {
+    // Fallback to estimation
+    memoryUsage = (objectCount * 0.5).toFixed(1);
+  }
+  
+  // Calculate average memory usage for smoother display
+  const avgMemory = memoryUsageSamples.length > 0 
+    ? memoryUsageSamples.reduce((sum, mem) => sum + mem, 0) / memoryUsageSamples.length 
+    : memoryUsage;
+  
+  // Memory usage warning
+  const memoryColor = avgMemory > 500 ? "red" : avgMemory > 200 ? "yellow" : "white";
+  
   // Add debug mode indicator if needed
   const debugModeText = DEBUG_MODE
     ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
@@ -1929,12 +2254,24 @@ function updateTechnicalBoard() {
     ${debugModeText}
     <div>FPS: ${Math.floor(avgFPS)}</div>
     <div>Objects: ${objectCount}</div>
-    <div>Memory: ~${estimatedMemory} MB</div>
+    <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(1)} MB</div>
+    <div>Peak Mem: ${peakMemoryUsage.toFixed(1)} MB</div>
     <div>Time: ${minutes}m ${seconds}s</div>
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
   `);
+  
+  // Force garbage collection attempt (not guaranteed to work, but might help signal)
+  if (frameCount % 600 === 0) { // Every 10 seconds
+    if (window.gc) {
+      try {
+        window.gc();
+      } catch (e) {
+        // Ignore if gc is not available
+      }
+    }
+  }
 }
 
 function createMenuElement() {
@@ -2277,8 +2614,30 @@ function applyEffects() {
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life--;
     if (effects[i].life <= 0) {
+      // Remove but don't create new objects
       effects.splice(i, 1);
     }
+  }
+  
+  // Limit total effects to prevent memory issues
+  const maxEffectsBasedOnMemory = memoryUsageSamples.length > 0 && 
+    memoryUsageSamples[memoryUsageSamples.length - 1] > 300 ? 
+    30 : MAX_EFFECTS;
+  
+  // If memory usage is high, be more aggressive with cleanup
+  if (effects.length > maxEffectsBasedOnMemory) {
+    // Sort effects by importance (shields are most important, explosions least)
+    effects.sort((a, b) => {
+      // Shield effects have highest priority
+      if (a.type === "shield" && b.type !== "shield") return 1;
+      if (b.type === "shield" && a.type !== "shield") return -1;
+      
+      // Sort by remaining life (keep ones with most life left)
+      return a.life - b.life;
+    });
+    
+    // Remove excess effects
+    effects.splice(0, effects.length - maxEffectsBasedOnMemory);
   }
 }
 
@@ -2360,7 +2719,7 @@ function getEnemyMaxHealth(enemyType) {
 }
 
 // Visual effects functions with object pooling optimization
-const MAX_EFFECTS = 100; // Maximum number of simultaneous effects
+let MAX_EFFECTS = 100; // Maximum number of simultaneous effects
 
 // Create the effect or reuse an existing one from the pool
 function createEffect(type, x, y, z, color, size) {
