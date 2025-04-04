@@ -343,10 +343,10 @@ function cleanupMemory() {
       effects.splice(0, effects.length - MAX_EFFECTS / 2);
     }
     
-    // Reduce power-ups if excessive
-    if (powerUps.length > MAX_POWER_UPS) {
-      powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
-    }
+    // // Reduce power-ups if excessive
+    // if (powerUps.length > MAX_POWER_UPS) {
+    //   powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
+    // }
     
     // Only reduce enemies as a last resort (important for gameplay)
     if (totalObjects > MAX_OBJECTS && enemies.length > 50) {
@@ -1982,7 +1982,7 @@ function spawnPowerUps() {
   // Regular power-ups on a timer
   if (frameCount - lastPowerUpSpawn > POWER_UP_SPAWN_RATE) {
     // Check if we're under the limit to avoid too many power-ups
-    if (powerUps.length < MAX_POWER_UPS) {
+    // if (powerUps.length < MAX_POWER_UPS) {
       // Determine power-up type based on probability
       const rand = random();
       let type = "mirror";
@@ -2024,7 +2024,7 @@ function spawnPowerUps() {
       };
 
       powerUps.push(powerUp);
-    }
+    // }
     
     lastPowerUpSpawn = frameCount;
   }
@@ -2294,41 +2294,27 @@ function checkWaveCompletion() {
     gameStartTime = frameCount;
 
     // Spawn some power-ups as rewards
-    for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
-      const x = random(
-        BRIDGE_WIDTH / 2 + 20,
-        BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - 20
-      );
-      const y = random(-BRIDGE_LENGTH / 2 + 100, BRIDGE_LENGTH / 2 - 100);
+    // for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
+    //   const x = random(
+    //     BRIDGE_WIDTH / 2 + 20,
+    //     BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - 20
+    //   );
+    //   const y = random(-BRIDGE_LENGTH / 2 + 100, BRIDGE_LENGTH / 2 - 100);
 
-      powerUps.push({
-        x: x,
-        y: y,
-        z: 0,
-        type: random([
-          "thunderbolt",
-          "inferno",
-          "frostbite",
-          "vortex",
-          "plasma",
-          "photon",
-        ]),
-      });
-
-      powerUps.push({
-        x: x,
-        y: y,
-        z: 0,
-        type: random([
-          "thunderbolt",
-          "inferno",
-          "frostbite",
-          "vortex",
-          "plasma",
-          "photon",
-        ]),
-      });
-    }
+    //   powerUps.push({
+    //     x: x,
+    //     y: y,
+    //     z: 0,
+    //     type: random([
+    //       "thunderbolt",
+    //       "inferno",
+    //       "frostbite",
+    //       "vortex",
+    //       "plasma",
+    //       "photon",
+    //     ]),
+    //   });
+    // }
   }
 }
 
