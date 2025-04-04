@@ -128,7 +128,7 @@ let currentWeapon = WEAPON_TYPES[0];
 // Skills cooldowns in frames
 let skills = {
   skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill2: { cooldown: 100 * (1 + currentWave / 5), lastUsed: 0 },
+  skill2: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0, active: false, activeDuration: 300, endTime: 0 }, // Machine gun skill with duration (5 seconds = 300 frames at 60fps)
   skill3: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill4: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
@@ -644,12 +644,16 @@ function drawProjectiles() {
     push();
     translate(proj.x, proj.y, proj.z);
 
-    // Add fallback for undefined weapon colors
-    let projColor = [...(WEAPON_COLORS[proj.weapon] || [255, 255, 255])];
+    // Use custom color if defined, otherwise use weapon color
+    let projColor = proj.color ? [...proj.color] : [...(WEAPON_COLORS[proj.weapon] || [255, 255, 255])];
 
     // Enhanced visuals based on power-up levels
     let enhancedSize = 1.0;
     let hasGlowEffect = false;
+    
+    // Check if this is a machine gun projectile
+    const isMachineGunProjectile = skills.skill2.active && proj.color && 
+                                 proj.color[0] === 255 && proj.color[1] === 215 && proj.color[2] === 0;
 
     // Modify projectile appearance based on power-ups
     if (damageBoost > 5) {
@@ -791,6 +795,29 @@ function drawProjectiles() {
         cylinder(proj.size * 0.5, proj.size * 0.2);
         pop();
       }
+    } else if (isMachineGunProjectile) {
+      // Special rendering for machine gun projectiles
+      // Elongated bullet shape for machine gun projectiles
+      push();
+      // Rotate to face direction of travel
+      rotateX(HALF_PI);
+      
+      // Bullet body (cylinder)
+      fill(255, 215, 0);
+      cylinder(proj.size * 0.4, proj.size * 1.5);
+      
+      // Bullet tip (cone)
+      translate(0, proj.size * 0.8, 0);
+      fill(255, 200, 50);
+      cone(proj.size * 0.4, proj.size * 0.5);
+      
+      // Bullet trail/muzzle flash (only for close projectiles)
+      if (distToCamera < 300*300) {
+        translate(0, -proj.size * 2, 0);
+        fill(255, 150, 0, 150);
+        cone(proj.size * 0.3, proj.size * 0.7);
+      }
+      pop();
     } else {
       // Default sphere
       sphere(proj.size);
@@ -808,8 +835,15 @@ function drawEffects() {
       const mainMember = squad[0];
       const dx = effect.x - mainMember.x;
       const dy = effect.y - mainMember.y;
-      // Fast distance check - if effect is far away, skip detailed rendering
-      if (dx*dx + dy*dy > 500*500) {
+      
+      // Skip distance culling for effects that should always render in detail
+      const forceDetailedRendering = effect.forceRenderDetail || 
+                                    effect.type === "atomicBomb" || 
+                                    effect.type === "atomicExplosion" || 
+                                    effect.type === "atomicFlash";
+      
+      // Fast distance check - if effect is far away AND not forced to render in detail, skip detailed rendering
+      if (!forceDetailedRendering && dx*dx + dy*dy > 500*500) {
         // Draw simplified version for distant effects
         push();
         translate(effect.x, effect.y, effect.z);
@@ -982,6 +1016,410 @@ function drawEffects() {
         torus(effect.size * 0.6, 3);
         pop();
       }
+    } else if (effect.type === "machineGun") {
+      // Machine Gun effect - visual indicator for active machine gun skill
+      // Follow the squad member if reference exists
+      if (effect.member) {
+        effect.x = effect.member.x;
+        effect.y = effect.member.y;
+        effect.z = effect.member.z;
+      }
+      
+      // Pulsing yellow/orange aura with occasional muzzle flashes
+      const pulseRate = frameCount % 10;
+      const flashIntensity = pulseRate < 3 ? 1 : 0.5; // Brighter during "flash" frames
+      
+      // Main aura
+      noFill();
+      stroke(255, 200 * flashIntensity, 0, 150 * (effect.life / skills.skill2.activeDuration));
+      strokeWeight(2);
+      sphere(effect.size * 0.9);
+      
+      // Inner glow
+      fill(255, 200 * flashIntensity, 0, 30 * (effect.life / skills.skill2.activeDuration));
+      for (let i = 0; i < 2; i++) {
+        push();
+        // Rotate based on squad member position and frame count
+        const rotAngle = atan2(effect.y, effect.x) + frameCount * 0.1;
+        rotateZ(rotAngle + i * PI/4);
+        
+        // Draw "barrel" indicators in front of the member
+        translate(0, -effect.size * 0.8, 0); // Position in front
+        cylinder(effect.size * 0.15, effect.size * 0.5);
+        pop();
+      }
+      
+      // Add small particles for "shell casings" occasionally
+      if (frameCount % 5 === 0) {
+        push();
+        fill(200, 150, 0, 150);
+        translate(random(-effect.size/2, effect.size/2), 
+                 -effect.size * 0.6, 
+                 random(-effect.size/2, effect.size/2));
+        box(3, 6, 3);
+        pop();
+      }
+    } else if (effect.type === "atomicBomb") {
+      // Render falling bomb with elaborate trail
+      push();
+      
+      // Update position as it falls from sky to target (much slower fall)
+      if (effect.endPos) {
+        const progress = 1 - (effect.life / 300); // 0 to 1 as it falls (adjusted for 300 frame life)
+        effect.z = 800 - (800 - effect.endPos.z) * progress; // Linear interpolation from 800 to ground
+        
+        // Record current position for trail (less frequent for slower fall)
+        if (frameCount % 8 === 0 && effect.trail) { // Every 8 frames (was 3)
+          effect.trail.push({
+            x: effect.x,
+            y: effect.y,
+            z: effect.z,
+            age: 0
+          });
+          
+          // Limit trail length
+          if (effect.trail.length > 10) { // Reduced from 20 to 10 for cleaner trail
+            effect.trail.shift();
+          }
+        }
+        
+        // Age trail points
+        if (effect.trail) {
+          for (let point of effect.trail) {
+            point.age++;
+          }
+        }
+      }
+      
+      // Bomb body
+      fill(50, 50, 50); // Dark gray
+      rotateZ(frameCount * 0.1); // Slight rotation as it falls
+      
+      // Main bomb shape - "Little Boy" style atomic bomb with enhanced visibility
+      push();
+      // Main body - slightly larger and more metallic color
+      fill(60, 60, 70); // More bluish metallic color
+      cylinder(effect.size / 2.3, effect.size * 1.6); // Slightly larger
+      
+      // Nose cone - more prominent
+      push();
+      fill(80, 80, 90); // Lighter color for nose
+      translate(0, 0, -effect.size * 0.8);
+      cone(effect.size / 2.3, effect.size * 0.7); // Slightly larger
+      pop();
+      
+      // Tail fins - more visible
+      fill(90, 90, 100); // Lighter color for fins
+      for (let i = 0; i < 4; i++) {
+        push();
+        rotateZ(i * PI/2);
+        translate(effect.size * 0.6, 0, effect.size * 0.5);
+        
+        // Trapezoidal fin shape
+        beginShape();
+        vertex(0, 0, 0);
+        vertex(effect.size * 0.45, 0, -effect.size * 0.3); // Slightly larger
+        vertex(effect.size * 0.45, 0, effect.size * 0.4); // Slightly larger
+        vertex(0, 0, effect.size * 0.7);
+        endShape(CLOSE);
+        pop();
+      }
+      
+      // More prominent bomb casing stripes
+      push();
+      fill(180, 20, 20); // Brighter red stripes
+      stroke(200, 200, 200); // Add silver outline
+      strokeWeight(1);
+      rotateX(PI/2);
+      for (let i = 0; i < 3; i++) {
+        push();
+        translate(0, 0, -effect.size * 0.5 + i * effect.size * 0.5);
+        torus(effect.size/2.3 + 0.1, effect.size/15); // Slightly larger
+        pop();
+      }
+      
+      // Add warning markings
+      push();
+      fill(220, 220, 40); // Bright yellow
+      translate(0, 0, 0);
+      rotateX(PI/2);
+      rotateZ(PI/4);
+      
+      // Warning triangle
+      const triangleSize = effect.size * 0.5;
+      translate(0, -effect.size * 0.2, 0);
+      beginShape();
+      vertex(-triangleSize/2, -triangleSize/2, 0.1);
+      vertex(triangleSize/2, -triangleSize/2, 0.1);
+      vertex(0, triangleSize/2, 0.1);
+      endShape(CLOSE);
+      pop();
+      pop();
+      pop();
+      
+      // Draw trail of previous positions
+      if (effect.trail) {
+        for (let i = 0; i < effect.trail.length; i++) {
+          const point = effect.trail[i];
+          const trailFade = 1 - (point.age / 60); // Fade based on age
+          
+          if (trailFade > 0) {
+            // Main smoke trail
+            push();
+            translate(point.x - effect.x, point.y - effect.y, point.z - effect.z);
+            
+            // Minimal smoke puffs for better bomb visibility
+            fill(230, 230, 230, 80 * trailFade); // Much more transparent smoke
+            for (let j = 0; j < 2; j++) { // Reduced from 5 to 2 puffs
+              push();
+              const spread = effect.size * (0.5 + (point.age / 20)); // Less spread
+              translate(
+                random(-spread, spread),
+                random(-spread, spread),
+                random(-spread, spread)
+              );
+              const smokeSize = random(effect.size/6, effect.size/2) * (1 + point.age/40); // Smaller puffs
+              sphere(smokeSize * trailFade);
+              pop();
+            }
+            
+            // Add fire particles for recent trail points
+            if (point.age < 10) {
+              for (let j = 0; j < 3; j++) {
+                push();
+                fill(255, random(100, 200), 0, 200 * trailFade);
+                translate(
+                  random(-effect.size/2, effect.size/2),
+                  random(-effect.size/2, effect.size/2),
+                  random(-effect.size/2, effect.size/2)
+                );
+                sphere(random(effect.size/6, effect.size/3));
+                pop();
+              }
+            }
+            
+            pop();
+          }
+        }
+      }
+      
+      // Add minimal fire effect at the bomb's current position (reduced smoke for visibility)
+      push();
+      // Fire at the tail - smaller and fewer flames
+      for (let i = 0; i < 5; i++) { // Reduced from 10 to 5 flames
+        push();
+        fill(255, random(150, 250), 0, random(180, 255)); // Brighter flames
+        translate(
+          random(-effect.size/4, effect.size/4),
+          random(-effect.size/4, effect.size/4),
+          effect.size * 0.7 + random(0, effect.size/3)
+        );
+        sphere(random(effect.size/6, effect.size/3)); // Smaller flames
+        pop();
+      }
+      
+      // Minimal smoke trail for better bomb visibility
+      for (let i = 0; i < 6; i++) { // Reduced from 15 to 6 smoke puffs
+        push();
+        const smokeGray = random(180, 240); // Lighter smoke
+        fill(smokeGray, smokeGray, smokeGray, random(50, 100)); // More transparent smoke
+        translate(
+          random(-effect.size/2, effect.size/2), // Less spread
+          random(-effect.size/2, effect.size/2), // Less spread
+          effect.size + random(0, effect.size) // Less tail length
+        );
+        sphere(random(effect.size/5, effect.size/2)); // Smaller smoke puffs
+        pop();
+      }
+      pop();
+      
+      pop();
+    } else if (effect.type === "atomicExplosion") {
+      // Render atomic explosion with mushroom cloud effect
+      push();
+      
+      // Use custom color if defined
+      const explosionColor = effect.color || [255, 200, 50];
+      const alpha = 255 * (effect.life / 120); // Fade out based on life
+      
+      // Draw based on which layer of the explosion this is
+      const layer = effect.layer || 0;
+      
+      if (layer === 0) { // Central bright flash
+        // Central bright core
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        sphere(effect.size * 0.8);
+        
+        // Add random particles for initial explosion
+        for (let i = 0; i < 10; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.5, effect.size * 1.2);
+          translate(
+            cos(angle) * radius,
+            sin(angle) * radius,
+            random(-effect.size/2, effect.size/2)
+          );
+          fill(255, 255, 200, random(100, 200));
+          sphere(random(5, 15));
+          pop();
+        }
+      } else if (layer === 1) { // Fire layer
+        // Fire sphere
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        sphere(effect.size * 0.9);
+        
+        // Add flame effects
+        for (let i = 0; i < 15; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.1);
+          translate(
+            cos(angle) * radius,
+            sin(angle) * radius,
+            random(-effect.size/2, effect.size)
+          );
+          fill(255, random(100, 200), random(0, 100), random(150, 255));
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          cone(random(5, 15), random(20, 40));
+          pop();
+        }
+      } else if (layer === 2) { // Mushroom stem
+        // Draw mushroom stem with correct orientation for player view
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        // Place stem along NEGATIVE Y-axis to make it rise upward from ground in player view
+        translate(0, -effect.size * 0.3, 0);
+        cylinder(effect.size * 0.4, effect.size * 1.5);
+        pop();
+        
+        // Draw base spheroid with correct orientation
+        push();
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.7);
+        sphere(effect.size * 0.7);
+        pop();
+      } else if (layer === 3) { // Mushroom cap
+        // Mushroom cap with correct orientation
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.8);
+        // Place cap along NEGATIVE Y-axis to make it appear at the top of the mushroom cloud in player view
+        translate(0, -effect.size * 1.2, 0);
+        
+        // Mushroom cap top
+        push();
+        scale(1.2, 1.2, 0.7); // Flattened sphere for mushroom cap
+        sphere(effect.size * 0.9);
+        pop();
+        
+        // Add smoke/debris effects around the cap with correct orientation
+        for (let i = 0; i < 20; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.4);
+          const height = random(effect.size * 0.1, effect.size * 0.5);
+          // After rotation, debris should spread in X-Z plane with NEGATIVE Y axis pointing upward
+          translate(
+            cos(angle) * radius,
+            -height, // NEGATIVE Y makes debris rise upward from the mushroom cap in player view
+            sin(angle) * radius
+          );
+          fill(100, 100, 100, random(50, 150));
+          sphere(random(5, 20));
+          pop();
+        }
+        pop();
+      } else if (layer === 4) { // Outer smoke/debris
+        // Large smoke cloud with correct orientation
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        noFill();
+        stroke(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.5);
+        strokeWeight(2);
+        
+        // Draw smoke cloud as a series of perturbed spheres
+        for (let i = 0; i < 15; i++) {
+          push();
+          // In rotated space: X is right/left, Y is up/down, Z is forward/back
+          translate(
+            random(-effect.size, effect.size), // Spread horizontally (left/right)
+            random(-effect.size * 0.8, -effect.size * 1.6), // NEGATIVE Y range makes the cloud rise upward in player view
+            random(-effect.size, effect.size)  // Spread horizontally (forward/back)
+          );
+          sphere(random(effect.size * 0.2, effect.size * 0.5));
+          pop();
+        }
+        
+        // Add debris particles with correct orientation
+        for (let i = 0; i < 25; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.8);
+          const height = random(0, effect.size * 2);
+          translate(
+            cos(angle) * radius,  // X (horizontal spread after rotation)
+            -height,              // NEGATIVE Y makes the particles rise upward from ground in player view
+            sin(angle) * radius   // Z (horizontal spread after rotation)
+          );
+          fill(200, 200, 200, random(30, 80));
+          box(random(3, 10));
+          pop();
+        }
+        pop(); // Close the rotateX transformation
+      }
+      
+      pop();
+    } else if (effect.type === "atomicFlash") {
+      // Full screen bright flash effect
+      push();
+      
+      // Create a fullscreen flash effect that covers everything
+      // This is rendered as a large sphere that encompasses the camera
+      noStroke();
+      
+      // Fade based on life
+      const flashOpacity = effect.life / 40; // Fades from 1 to 0
+      
+      // Use custom color if provided
+      const flashColor = effect.color || [255, 255, 255];
+      fill(flashColor[0], flashColor[1], flashColor[2], 255 * flashOpacity);
+      
+      // Position in front of camera - follow camera position
+      translate(cameraOffsetX, -cameraOffsetY, -cameraZoom + 100);
+      
+      // Large enough to cover the view
+      sphere(10000); // Much larger to ensure full coverage
+      
+      // Add additional inner flash layers for more intensity
+      push();
+      fill(255, 255, 255, 200 * flashOpacity);
+      sphere(5000);
+      pop();
+      
+      // Add lens flare effect
+      if (flashOpacity > 0.5) {
+        for (let i = 0; i < 6; i++) {
+          push();
+          fill(255, 255, 255, 150 * flashOpacity);
+          translate(
+            random(-500, 500),
+            random(-500, 500),
+            random(-100, 100)
+          );
+          sphere(random(100, 300));
+          pop();
+        }
+      }
+      
+      pop();
     }
 
     pop();
@@ -1211,16 +1649,37 @@ function updateSquad() {
     }
   }
 
-  // Auto-firing
+  // Auto-firing with machine gun skill check
   if (frameCount - lastFireTime > squadFireRate) {
     for (let member of squad) {
       fireWeapon(member);
+      
+      // If machine gun skill is active, create small muzzle flash effect
+      if (skills.skill2.active) {
+        createHitEffect(
+          member.x, 
+          member.y - 10, // Position in front of squad member
+          member.z + member.size / 2,
+          [255, 200, 0],
+          member.size / 3 // Smaller effect size
+        );
+      }
     }
     lastFireTime = frameCount;
+  }
+  
+  // Check if machine gun skill duration has ended
+  if (skills.skill2.active && frameCount >= skills.skill2.endTime) {
+    // Reset to normal fire rate
+    squadFireRate = 30; // Normal fire rate
+    skills.skill2.active = false;
   }
 }
 
 function fireWeapon(squadMember) {
+  // Check if machine gun skill is active
+  const isMachineGunActive = skills.skill2.active;
+  
   // Use projectile from object pool if available (object reuse)
   let projectile;
   
@@ -1233,9 +1692,19 @@ function fireWeapon(squadMember) {
     projectile.y = squadMember.y;
     projectile.z = squadMember.z + squadMember.size / 2;
     projectile.weapon = currentWeapon;
-    projectile.speed = PROJECTILE_SPEED;
-    projectile.damage = getWeaponDamage(currentWeapon);
-    projectile.size = PROJECTILE_SIZE;
+    
+    // Modify projectile properties if machine gun is active
+    if (isMachineGunActive) {
+      projectile.speed = PROJECTILE_SPEED * 1.3; // Faster bullets
+      projectile.damage = getWeaponDamage(currentWeapon) * 0.6; // Less damage per bullet but fires much faster
+      projectile.size = PROJECTILE_SIZE * 0.75; // Smaller bullets
+      projectile.color = [255, 215, 0]; // Gold/yellow color for machine gun bullets
+    } else {
+      projectile.speed = PROJECTILE_SPEED;
+      projectile.damage = getWeaponDamage(currentWeapon);
+      projectile.size = PROJECTILE_SIZE;
+      projectile.color = undefined; // Use default color
+    }
   } else {
     // Create a new projectile if pool is empty
     projectile = {
@@ -1247,9 +1716,37 @@ function fireWeapon(squadMember) {
       damage: getWeaponDamage(currentWeapon),
       size: PROJECTILE_SIZE,
     };
+    
+    // Modify projectile properties if machine gun is active
+    if (isMachineGunActive) {
+      projectile.speed = PROJECTILE_SPEED * 1.3; // Faster bullets
+      projectile.damage = getWeaponDamage(currentWeapon) * 0.6; // Less damage per bullet but fires much faster
+      projectile.size = PROJECTILE_SIZE * 0.75; // Smaller bullets
+      projectile.color = [255, 215, 0]; // Gold/yellow color for machine gun bullets
+    }
+  }
+
+  // Add slight randomization to machine gun fire direction
+  if (isMachineGunActive) {
+    // Add random spread to create a machine gun effect
+    projectile.x += random(-10, 10);
+    projectile.z += random(-5, 5);
   }
 
   projectiles.push(projectile);
+  
+  // If machine gun is active, create an additional projectile for spread effect (one burst = multiple bullets)
+  if (isMachineGunActive && random() > 0.5) { // 50% chance for an extra bullet
+    // Create a second projectile with slight offset
+    let secondProjectile = { ...projectile };
+    secondProjectile.x += random(-15, 15);
+    secondProjectile.z += random(-10, 10);
+    
+    // Use slightly different properties
+    secondProjectile.damage *= random(0.8, 1.2); // Random damage variation
+    
+    projectiles.push(secondProjectile);
+  }
 }
 
 function getWeaponDamage(weapon) {
@@ -1927,35 +2424,43 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 2: // Super shot - fewer but more powerful shots
-      // Visual effect around squad members
-      for (let member of [squad[0]]) {
+    case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
+      // Store the normal fire rate to restore later
+      let normalFireRate = squadFireRate;
+      
+      // Activate machine gun mode
+      skills.skill2.active = true;
+      skills.skill2.endTime = frameCount + skills.skill2.activeDuration;
+      
+      // Set the much faster fire rate (machine gun speed)
+      squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
+      
+      // Visual effect for all squad members
+      for (let member of squad) {
         createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
-
-        // Fire a single powerful shot
-        let projectile = {
+        
+        // Create persistent effect around each squad member to show machine gun mode
+        effects.push({
           x: member.x,
           y: member.y,
-          z: member.z + member.size / 2,
-          weapon: currentWeapon,
-          speed: PROJECTILE_SPEED * 1.5, // Faster projectile
-          damage: getWeaponDamage(currentWeapon) + 100,
-          size: PROJECTILE_SIZE * 3, // Larger projectile
-          color: [255, 255, 0], // Yellow super shot
-        };
-
-        const spacing = projectile.size + STANDARD_ENEMY_SIZE / 2;
-        const total = Math.floor(BRIDGE_WIDTH / spacing / 2) + 1;
-        for (j = 0; j < 5; j++) {
-          for (i = -total; i < total; i++) {
-            projectiles.push({
-              ...projectile,
-              x: projectile.x - spacing * i,
-              y: projectile.y - 100 * j,
-            });
-          }
-        }
+          z: member.z,
+          type: "machineGun",
+          size: member.size * 1.2,
+          life: skills.skill2.activeDuration,
+          member: member, // reference to follow the member
+          color: [255, 255, 0], // Yellow for machine gun mode
+        });
       }
+      
+      // Schedule deactivation after duration
+      setTimeout(() => {
+        // Only restore fire rate if machine gun mode is still active
+        // (prevents conflicts with other skills that might have changed fire rate)
+        if (skills.skill2.active) {
+          squadFireRate = normalFireRate;
+          skills.skill2.active = false;
+        }
+      }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
       break;
 
     case 3: // Shield - temporary invulnerability with enhanced durability
@@ -2057,16 +2562,125 @@ function activateSkill(skillNumber) {
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 8: // Ultimate - massive damage to all enemies and spawn power-ups
-      // Enhanced damage based on accumulated damage boost
-      let ultimateDamage = 100 + damageBoost * 15;
-
-      // Damage all enemies with enhanced damage
-      for (let enemy of enemies) {
-        enemy.health -= ultimateDamage;
-        createExplosion(enemy.x, enemy.y, enemy.z, [255, 255, 255]);
+    case 8: // Atomic Bomb - devastating explosion that obliterates enemies
+      // Get bomb drop point - farther ahead of the player for better visibility
+      let bombCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        bombCenter = { 
+          x: squad[0].x, 
+          y: squad[0].y - 600, // Drop much farther ahead of the squad (twice as far)
+          z: squad[0].z 
+        };
       }
-
+      
+      // Create initial bomb drop effect (small object falling from sky)
+      const bombObj = {
+        x: bombCenter.x,
+        y: bombCenter.y,
+        z: 800, // Start higher in the sky for more dramatic effect
+        type: "atomicBomb",
+        size: 30, // Slightly larger bomb
+        life: 300, // 5 seconds of falling (much slower than before)
+        endPos: {...bombCenter, z: bombCenter.z}, // Where it will land
+        trail: [], // Store trail points
+        fallStartTime: frameCount, // When bomb started falling
+        forceRenderDetail: true // Force detailed rendering regardless of distance
+      };
+      
+      effects.push(bombObj);
+      
+      // Create atomic explosion after delay (when bomb hits ground)
+      setTimeout(() => {
+        // Enhanced damage based on accumulated damage boost - extremely powerful
+        let atomicDamage = 2000 + damageBoost * 100; // Devastating damage that ensures total destruction
+        
+        // Create massive atomic explosion
+        for (let i = 0; i < 5; i++) { // Multiple explosion layers
+          setTimeout(() => {
+            // Create expanding shockwave effect - enormous explosion sizes
+            const explosionSize = 400 + i * 200; // Truly massive explosion visuals
+            const explosionColors = [
+              [255, 255, 220], // bright flash
+              [255, 200, 50],  // orange fire
+              [150, 75, 0],    // brown/orange
+              [50, 50, 50],    // dark smoke
+              [200, 200, 200]  // light smoke
+            ];
+            
+            // Create expanding explosion at bomb position
+            effects.push({
+              x: bombCenter.x,
+              y: bombCenter.y,
+              z: bombCenter.z,
+              type: "atomicExplosion",
+              size: explosionSize,
+              life: 120 - i * 10, // Longer life for first explosion layers
+              color: explosionColors[i],
+              layer: i,
+              forceRenderDetail: true // Always render at full detail regardless of distance
+            });
+            
+            // Add bright flash during initial explosion
+            if (i === 0) {
+              // Create blinding white flash effect covering the screen temporarily
+              effects.push({
+                x: bombCenter.x,
+                y: bombCenter.y,
+                z: bombCenter.z,
+                type: "atomicFlash",
+                size: 5000, // Massive flash size
+                life: 40, // Longer flash duration
+                color: [255, 255, 255],
+                forceRenderDetail: true // Always render at full detail regardless of distance
+              });
+              
+              // Add secondary radiation flash
+              setTimeout(() => {
+                effects.push({
+                  x: bombCenter.x,
+                  y: bombCenter.y,
+                  z: bombCenter.z,
+                  type: "atomicFlash",
+                  size: 3000,
+                  life: 30,
+                  color: [255, 255, 200], // Slightly yellow tint
+                  forceRenderDetail: true // Always render at full detail regardless of distance
+                });
+              }, 300);
+            }
+            
+            // Apply damage to enemies with distance falloff
+            for (let enemy of enemies) {
+              // Calculate distance from explosion center
+              const dx = enemy.x - bombCenter.x;
+              const dy = enemy.y - bombCenter.y;
+              const dz = enemy.z - bombCenter.z;
+              const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+              
+              // Apply damage with more gradual distance falloff for wider effect
+              // Enormous blast radius of 5000 units (covers entire bridge from any position)
+              const damageMultiplier = Math.max(0.7, 1 - (distance / 5000)); // Minimum 70% damage even at extreme range
+              const damage = atomicDamage * damageMultiplier;
+              
+              // Apply damage to enemy
+              enemy.health -= damage;
+              
+              // Create explosion effects at all enemy positions for dramatic effect
+              if (i === 0) {
+                createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+                
+                // Create additional effects for distant enemies to show shockwave reaching them
+                if (distance > 500) {
+                  setTimeout(() => {
+                    createExplosion(enemy.x, enemy.y, enemy.z, [255, 150, 50]);
+                  }, distance * 0.1); // Delayed explosions based on distance
+                }
+              }
+            }
+          }, i * 200); // Stagger explosion layers
+        }
+      }, 5000); // 5 second delay for bomb to fall (matches the 300 frame life at 60fps)
+      
       break;
   }
 
@@ -2405,6 +3019,82 @@ function updateSkillBar() {
       skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
     const cooldownPercent =
       max(0, cooldownRemaining) / skills[skillKey].cooldown;
+    
+    // Get skill element and check for active state
+    const skillDiv = select(`#skill${i}`);
+    
+    // Check if skills are active
+    const isSkillActive = (i === 2 && skills.skill2.active);
+    const isAtomicBombActive = (i === 8 && frameCount - skills.skill8.lastUsed < 120); // Show atomic effect for 2 seconds after activation
+    
+    // Update active skill appearance
+    if (skillDiv) {
+      if (isSkillActive) {
+        // Pulsing yellow/gold background for active machine gun skill
+        const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
+        skillDiv.style("background-color", `rgba(255, 215, 0, ${pulseIntensity})`);
+        skillDiv.style("box-shadow", "0 0 10px rgba(255, 215, 0, 0.8)");
+        
+        // Calculate remaining time percentage for active skill
+        const activeTimeRemaining = skills.skill2.endTime - frameCount;
+        const activeTimePercent = activeTimeRemaining / skills.skill2.activeDuration;
+        
+        // Add a timer overlay for active duration
+        select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
+        
+        // Skill key should appear in bright yellow/gold
+        select(`#skillKey${i}`).style("color", "rgba(255, 215, 0, 1.0)");
+      } else if (isAtomicBombActive) {
+        // Atomic bomb explosion effect in skill bar
+        // Rapidly flashing red/orange/yellow background
+        const explosionPhase = frameCount % 6; // Create a rapid flashing effect
+        let bgColor;
+        
+        // Cycle through explosion colors
+        if (explosionPhase < 2) {
+          bgColor = "rgba(255, 255, 220, 0.9)"; // Bright flash
+        } else if (explosionPhase < 4) {
+          bgColor = "rgba(255, 150, 50, 0.8)"; // Orange fire
+        } else {
+          bgColor = "rgba(150, 50, 0, 0.7)"; // Dark red/brown
+        }
+        
+        // Apply explosion styles
+        skillDiv.style("background-color", bgColor);
+        skillDiv.style("box-shadow", "0 0 20px rgba(255, 100, 0, 0.9)");
+        
+        // Create pulsing size effect
+        const pulseScale = 1.0 + 0.1 * Math.sin(frameCount * 0.5);
+        skillDiv.style("transform", `scale(${pulseScale})`);
+        
+        // Mushroom cloud icon on the skill
+        select(`#skillKey${i}`).html("☢");
+        select(`#skillKey${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+        select(`#skillKey${i}`).style("text-shadow", "0 0 10px white");
+        
+        // Add explosion text effect
+        select(`#skillName${i}`).html("☢ BOOM! ☢");
+        select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+      } else {
+        // Reset to normal appearance
+        skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
+        skillDiv.style("box-shadow", "none");
+        skillDiv.style("transform", "scale(1.0)");
+        
+        // Reset the skill name to normal
+        select(`#skillName${i}`).html(getSkillName(i));
+        select(`#skillName${i}`).style("color", "white");
+        
+        // Reset key display
+        if (i === 8) {
+          select(`#skillKey${i}`).html("R");
+        }
+        
+        // Reset key color
+        select(`#skillKey${i}`).style("color", "white");
+        select(`#skillKey${i}`).style("text-shadow", "none");
+      }
+    }
 
     // Update needle rotation
     const needleDiv = select(`#needle${i}`);
@@ -2417,11 +3107,37 @@ function updateSkillBar() {
       );
       needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
 
-      // Update overlay gradient
-      overlayDiv.style(
-        "background",
-        `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-      );
+      // Update overlay gradient - special color for active skills
+      if (isSkillActive) {
+        // Active machine gun skill gets a yellow/gold overlay instead of black
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(255, 215, 0, 0.3) ${rotationDegree}deg, rgba(255, 215, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      } else if (isAtomicBombActive) {
+        // Atomic bomb gets a red/orange overlay with animated effect
+        const explosionPhase = frameCount % 6; // Match the flash effect
+        let overlayColor;
+        
+        if (explosionPhase < 2) {
+          overlayColor = "rgba(255, 255, 50, 0.4)"; // Bright yellow
+        } else if (explosionPhase < 4) {
+          overlayColor = "rgba(255, 100, 0, 0.4)"; // Orange
+        } else {
+          overlayColor = "rgba(255, 0, 0, 0.3)"; // Red
+        }
+        
+        overlayDiv.style(
+          "background",
+          `conic-gradient(${overlayColor} ${rotationDegree}deg, ${overlayColor} ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      } else {
+        // Normal overlay for other skills or inactive skills
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      }
     } else {
       console.error(`Needle or overlay element for skill #${i} not found`);
     }
@@ -2478,7 +3194,7 @@ function getSkillName(skillNumber) {
     case 7:
       return "Speed+";
     case 8:
-      return "Ultimate";
+      return "Atomic Bomb";
     default:
       return "";
   }
@@ -2613,6 +3329,22 @@ function applyEffects() {
   // Update effects lifetimes and remove dead effects
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life--;
+    
+    // Special handling for machine gun effects
+    if (effects[i].type === "machineGun") {
+      // Check if the machine gun skill is still active
+      if (!skills.skill2.active) {
+        effects[i].life = 0; // Force effect to end if skill is no longer active
+      }
+      
+      // Update position to follow the squad member
+      if (effects[i].member) {
+        effects[i].x = effects[i].member.x;
+        effects[i].y = effects[i].member.y;
+        effects[i].z = effects[i].member.z;
+      }
+    }
+    
     if (effects[i].life <= 0) {
       // Remove but don't create new objects
       effects.splice(i, 1);
@@ -2626,11 +3358,15 @@ function applyEffects() {
   
   // If memory usage is high, be more aggressive with cleanup
   if (effects.length > maxEffectsBasedOnMemory) {
-    // Sort effects by importance (shields are most important, explosions least)
+    // Sort effects by importance (shields and machine gun effects are most important)
     effects.sort((a, b) => {
       // Shield effects have highest priority
       if (a.type === "shield" && b.type !== "shield") return 1;
       if (b.type === "shield" && a.type !== "shield") return -1;
+      
+      // Machine gun effects have second highest priority
+      if (a.type === "machineGun" && b.type !== "machineGun") return 1;
+      if (b.type === "machineGun" && a.type !== "machineGun") return -1;
       
       // Sort by remaining life (keep ones with most life left)
       return a.life - b.life;
@@ -2767,8 +3503,10 @@ function createExplosion(x, y, z, color) {
   createEffect("explosion", x, y, z, color, 30);
 }
 
-function createHitEffect(x, y, z, color) {
-  createEffect("hit", x, y, z, color, 15, EFFECT_DURATION / 2);
+function createHitEffect(x, y, z, color, customSize) {
+  // Use custom size if provided, otherwise use default size of 15
+  const size = customSize || 15;
+  createEffect("hit", x, y, z, color, size, EFFECT_DURATION / 2);
 }
 
 function createFireEffect(x, y, z) {
