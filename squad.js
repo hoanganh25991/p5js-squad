@@ -1063,9 +1063,9 @@ function drawEffects() {
       // Render falling bomb with elaborate trail
       push();
       
-      // Update position as it falls from sky to target (much slower fall)
+      // Update position as it falls from sky to target using consistent timing
       if (effect.endPos) {
-        const progress = 1 - (effect.life / 300); // 0 to 1 as it falls (adjusted for 300 frame life)
+        const progress = 1 - (effect.life / ATOMIC_BOMB_FALL_DURATION); // 0 to 1 as it falls
         effect.z = 800 - (800 - effect.endPos.z) * progress; // Linear interpolation from 800 to ground
         
         // Record current position for trail (less frequent for slower fall)
@@ -1091,9 +1091,11 @@ function drawEffects() {
         }
       }
       
-      // Bomb body
+      // Bomb body - fixed orientation pointing downward in player view
       fill(50, 50, 50); // Dark gray
-      rotateZ(frameCount * 0.1); // Slight rotation as it falls
+      rotateX(HALF_PI); // Align bomb with player view
+      // Fixed rotation angle rather than changing each frame for consistent orientation
+      rotateZ(effect.fallStartTime * 0.1); // Fixed rotation based on start time
       
       // Main bomb shape - "Little Boy" style atomic bomb with enhanced visibility
       push();
@@ -1101,57 +1103,59 @@ function drawEffects() {
       fill(60, 60, 70); // More bluish metallic color
       cylinder(effect.size / 2.3, effect.size * 1.6); // Slightly larger
       
-      // Nose cone - more prominent
+      // Nose cone - more prominent (pointing toward the ground in player view)
       push();
       fill(80, 80, 90); // Lighter color for nose
-      translate(0, 0, -effect.size * 0.8);
+      translate(0, effect.size * 0.8, 0); // In rotated space: Y+ is down toward ground
+      rotateX(PI); // Rotate cone to point downward
       cone(effect.size / 2.3, effect.size * 0.7); // Slightly larger
       pop();
       
-      // Tail fins - more visible
+      // Tail fins - more visible (adjusted for player view)
       fill(90, 90, 100); // Lighter color for fins
       for (let i = 0; i < 4; i++) {
         push();
         rotateZ(i * PI/2);
-        translate(effect.size * 0.6, 0, effect.size * 0.5);
+        translate(effect.size * 0.6, -effect.size * 0.5, 0); // Y- is up in rotated space
         
-        // Trapezoidal fin shape
+        // Trapezoidal fin shape (aligned with player view)
         beginShape();
         vertex(0, 0, 0);
-        vertex(effect.size * 0.45, 0, -effect.size * 0.3); // Slightly larger
-        vertex(effect.size * 0.45, 0, effect.size * 0.4); // Slightly larger
-        vertex(0, 0, effect.size * 0.7);
+        vertex(effect.size * 0.45, -effect.size * 0.3, 0); // Horizontal spread
+        vertex(effect.size * 0.45, effect.size * 0.4, 0); // Horizontal spread
+        vertex(0, effect.size * 0.7, 0); // Extend back along Y axis
         endShape(CLOSE);
         pop();
       }
       
-      // More prominent bomb casing stripes
+      // More prominent bomb casing stripes (oriented for player view)
       push();
       fill(180, 20, 20); // Brighter red stripes
       stroke(200, 200, 200); // Add silver outline
       strokeWeight(1);
-      rotateX(PI/2);
+      // No need for additional rotation - already in rotated space
       for (let i = 0; i < 3; i++) {
         push();
-        translate(0, 0, -effect.size * 0.5 + i * effect.size * 0.5);
+        translate(0, -effect.size * 0.5 + i * effect.size * 0.5, 0); // Position along rotated Y axis
+        rotateY(PI/2); // Rotate torus to encircle the cylinder
         torus(effect.size/2.3 + 0.1, effect.size/15); // Slightly larger
         pop();
       }
       
-      // Add warning markings
+      // Add warning markings (oriented for player view)
       push();
       fill(220, 220, 40); // Bright yellow
-      translate(0, 0, 0);
-      rotateX(PI/2);
-      rotateZ(PI/4);
       
-      // Warning triangle
+      // Warning triangle on the side of the bomb
       const triangleSize = effect.size * 0.5;
-      translate(0, -effect.size * 0.2, 0);
+      rotateZ(PI/4); // Rotate triangle for better visibility
+      translate(effect.size/2.3 * 0.8, 0, 0); // Position on the side of the bomb
+      
+      // Draw triangle perpendicular to bomb surface
       beginShape();
-      vertex(-triangleSize/2, -triangleSize/2, 0.1);
-      vertex(triangleSize/2, -triangleSize/2, 0.1);
-      vertex(0, triangleSize/2, 0.1);
+      vertex(0.1, -triangleSize/2, -triangleSize/2);
+      vertex(0.1, -triangleSize/2, triangleSize/2);
+      vertex(0.1, triangleSize/2, 0);
       endShape(CLOSE);
       pop();
       pop();
@@ -2367,6 +2371,10 @@ function checkWaveCompletion() {
   }
 }
 
+// Atomic bomb constants for consistent timing
+const ATOMIC_BOMB_FALL_DURATION = 150; // 2.5 seconds at 60fps
+const ATOMIC_BOMB_FALL_DURATION_MS = ATOMIC_BOMB_FALL_DURATION * (1000 / 60); // in milliseconds
+
 // Skill system
 function activateSkill(skillNumber) {
   // Handle both string and number formats
@@ -2568,7 +2576,7 @@ function activateSkill(skillNumber) {
       if (squad.length > 0) {
         bombCenter = { 
           x: squad[0].x, 
-          y: squad[0].y - 600, // Drop much farther ahead of the squad (twice as far)
+          y: squad[0].y - 900, // Drop much farther ahead of the squad
           z: squad[0].z 
         };
       }
@@ -2580,7 +2588,7 @@ function activateSkill(skillNumber) {
         z: 800, // Start higher in the sky for more dramatic effect
         type: "atomicBomb",
         size: 30, // Slightly larger bomb
-        life: 300, // 5 seconds of falling (much slower than before)
+        life: ATOMIC_BOMB_FALL_DURATION, // Use consistent duration constant
         endPos: {...bombCenter, z: bombCenter.z}, // Where it will land
         trail: [], // Store trail points
         fallStartTime: frameCount, // When bomb started falling
@@ -2679,7 +2687,7 @@ function activateSkill(skillNumber) {
             }
           }, i * 200); // Stagger explosion layers
         }
-      }, 5000); // 5 second delay for bomb to fall (matches the 300 frame life at 60fps)
+      }, ATOMIC_BOMB_FALL_DURATION_MS); // Delay matches the bomb fall duration
       
       break;
   }
