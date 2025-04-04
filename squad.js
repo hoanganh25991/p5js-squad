@@ -7,7 +7,8 @@ let currentWave = 1;
 let score = 0;
 let gameStartTime = 0;
 let startTime = 0;
-let enemiesKilled = 0;
+let totalEnemiesKilled = 0; // Total enemies killed across all waves
+let waveEnemiesKilled = 0; // Enemies killed in the current wave
 
 // Font
 let gameFont;
@@ -128,7 +129,7 @@ let currentWeapon = WEAPON_TYPES[0];
 // Skills cooldowns in frames
 let skills = {
   skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill2: { cooldown: 100 * (1 + currentWave / 5), lastUsed: 0 },
+  skill2: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0, active: false, activeDuration: 300, endTime: 0 }, // Machine gun skill with duration (5 seconds = 300 frames at 60fps)
   skill3: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill4: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
@@ -156,6 +157,10 @@ function preload() {
 }
 
 // Game setup
+// Track and manage memory issues
+let lastMemoryWarning = 0;
+let memoryWarningShown = false;
+
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
@@ -168,6 +173,16 @@ function setup() {
   // Set perspective for better 3D view
   perspective(PI / 3.0, width / height, 0.1, 5000);
 
+  // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
+  // This can improve performance in some cases
+  setAttributes('antialias', true);
+  
+  // Disable texture mipmapping to save memory
+  textureMode(NORMAL);
+  
+  // Set lower precision to improve performance
+  setAttributes('perPixelLighting', false);
+  
   // Auto-start the game (no need to press enter)
   // resetGame();
   gameStartTime = frameCount;
@@ -181,11 +196,85 @@ function setup() {
   createResumeElement();
   createGameOverElement();
   createSkillBarElement();
+  
+  // Purge any old references
+  setTimeout(function() {
+    // Clear arrays just in case
+    effects = [];
+    projectiles = [];
+    projectilePool = [];
+    
+    // Attempt to trigger garbage collection
+    if (window.gc) {
+      try {
+        window.gc();
+      } catch (e) {
+        // Ignore if gc is not available
+      }
+    }
+  }, 1000);
+}
+
+// Memory warning overlay
+let memoryWarningOverlay = null;
+
+function checkMemoryUsage() {
+  // Check if we need to create memory warning
+  if (!memoryWarningOverlay && window.performance && window.performance.memory) {
+    memoryWarningOverlay = createDiv("");
+    memoryWarningOverlay.position(width/2 - 150, 50);
+    memoryWarningOverlay.style("background-color", "rgba(255, 0, 0, 0.7)");
+    memoryWarningOverlay.style("color", "white");
+    memoryWarningOverlay.style("padding", "10px");
+    memoryWarningOverlay.style("border-radius", "5px");
+    memoryWarningOverlay.style("width", "300px");
+    memoryWarningOverlay.style("text-align", "center");
+    memoryWarningOverlay.style("font-family", "monospace");
+    memoryWarningOverlay.style("z-index", "2000");
+    memoryWarningOverlay.style("display", "none");
+  }
+
+  // Check for high memory usage
+  if (memoryWarningOverlay && window.performance && window.performance.memory) {
+    const currentMemory = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+    
+    // Show warning if memory usage is too high
+    if (currentMemory > 800 && !memoryWarningShown) {
+      memoryWarningShown = true;
+      memoryWarningOverlay.html(`
+        <h3>HIGH MEMORY USAGE!</h3>
+        <p>Game is using ${currentMemory.toFixed(1)} MB</p>
+        <p>Consider refreshing</p>
+      `);
+      memoryWarningOverlay.style("display", "block");
+      
+      // Emergency cleanup
+      projectiles = [];
+      projectilePool = [];
+      effects = [];
+      
+      // Reduce enemies to essential minimum
+      if (enemies.length > 20) {
+        enemies.splice(20, enemies.length - 20);
+      }
+    }
+    
+    // Hide warning if memory usage drops
+    if (currentMemory < 600 && memoryWarningShown) {
+      memoryWarningShown = false;
+      memoryWarningOverlay.style("display", "none");
+    }
+  }
 }
 
 function draw() {
+  // Check memory usage each frame
+  checkMemoryUsage();
+  
   background(0);
   ambientLight(200); // Higher value for more brightness
+  
+  // Optimize lighting - only one light source to save performance
   directionalLight(255, 255, 255, 0, -1, -1);
 
   // Apply camera transformations
@@ -204,6 +293,88 @@ function draw() {
   drawPauseContainer();
   drawResumeContainer();
   drawGameOverContainer();
+  
+  // Periodically try to clear memory
+  if (frameCount % 900 === 0) { // Every 15 seconds
+    // Delete unused references that might be causing memory leaks
+    fpsHistory = fpsHistory.slice(-5); // Keep only last 5 samples
+    memoryUsageSamples = memoryUsageSamples.slice(-3); // Keep only last 3 samples
+    
+    // Force texture cache cleanup if possible
+    if (typeof p5 !== 'undefined' && p5._renderer) {
+      try {
+        p5._renderer._clearTextures();
+      } catch (e) {
+        // Ignore if method doesn't exist
+      }
+    }
+  }
+}
+
+// Memory leak tracking and prevention
+let lastMemoryCleanup = 0;
+const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
+const MAX_OBJECTS = 500; // Maximum total number of game objects
+
+// Memory cleanup helper function
+function cleanupMemory() {
+  // Only run cleanup at specified intervals to avoid performance impact
+  if (frameCount - lastMemoryCleanup < MEMORY_CLEANUP_INTERVAL) return;
+  
+  lastMemoryCleanup = frameCount;
+  
+  // Calculate total objects
+  const totalObjects = squad.length + enemies.length + projectiles.length + powerUps.length + effects.length;
+  
+  // If too many objects, aggressively reduce all arrays
+  if (totalObjects > MAX_OBJECTS) {
+    // Keep this limited to prevent memory buildup
+    const excessRatio = MAX_OBJECTS / totalObjects;
+    
+    // Don't reduce squad (important for gameplay)
+    
+    // Reduce projectiles if too many (keep newest ones - most important)
+    if (projectiles.length > MAX_PROJECTILES / 2) {
+      projectiles.splice(0, projectiles.length - MAX_PROJECTILES / 2);
+    }
+    
+    // Reduce effects (visual only, won't affect gameplay)
+    if (effects.length > MAX_EFFECTS / 2) {
+      effects.splice(0, effects.length - MAX_EFFECTS / 2);
+    }
+    
+    // // Reduce power-ups if excessive
+    // if (powerUps.length > MAX_POWER_UPS) {
+    //   powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
+    // }
+    
+    // Only reduce enemies as a last resort (important for gameplay)
+    if (totalObjects > MAX_OBJECTS && enemies.length > 50) {
+      // Remove enemies that are farthest away from the player
+      enemies.sort((a, b) => {
+        // Find distance from first squad member
+        if (squad.length === 0) return 0;
+        
+        const mainMember = squad[0];
+        const distA = Math.pow(a.x - mainMember.x, 2) + Math.pow(a.y - mainMember.y, 2);
+        const distB = Math.pow(b.x - mainMember.x, 2) + Math.pow(b.y - mainMember.y, 2);
+        
+        // Sort by distance (descending - farthest first)
+        return distB - distA;
+      });
+      
+      // Remove farthest enemies
+      enemies.splice(50, enemies.length - 50);
+    }
+    
+    // Clear object pools when they get too large
+    while (projectilePool.length > 30) projectilePool.pop();
+  }
+  
+  // Force release of any references that might be causing memory leaks
+  if (frameCount % 1800 === 0) { // Every 30 seconds
+    projectilePool.length = 0; // Clear the pool completely
+  }
 }
 
 // Main game logic functions
@@ -221,6 +392,9 @@ function updateGame() {
 
   checkCollisions();
   checkWaveCompletion();
+  
+  // Run memory cleanup
+  cleanupMemory();
 
   updateHUD();
 }
@@ -254,8 +428,34 @@ function drawPowerUpLane() {
   // Draw the power-up lane (extended to match main bridge)
   push();
   translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
+  
+  // Use a slightly different fill color for better contrast
   fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased to match main bridge length
+  
+  // Draw the base power-up lane
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10);
+  
+  // Add lane markers/decorations for better visual guidance
+  const laneMarkers = 20; // Number of lane markers
+  const stepSize = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / laneMarkers;
+  
+  // Draw lane markers
+  for (let i = 0; i < laneMarkers; i++) {
+    const yPos = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2 + i * stepSize + stepSize/2;
+    push();
+    translate(0, yPos, 5.1); // Position slightly above the lane
+    fill(180, 220, 255, 150); // Lighter blue with transparency
+    box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
+    pop();
+  }
+  
+  // Draw a more visible edge between main bridge and power-up lane for clarity
+  push();
+  translate(-POWER_UP_LANE_WIDTH/2, 0, 5.1);
+  fill(200, 230, 255, 200); // Bright edge color
+  box(2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 1);
+  pop();
+  
   pop();
 }
 
@@ -361,54 +561,100 @@ function drawHuman(size, isLeader) {
 }
 
 function drawEnemies() {
-  // Draw enemies
+  // Draw enemies with distance-based LOD (Level of Detail)
   for (let enemy of enemies) {
+    // Find distance to camera/player for LOD calculations
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = enemy.x - mainMember.x;
+      const dy = enemy.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance - no need for sqrt
+    }
+    
     push();
     translate(enemy.x, enemy.y, enemy.z + enemy.size / 2);
+    
+    // Apply distance-based LOD
+    if (distToCamera > 800*800) {
+      // Very distant enemies - ultra simplified rendering
+      fill(...ENEMY_COLORS[enemy.type]);
+      sphere(enemy.size / 2);
+      
+      // Skip health bar for very distant enemies
+      pop();
+      continue;
+    }
+    
     fill(...ENEMY_COLORS[enemy.type]);
 
     // Draw different shapes for different enemy types
     if (enemy.type.includes("boss")) {
+      // Boss enemies are important - always full detail
       sphere(enemy.size / 2);
     } else if (enemy.type === "elite") {
       // Elite enemies are pyramids
       cone(enemy.size / 2, enemy.size);
     } else {
-      box(enemy.size, enemy.size, enemy.size);
+      // Standard enemies - simplify for medium distances
+      if (distToCamera > 400*400) {
+        // Medium distance - use simpler shape
+        sphere(enemy.size / 2);
+      } else {
+        // Close enough for full detail
+        box(enemy.size, enemy.size, enemy.size);
+      }
     }
 
-    // Draw health bar above enemy
-    const maxHealth = getEnemyMaxHealth(enemy.type);
-    const healthPercentage = enemy.health / maxHealth;
+    // Only draw health bars for enemies within reasonable distance
+    if (distToCamera < 600*600) {
+      // Draw health bar above enemy
+      const maxHealth = getEnemyMaxHealth(enemy.type);
+      const healthPercentage = enemy.health / maxHealth;
 
-    translate(0, 0, enemy.size);
-    const healthBarWidth = enemy.size * 1.2;
-    const healthBarHeight = 5;
+      translate(0, 0, enemy.size);
+      const healthBarWidth = enemy.size * 1.2;
+      const healthBarHeight = 5;
 
-    // Background of health bar
-    fill(100, 100, 100);
-    box(healthBarWidth, healthBarHeight, 2);
+      // Background of health bar
+      fill(100, 100, 100);
+      box(healthBarWidth, healthBarHeight, 2);
 
-    // Health indicator
-    fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
-    translate(-(healthBarWidth - healthBarWidth * healthPercentage) / 2, 0, 1);
-    box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+      // Health indicator
+      fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
+      translate(-(healthBarWidth - healthBarWidth * healthPercentage) / 2, 0, 1);
+      box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+    }
+    
     pop();
   }
 }
 
 function drawProjectiles() {
-  // Draw projectiles
+  // Draw projectiles with performance optimizations
   for (let proj of projectiles) {
+    // Distance-based Level of Detail
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = proj.x - mainMember.x;
+      const dy = proj.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance
+    }
+    
     push();
     translate(proj.x, proj.y, proj.z);
 
-    // Add fallback for undefined weapon colors
-    let projColor = [...(WEAPON_COLORS[proj.weapon] || [255, 255, 255])];
+    // Use custom color if defined, otherwise use weapon color
+    let projColor = proj.color ? [...proj.color] : [...(WEAPON_COLORS[proj.weapon] || [255, 255, 255])];
 
     // Enhanced visuals based on power-up levels
     let enhancedSize = 1.0;
     let hasGlowEffect = false;
+    
+    // Check if this is a machine gun projectile
+    const isMachineGunProjectile = skills.skill2.active && proj.color && 
+                                 proj.color[0] === 255 && proj.color[1] === 215 && proj.color[2] === 0;
 
     // Modify projectile appearance based on power-ups
     if (damageBoost > 5) {
@@ -430,8 +676,16 @@ function drawProjectiles() {
       hasGlowEffect = true;
     }
 
-    // Add glow effect for enhanced projectiles
-    if (hasGlowEffect) {
+    // For very distant projectiles, use simple rendering
+    if (distToCamera > 800*800) {
+      fill(projColor[0], projColor[1], projColor[2]);
+      sphere(proj.size);
+      pop();
+      continue;
+    }
+
+    // Add glow effect for enhanced projectiles (but only at medium-close distances)
+    if (hasGlowEffect && distToCamera < 500*500) {
       // Outer glow
       push();
       noStroke();
@@ -439,30 +693,37 @@ function drawProjectiles() {
       sphere(proj.size * 1.5 * enhancedSize);
       pop();
 
-      // Add trail effect
-      push();
-      translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
-      fill(projColor[0], projColor[1], projColor[2], 100);
-      sphere(proj.size * 1.2 * enhancedSize);
-      pop();
-
-      // For very powerful bullets, add an additional effect
-      if (damageBoost + fireRateBoost + aoeBoost > 15) {
+      // Add trail effect (only for medium-close distances)
+      if (distToCamera < 300*300) {
         push();
-        translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
-        fill(projColor[0], projColor[1], projColor[2], 70);
-        sphere(proj.size * 0.9 * enhancedSize);
+        translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
+        fill(projColor[0], projColor[1], projColor[2], 100);
+        sphere(proj.size * 1.2 * enhancedSize);
         pop();
+
+        // For very powerful bullets, add an additional effect (only for close distances)
+        if (damageBoost + fireRateBoost + aoeBoost > 15 && distToCamera < 200*200) {
+          push();
+          translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
+          fill(projColor[0], projColor[1], projColor[2], 70);
+          sphere(proj.size * 0.9 * enhancedSize);
+          pop();
+        }
       }
     }
 
     // Main projectile with enhanced color
     fill(projColor[0], projColor[1], projColor[2]);
 
-    // Different projectile shapes based on weapon type
-    if (proj.weapon === "blaster") {
-      // Enhanced Green laser beam with a glowing effect
-      for (let i = 0; i < 3; i++) {
+    // Different projectile shapes based on weapon type and distance
+    // For medium-range and farther projectiles, use simplified rendering
+    if (distToCamera > 400*400) {
+      // Simplified rendering for distant projectiles
+      sphere(proj.size);
+    } else if (proj.weapon === "blaster") {
+      // Enhanced Green laser beam with a glowing effect - fewer effects at distance
+      const detailLevel = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < detailLevel; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
@@ -470,15 +731,15 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "thunderbolt") {
-      // Thunder projectile with a zigzag pattern
+      // Thunder projectile with a zigzag pattern - simplified at distance
       stroke(255, 255, 0);
       strokeWeight(2);
       noFill();
       beginShape();
-      let x = 0,
-        y = 0,
-        z = 0;
-      for (let i = 0; i < 10; i++) {
+      let x = 0, y = 0, z = 0;
+      // Fewer vertices for distant projectiles
+      const vertexCount = distToCamera < 200*200 ? 10 : 5;
+      for (let i = 0; i < vertexCount; i++) {
         vertex(x, y, z);
         x += random(-5, 5);
         y += random(-5, 5);
@@ -486,8 +747,9 @@ function drawProjectiles() {
       }
       endShape();
     } else if (proj.weapon === "inferno") {
-      // Fire projectile with a dynamic flame effect
-      for (let i = 0; i < 5; i++) {
+      // Fire projectile with a dynamic flame effect - fewer particles at distance
+      const particleCount = distToCamera < 200*200 ? 5 : 2;
+      for (let i = 0; i < particleCount; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
         rotateY(frameCount * 0.1);
@@ -495,8 +757,9 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "frostbite") {
-      // Ice projectile with crystal spikes
-      for (let i = 0; i < 6; i++) {
+      // Ice projectile with crystal spikes - fewer spikes at distance
+      const spikeCount = distToCamera < 200*200 ? 6 : 3;
+      for (let i = 0; i < spikeCount; i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -505,8 +768,9 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "vortex") {
-      // Vortex projectile with swirling rings
-      for (let i = 0; i < 3; i++) {
+      // Vortex projectile with swirling rings - fewer rings at distance
+      const ringCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < ringCount; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
@@ -514,22 +778,47 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "plasma") {
-      // Plasma projectile with a pulsating effect
-      for (let i = 0; i < 3; i++) {
+      // Plasma projectile with a pulsating effect - fewer pulses at distance
+      const pulseCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < pulseCount; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
         sphere(proj.size * (0.8 + sin(frameCount * 0.2 + i) * 0.2));
         pop();
       }
     } else if (proj.weapon === "photon") {
-      // Photon projectile with a rotating disc
-      for (let i = 0; i < 3; i++) {
+      // Photon projectile with a rotating disc - fewer discs at distance
+      const discCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < discCount; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
         cylinder(proj.size * 0.5, proj.size * 0.2);
         pop();
       }
+    } else if (isMachineGunProjectile) {
+      // Special rendering for machine gun projectiles
+      // Elongated bullet shape for machine gun projectiles
+      push();
+      // Rotate to face direction of travel
+      rotateX(HALF_PI);
+      
+      // Bullet body (cylinder)
+      fill(255, 215, 0);
+      cylinder(proj.size * 0.4, proj.size * 1.5);
+      
+      // Bullet tip (cone)
+      translate(0, proj.size * 0.8, 0);
+      fill(255, 200, 50);
+      cone(proj.size * 0.4, proj.size * 0.5);
+      
+      // Bullet trail/muzzle flash (only for close projectiles)
+      if (distToCamera < 300*300) {
+        translate(0, -proj.size * 2, 0);
+        fill(255, 150, 0, 150);
+        cone(proj.size * 0.3, proj.size * 0.7);
+      }
+      pop();
     } else {
       // Default sphere
       sphere(proj.size);
@@ -539,18 +828,50 @@ function drawProjectiles() {
 }
 
 function drawEffects() {
-  // Draw visual effects
+  // Draw visual effects - optimized with distance culling
   for (let effect of effects) {
+    // Skip rendering effects too far from the player (distance culling)
+    // Find closest squad member to use as reference
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = effect.x - mainMember.x;
+      const dy = effect.y - mainMember.y;
+      
+      // Skip distance culling for effects that should always render in detail
+      const forceDetailedRendering = effect.forceRenderDetail || 
+                                    effect.type === "atomicBomb" || 
+                                    effect.type === "atomicExplosion" || 
+                                    effect.type === "atomicFlash";
+      
+      // Fast distance check - if effect is far away AND not forced to render in detail, skip detailed rendering
+      if (!forceDetailedRendering && dx*dx + dy*dy > 500*500) {
+        // Draw simplified version for distant effects
+        push();
+        translate(effect.x, effect.y, effect.z);
+        const effectColor = effect.color || [255, 255, 255];
+        fill(...effectColor, 200 * (effect.life / EFFECT_DURATION));
+        sphere(effect.size * 0.5);
+        pop();
+        continue;
+      }
+    }
+    
     push();
     translate(effect.x, effect.y, effect.z);
 
     // Default color if effect.color is undefined
     const effectColor = effect.color || [255, 255, 255];
+    
+    // Apply LOD (Level of Detail) based on effect life
+    // Less particles as effect fades away
+    const detailLevel = effect.life > EFFECT_DURATION/2 ? 1.0 : 0.5;
+    const particleCount = Math.ceil(detailLevel * 10);
 
     if (effect.type === "explosion") {
       // Explosion effect
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce particle count based on detail level
+      for (let i = 0; i < particleCount; i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -558,7 +879,8 @@ function drawEffects() {
         sphere(effect.size * 0.2);
         pop();
       }
-      for (let i = 0; i < 5; i++) {
+      // Reduce secondary particles even more
+      for (let i = 0; i < Math.ceil(particleCount/2); i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -567,69 +889,79 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "hit") {
-      // Hit effect
+      // Hit effect - simplified
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 8; i++) {
+      // Reduce particle count
+      const hitParticles = Math.min(8, Math.ceil(detailLevel * 8));
+      for (let i = 0; i < hitParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(-10, 10));
         box(effect.size * 0.2);
         pop();
       }
-      for (let i = 0; i < 4; i++) {
-        push();
-        translate(random(-15, 15), random(-15, 15), random(-15, 15));
-        cone(effect.size * 0.1, effect.size * 0.3);
-        pop();
+      // Skip secondary particles when low detail
+      if (detailLevel > 0.7) {
+        for (let i = 0; i < 2; i++) {
+          push();
+          translate(random(-15, 15), random(-15, 15), random(-15, 15));
+          cone(effect.size * 0.1, effect.size * 0.3);
+          pop();
+        }
       }
     } else if (effect.type === "fire") {
-      // Fire effect
+      // Fire effect - simplified
       fill(255, 100 + random(155), 0, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 5; i++) {
+      // Reduce particle count
+      const fireParticles = Math.ceil(detailLevel * 5);
+      for (let i = 0; i < fireParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(0, 20));
-        rotateX(frameCount * 0.05);
-        // torus(5 + random(5), 2);
         sphere(5 + random(5));
         pop();
       }
-      for (let i = 0; i < 3; i++) {
-        push();
-        translate(random(-10, 10), random(-10, 10), random(0, 20));
-        rotateY(frameCount * 0.05);
-        cylinder(3 + random(3), 10);
-        pop();
+      // Fewer secondary particles
+      if (detailLevel > 0.6) {
+        for (let i = 0; i < 2; i++) {
+          push();
+          translate(random(-10, 10), random(-10, 10), random(0, 20));
+          cylinder(3 + random(3), 10);
+          pop();
+        }
       }
     } else if (effect.type === "ice") {
-      // Enhanced Ice effect
+      // Enhanced Ice effect - simplified
       fill(200, 200, 255, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce particle count
+      const iceParticles = Math.ceil(detailLevel * 10);
+      for (let i = 0; i < iceParticles; i++) {
         push();
         translate(random(-15, 15), random(-15, 15), random(-15, 15));
-        rotateX(frameCount * 0.02);
-        rotateY(frameCount * 0.02);
         box(effect.size * 0.1, effect.size * 0.1, effect.size * 0.5);
         pop();
       }
-      for (let i = 0; i < 5; i++) {
-        push();
-        translate(random(-20, 20), random(-20, 20), random(-20, 20));
-        rotateX(frameCount * 0.02);
-        rotateY(frameCount * 0.02);
-        cone(effect.size * 0.1, effect.size * 0.3);
-        pop();
+      // Skip secondary particles when low detail
+      if (detailLevel > 0.7) {
+        for (let i = 0; i < 3; i++) {
+          push();
+          translate(random(-20, 20), random(-20, 20), random(-20, 20));
+          cone(effect.size * 0.1, effect.size * 0.3);
+          pop();
+        }
       }
     } else if (effect.type === "thunder") {
-      // Realistic Thunder effect
+      // Realistic Thunder effect - simplified
       stroke(255, 255, 0, 255 * (effect.life / EFFECT_DURATION));
       strokeWeight(3);
-      for (let i = 0; i < 3; i++) {
+      // Reduce lightning bolts
+      const thunderLines = Math.ceil(detailLevel * 3);
+      for (let i = 0; i < thunderLines; i++) {
         push();
         translate(0, -50, 0); // Start from above
         beginShape();
-        let x = 0,
-          y = 0,
-          z = 0;
-        for (let j = 0; j < 10; j++) {
+        let x = 0, y = 0, z = 0;
+        // Simplified lightning path
+        const points = Math.max(5, Math.ceil(detailLevel * 10));
+        for (let j = 0; j < points; j++) {
           vertex(x, y, z);
           x += random(-10, 10);
           y += random(5, 15); // Move downwards
@@ -639,10 +971,12 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "vortex") {
-      // Vortex effect
+      // Vortex effect - simplified
       rotateZ(frameCount * 0.1);
       fill(150, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce torus count
+      const torusCount = Math.ceil(detailLevel * 5);
+      for (let i = 0; i < torusCount; i++) {
         push();
         rotateX(frameCount * 0.05);
         rotateY(frameCount * 0.05);
@@ -650,9 +984,11 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "plasma") {
-      // Plasma effect
+      // Plasma effect - simplified
       fill(255, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 4; i++) {
+      // Reduce particle count
+      const plasmaParticles = Math.ceil(detailLevel * 4);
+      for (let i = 0; i < plasmaParticles; i++) {
         push();
         translate(random(-20, 20), random(-20, 20), random(0, 10));
         rotateX(frameCount * 0.03);
@@ -661,12 +997,11 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "shield") {
-      // Shield effect
+      // Shield effect - always needed at full detail for gameplay
       noFill();
-      stroke(0, 150, 255, 100 * (effect.life / EFFECT_DURATION)); // Reduced opacity
-      strokeWeight(1); // Thinner lines for less density
+      stroke(0, 150, 255, 100 * (effect.life / EFFECT_DURATION)); 
+      strokeWeight(1);
       for (let i = 0; i < 3; i++) {
-        // Fewer spheres for less density
         push();
         rotateX(frameCount * 0.02 + i);
         rotateY(frameCount * 0.02 + i);
@@ -674,63 +1009,580 @@ function drawEffects() {
         pop();
       }
 
-      fill(0, 150, 255, 30 * (effect.life / EFFECT_DURATION)); // Reduced fill opacity
+      fill(0, 150, 255, 30 * (effect.life / EFFECT_DURATION));
       for (let i = 0; i < 2; i++) {
-        // Fewer toruses for less density
         push();
         rotateX(frameCount * 0.05 + i);
         rotateY(frameCount * 0.05 + i);
-        torus(effect.size * 0.6, 3); // Smaller torus for less visual clutter
+        torus(effect.size * 0.6, 3);
         pop();
       }
+    } else if (effect.type === "machineGun") {
+      // Machine Gun effect - visual indicator for active machine gun skill
+      // Follow the squad member if reference exists
+      if (effect.member) {
+        effect.x = effect.member.x;
+        effect.y = effect.member.y;
+        effect.z = effect.member.z;
+      }
+      
+      // Pulsing yellow/orange aura with occasional muzzle flashes
+      const pulseRate = frameCount % 10;
+      const flashIntensity = pulseRate < 3 ? 1 : 0.5; // Brighter during "flash" frames
+      
+      // Main aura
+      noFill();
+      stroke(255, 200 * flashIntensity, 0, 150 * (effect.life / skills.skill2.activeDuration));
+      strokeWeight(2);
+      sphere(effect.size * 0.9);
+      
+      // Inner glow
+      fill(255, 200 * flashIntensity, 0, 30 * (effect.life / skills.skill2.activeDuration));
+      for (let i = 0; i < 2; i++) {
+        push();
+        // Rotate based on squad member position and frame count
+        const rotAngle = atan2(effect.y, effect.x) + frameCount * 0.1;
+        rotateZ(rotAngle + i * PI/4);
+        
+        // Draw "barrel" indicators in front of the member
+        translate(0, -effect.size * 0.8, 0); // Position in front
+        cylinder(effect.size * 0.15, effect.size * 0.5);
+        pop();
+      }
+      
+      // Add small particles for "shell casings" occasionally
+      if (frameCount % 5 === 0) {
+        push();
+        fill(200, 150, 0, 150);
+        translate(random(-effect.size/2, effect.size/2), 
+                 -effect.size * 0.6, 
+                 random(-effect.size/2, effect.size/2));
+        box(3, 6, 3);
+        pop();
+      }
+    } else if (effect.type === "atomicBomb") {
+      // Render falling bomb with elaborate trail
+      push();
+      
+      // Update position as it falls from sky to target using consistent timing
+      if (effect.endPos) {
+        const progress = 1 - (effect.life / ATOMIC_BOMB_FALL_DURATION); // 0 to 1 as it falls
+        effect.z = 800 - (800 - effect.endPos.z) * progress; // Linear interpolation from 800 to ground
+        
+        // Record current position for trail (less frequent for slower fall)
+        if (frameCount % 8 === 0 && effect.trail) { // Every 8 frames (was 3)
+          effect.trail.push({
+            x: effect.x,
+            y: effect.y,
+            z: effect.z,
+            age: 0
+          });
+          
+          // Limit trail length
+          if (effect.trail.length > 10) { // Reduced from 20 to 10 for cleaner trail
+            effect.trail.shift();
+          }
+        }
+        
+        // Age trail points
+        if (effect.trail) {
+          for (let point of effect.trail) {
+            point.age++;
+          }
+        }
+      }
+      
+      // Bomb body - fixed orientation pointing downward in player view
+      fill(50, 50, 50); // Dark gray
+      rotateX(HALF_PI); // Align bomb with player view
+      // Fixed rotation angle rather than changing each frame for consistent orientation
+      rotateZ(effect.fallStartTime * 0.1); // Fixed rotation based on start time
+      
+      // Main bomb shape - "Little Boy" style atomic bomb with enhanced visibility
+      push();
+      // Main body - slightly larger and more metallic color
+      fill(60, 60, 70); // More bluish metallic color
+      cylinder(effect.size / 2.3, effect.size * 1.6); // Slightly larger
+      
+      // Nose cone - more prominent (pointing toward the ground in player view)
+      push();
+      fill(80, 80, 90); // Lighter color for nose
+      translate(0, effect.size * 0.8, 0); // In rotated space: Y+ is down toward ground
+      rotateX(PI); // Rotate cone to point downward
+      cone(effect.size / 2.3, effect.size * 0.7); // Slightly larger
+      pop();
+      
+      // Tail fins - more visible (adjusted for player view)
+      fill(90, 90, 100); // Lighter color for fins
+      for (let i = 0; i < 4; i++) {
+        push();
+        rotateZ(i * PI/2);
+        translate(effect.size * 0.6, -effect.size * 0.5, 0); // Y- is up in rotated space
+        
+        // Trapezoidal fin shape (aligned with player view)
+        beginShape();
+        vertex(0, 0, 0);
+        vertex(effect.size * 0.45, -effect.size * 0.3, 0); // Horizontal spread
+        vertex(effect.size * 0.45, effect.size * 0.4, 0); // Horizontal spread
+        vertex(0, effect.size * 0.7, 0); // Extend back along Y axis
+        endShape(CLOSE);
+        pop();
+      }
+      
+      // More prominent bomb casing stripes (oriented for player view)
+      push();
+      fill(180, 20, 20); // Brighter red stripes
+      stroke(200, 200, 200); // Add silver outline
+      strokeWeight(1);
+      // No need for additional rotation - already in rotated space
+      for (let i = 0; i < 3; i++) {
+        push();
+        translate(0, -effect.size * 0.5 + i * effect.size * 0.5, 0); // Position along rotated Y axis
+        rotateY(PI/2); // Rotate torus to encircle the cylinder
+        torus(effect.size/2.3 + 0.1, effect.size/15); // Slightly larger
+        pop();
+      }
+      
+      // Add warning markings (oriented for player view)
+      push();
+      fill(220, 220, 40); // Bright yellow
+      
+      // Warning triangle on the side of the bomb
+      const triangleSize = effect.size * 0.5;
+      rotateZ(PI/4); // Rotate triangle for better visibility
+      translate(effect.size/2.3 * 0.8, 0, 0); // Position on the side of the bomb
+      
+      // Draw triangle perpendicular to bomb surface
+      beginShape();
+      vertex(0.1, -triangleSize/2, -triangleSize/2);
+      vertex(0.1, -triangleSize/2, triangleSize/2);
+      vertex(0.1, triangleSize/2, 0);
+      endShape(CLOSE);
+      pop();
+      pop();
+      pop();
+      
+      // Draw trail of previous positions
+      if (effect.trail) {
+        for (let i = 0; i < effect.trail.length; i++) {
+          const point = effect.trail[i];
+          const trailFade = 1 - (point.age / 60); // Fade based on age
+          
+          if (trailFade > 0) {
+            // Main smoke trail
+            push();
+            translate(point.x - effect.x, point.y - effect.y, point.z - effect.z);
+            
+            // Minimal smoke puffs for better bomb visibility
+            fill(230, 230, 230, 80 * trailFade); // Much more transparent smoke
+            for (let j = 0; j < 2; j++) { // Reduced from 5 to 2 puffs
+              push();
+              const spread = effect.size * (0.5 + (point.age / 20)); // Less spread
+              translate(
+                random(-spread, spread),
+                random(-spread, spread),
+                random(-spread, spread)
+              );
+              const smokeSize = random(effect.size/6, effect.size/2) * (1 + point.age/40); // Smaller puffs
+              sphere(smokeSize * trailFade);
+              pop();
+            }
+            
+            // Add fire particles for recent trail points
+            if (point.age < 10) {
+              for (let j = 0; j < 3; j++) {
+                push();
+                fill(255, random(100, 200), 0, 200 * trailFade);
+                translate(
+                  random(-effect.size/2, effect.size/2),
+                  random(-effect.size/2, effect.size/2),
+                  random(-effect.size/2, effect.size/2)
+                );
+                sphere(random(effect.size/6, effect.size/3));
+                pop();
+              }
+            }
+            
+            pop();
+          }
+        }
+      }
+      
+      // Add minimal fire effect at the bomb's current position (reduced smoke for visibility)
+      push();
+      // Fire at the tail - smaller and fewer flames
+      for (let i = 0; i < 5; i++) { // Reduced from 10 to 5 flames
+        push();
+        fill(255, random(150, 250), 0, random(180, 255)); // Brighter flames
+        translate(
+          random(-effect.size/4, effect.size/4),
+          random(-effect.size/4, effect.size/4),
+          effect.size * 0.7 + random(0, effect.size/3)
+        );
+        sphere(random(effect.size/6, effect.size/3)); // Smaller flames
+        pop();
+      }
+      
+      // Minimal smoke trail for better bomb visibility
+      for (let i = 0; i < 6; i++) { // Reduced from 15 to 6 smoke puffs
+        push();
+        const smokeGray = random(180, 240); // Lighter smoke
+        fill(smokeGray, smokeGray, smokeGray, random(50, 100)); // More transparent smoke
+        translate(
+          random(-effect.size/2, effect.size/2), // Less spread
+          random(-effect.size/2, effect.size/2), // Less spread
+          effect.size + random(0, effect.size) // Less tail length
+        );
+        sphere(random(effect.size/5, effect.size/2)); // Smaller smoke puffs
+        pop();
+      }
+      pop();
+      
+      pop();
+    } else if (effect.type === "atomicExplosion") {
+      // Render atomic explosion with mushroom cloud effect
+      push();
+      
+      // Use custom color if defined
+      const explosionColor = effect.color || [255, 200, 50];
+      const alpha = 255 * (effect.life / 120); // Fade out based on life
+      
+      // Draw based on which layer of the explosion this is
+      const layer = effect.layer || 0;
+      
+      if (layer === 0) { // Central bright flash
+        // Central bright core
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        sphere(effect.size * 0.8);
+        
+        // Add random particles for initial explosion
+        for (let i = 0; i < 10; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.5, effect.size * 1.2);
+          translate(
+            cos(angle) * radius,
+            sin(angle) * radius,
+            random(-effect.size/2, effect.size/2)
+          );
+          fill(255, 255, 200, random(100, 200));
+          sphere(random(5, 15));
+          pop();
+        }
+      } else if (layer === 1) { // Fire layer
+        // Fire sphere
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        sphere(effect.size * 0.9);
+        
+        // Add flame effects
+        for (let i = 0; i < 15; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.1);
+          translate(
+            cos(angle) * radius,
+            sin(angle) * radius,
+            random(-effect.size/2, effect.size)
+          );
+          fill(255, random(100, 200), random(0, 100), random(150, 255));
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          cone(random(5, 15), random(20, 40));
+          pop();
+        }
+      } else if (layer === 2) { // Mushroom stem
+        // Draw mushroom stem with correct orientation for player view
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
+        // Place stem along Y-axis after rotation
+        translate(0, effect.size * 0.3, 0);
+        cylinder(effect.size * 0.4, effect.size * 1.5);
+        pop();
+        
+        // Draw base spheroid with correct orientation
+        push();
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.7);
+        sphere(effect.size * 0.7);
+        pop();
+      } else if (layer === 3) { // Mushroom cap
+        // Mushroom cap with correct orientation
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.8);
+        // Place cap along Y-axis after rotation
+        translate(0, effect.size * 1.2, 0);
+        
+        // Mushroom cap top
+        push();
+        scale(1.2, 1.2, 0.7); // Flattened sphere for mushroom cap
+        sphere(effect.size * 0.9);
+        pop();
+        
+        // Add smoke/debris effects around the cap with correct orientation
+        for (let i = 0; i < 20; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.4);
+          const height = random(effect.size * 0.1, effect.size * 0.5);
+          // After rotation, debris should spread in X-Z plane with NEGATIVE Y as height (to be on top)
+          translate(
+            cos(angle) * radius,
+            height,
+            sin(angle) * radius
+          );
+          fill(100, 100, 100, random(50, 150));
+          sphere(random(5, 20));
+          pop();
+        }
+        pop();
+      } else if (layer === 4) { // Outer smoke/debris
+        // Large smoke cloud with correct orientation
+        push();
+        // Rotate to align with player view
+        rotateX(HALF_PI);
+        
+        noFill();
+        stroke(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.5);
+        strokeWeight(2);
+        
+        // Draw smoke cloud as a series of perturbed spheres
+        for (let i = 0; i < 15; i++) {
+          push();
+          // In rotated space: X is right/left, Y is up/down, Z is forward/back
+          translate(
+            random(-effect.size, effect.size), // Spread horizontally (left/right)
+            random(effect.size * 0.8, effect.size * 1.6), // Height (up from ground)
+            random(-effect.size, effect.size)  // Spread horizontally (forward/back)
+          );
+          sphere(random(effect.size * 0.2, effect.size * 0.5));
+          pop();
+        }
+        
+        // Add debris particles with correct orientation
+        for (let i = 0; i < 25; i++) {
+          push();
+          const angle = random(TWO_PI);
+          const radius = random(effect.size * 0.8, effect.size * 1.8);
+          const height = random(0, effect.size * 2);
+          translate(
+            cos(angle) * radius,  // X (horizontal spread after rotation)
+            height,              // Up in Y direction (after rotation)
+            sin(angle) * radius   // Z (horizontal spread after rotation)
+          );
+          fill(200, 200, 200, random(30, 80));
+          box(random(3, 10));
+          pop();
+        }
+        pop(); // Close the rotateX transformation
+      }
+      
+      pop();
+    } else if (effect.type === "atomicFlash") {
+      // Full screen bright flash effect
+      push();
+      
+      // Create a fullscreen flash effect that covers everything
+      // This is rendered as a large sphere that encompasses the camera
+      noStroke();
+      
+      // Fade based on life
+      const flashOpacity = effect.life / 40; // Fades from 1 to 0
+      
+      // Use custom color if provided
+      const flashColor = effect.color || [255, 255, 255];
+      fill(flashColor[0], flashColor[1], flashColor[2], 255 * flashOpacity);
+      
+      // Position in front of camera - follow camera position
+      translate(cameraOffsetX, -cameraOffsetY, -cameraZoom + 100);
+      
+      // Large enough to cover the view
+      sphere(10000); // Much larger to ensure full coverage
+      
+      // Add additional inner flash layers for more intensity
+      push();
+      fill(255, 255, 255, 200 * flashOpacity);
+      sphere(5000);
+      pop();
+      
+      // Add lens flare effect
+      if (flashOpacity > 0.5) {
+        for (let i = 0; i < 6; i++) {
+          push();
+          fill(255, 255, 255, 150 * flashOpacity);
+          translate(
+            random(-500, 500),
+            random(-500, 500),
+            random(-100, 100)
+          );
+          sphere(random(100, 300));
+          pop();
+        }
+      }
+      
+      pop();
     }
 
     pop();
   }
-}
+} 
 
 function drawPowerUps() {
-  // Draw power-ups
+  // Clear any remaining visual artifacts at the beginning of each frame
+  // by drawing a clean overlay over the power-up lane
+  push();
+  translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, -1); // Position just behind the power-up lane
+  fill(...POWER_UP_LANE_COLOR);
+  box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 8); // Slightly narrower than the lane
+  pop();
+  
+  // Draw power-ups with proper depth testing
   for (let powerUp of powerUps) {
+    // Distance-based Level of Detail
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = powerUp.x - mainMember.x;
+      const dy = powerUp.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance
+    }
+    
     push();
     translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
+    
+    // Rotate slowly to make power-ups look interesting
+    let rotationAmount = powerUp.rotation || 0;
+    rotationAmount += powerUp.rotationSpeed || 0.02;
+    powerUp.rotation = rotationAmount; // Store updated rotation
+    
+    rotateX(rotationAmount);
+    rotateY(rotationAmount * 0.7);
+    
+    // Add a slight hover effect
+    const hoverOffset = sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
+    translate(0, 0, hoverOffset);
 
-    // Different shapes for different power-up types
-    if (powerUp.type === "mirror") {
-      fill(WEAPON_COLORS.mirror); // Use the color from WEAPON_COLORS
-      box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
-    } else if (powerUp.type === "fire_rate") {
-      // Fire rate boost - green sphere
-      fill(50, 255, 50);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      sphere(POWER_UP_SIZE / 2);
-      pop();
-    } else if (powerUp.type === "damage") {
-      // Damage boost - red cube
-      fill(255, 50, 50);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      box(POWER_UP_SIZE);
-      pop();
-    } else if (powerUp.type === "aoe") {
-      // Area effect boost - blue pyramid
-      fill(50, 50, 255);
-      push();
-      rotateX(frameCount * 0.05);
-      rotateY(frameCount * 0.05);
-      text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-      cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
-      pop();
+    // Different shapes for different power-up types - with simplified rendering for distant power-ups
+    if (distToCamera > 800*800) {
+      // Very distant power-ups - ultra simplified
+      if (powerUp.type === "mirror") {
+        fill(WEAPON_COLORS.mirror); 
+        box(POWER_UP_SIZE);
+      } else if (powerUp.type === "fire_rate" || powerUp.type === "damage" || powerUp.type === "aoe") {
+        // Skill power-ups - use distinctive colors
+        const color = powerUp.type === "fire_rate" ? [50, 255, 50] : 
+                     powerUp.type === "damage" ? [255, 50, 50] : [50, 50, 255];
+        fill(...color);
+        sphere(POWER_UP_SIZE / 2);
+      } else {
+        // Weapon power-ups
+        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+        fill(...powerUpColor);
+        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+      }
     } else {
-      // Weapon power-ups - use default color if type not found
-      const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
-      fill(...powerUpColor);
-      cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+      // Fully detailed power-ups for nearby ones
+      if (powerUp.type === "mirror") {
+        // Mirror - white cube with sparkle effect
+        fill(WEAPON_COLORS.mirror);
+        box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
+        
+        // Add sparkle effect
+        if (distToCamera < 500*500) {
+          push();
+          noStroke();
+          fill(255, 255, 255, 150 + sin(frameCount * 0.1) * 50);
+          for (let i = 0; i < 3; i++) {
+            push();
+            rotateX(frameCount * 0.1 + i * TWO_PI/3);
+            rotateY(frameCount * 0.15 + i * TWO_PI/3);
+            translate(0, 0, POWER_UP_SIZE/2 + 5);
+            sphere(3);
+            pop();
+          }
+          pop();
+        }
+      } else if (powerUp.type === "fire_rate") {
+        // Fire rate boost - green sphere
+        fill(50, 255, 50);
+        
+        // Add a pulsating effect
+        const pulseScale = 1 + sin(frameCount * 0.1) * 0.1;
+        sphere(POWER_UP_SIZE / 2 * pulseScale);
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else if (powerUp.type === "damage") {
+        // Damage boost - red cube
+        fill(255, 50, 50);
+        
+        // Add a rotating effect
+        box(POWER_UP_SIZE * (1 + sin(frameCount * 0.05) * 0.1));
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else if (powerUp.type === "aoe") {
+        // Area effect boost - blue pyramid
+        fill(50, 50, 255);
+        
+        // Add a subtle rotation
+        cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
+        
+        // Add value text
+        if (distToCamera < 400*400) {
+          push();
+          rotateX(-PI/4);
+          fill(255);
+          textSize(16);
+          textAlign(CENTER, CENTER);
+          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+          pop();
+        }
+      } else {
+        // Weapon power-ups - use default color if type not found
+        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+        fill(...powerUpColor);
+        
+        // Add interesting shape with orbital effect
+        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+        
+        // Add orbital particles
+        if (distToCamera < 600*600 && powerUp.orbitals > 0) {
+          push();
+          noStroke();
+          fill(...powerUpColor, 200);
+          const orbitalCount = Math.min(3, powerUp.orbitals || 0);
+          for (let i = 0; i < orbitalCount; i++) {
+            push();
+            const angle = frameCount * 0.05 + i * TWO_PI/orbitalCount;
+            const orbitalRadius = POWER_UP_SIZE * 0.8;
+            translate(cos(angle) * orbitalRadius, sin(angle) * orbitalRadius, 0);
+            sphere(4);
+            pop();
+          }
+          pop();
+        }
+      }
     }
     pop();
   }
@@ -799,29 +1651,104 @@ function updateSquad() {
     }
   }
 
-  // Auto-firing
+  // Auto-firing with machine gun skill check
   if (frameCount - lastFireTime > squadFireRate) {
     for (let member of squad) {
       fireWeapon(member);
+      
+      // If machine gun skill is active, create small muzzle flash effect
+      if (skills.skill2.active) {
+        createHitEffect(
+          member.x, 
+          member.y - 10, // Position in front of squad member
+          member.z + member.size / 2,
+          [255, 200, 0],
+          member.size / 3 // Smaller effect size
+        );
+      }
     }
     lastFireTime = frameCount;
+  }
+  
+  // Check if machine gun skill duration has ended
+  if (skills.skill2.active && frameCount >= skills.skill2.endTime) {
+    // Reset to normal fire rate
+    squadFireRate = 30; // Normal fire rate
+    skills.skill2.active = false;
   }
 }
 
 function fireWeapon(squadMember) {
-  // const weapon = squadMember.weapon || currentWeapon;
+  // Check if machine gun skill is active
+  const isMachineGunActive = skills.skill2.active;
+  
+  // Use projectile from object pool if available (object reuse)
+  let projectile;
+  
+  if (projectilePool.length > 0) {
+    // Reuse a projectile from the pool
+    projectile = projectilePool.pop();
+    
+    // Reset properties
+    projectile.x = squadMember.x;
+    projectile.y = squadMember.y;
+    projectile.z = squadMember.z + squadMember.size / 2;
+    projectile.weapon = currentWeapon;
+    
+    // Modify projectile properties if machine gun is active
+    if (isMachineGunActive) {
+      projectile.speed = PROJECTILE_SPEED * 1.3; // Faster bullets
+      projectile.damage = getWeaponDamage(currentWeapon) * 0.6; // Less damage per bullet but fires much faster
+      projectile.size = PROJECTILE_SIZE * 0.75; // Smaller bullets
+      projectile.color = [255, 215, 0]; // Gold/yellow color for machine gun bullets
+    } else {
+      projectile.speed = PROJECTILE_SPEED;
+      projectile.damage = getWeaponDamage(currentWeapon);
+      projectile.size = PROJECTILE_SIZE;
+      projectile.color = undefined; // Use default color
+    }
+  } else {
+    // Create a new projectile if pool is empty
+    projectile = {
+      x: squadMember.x,
+      y: squadMember.y,
+      z: squadMember.z + squadMember.size / 2,
+      weapon: currentWeapon,
+      speed: PROJECTILE_SPEED,
+      damage: getWeaponDamage(currentWeapon),
+      size: PROJECTILE_SIZE,
+    };
+    
+    // Modify projectile properties if machine gun is active
+    if (isMachineGunActive) {
+      projectile.speed = PROJECTILE_SPEED * 1.3; // Faster bullets
+      projectile.damage = getWeaponDamage(currentWeapon) * 0.6; // Less damage per bullet but fires much faster
+      projectile.size = PROJECTILE_SIZE * 0.75; // Smaller bullets
+      projectile.color = [255, 215, 0]; // Gold/yellow color for machine gun bullets
+    }
+  }
 
-  let projectile = {
-    x: squadMember.x,
-    y: squadMember.y,
-    z: squadMember.z + squadMember.size / 2,
-    weapon: currentWeapon,
-    speed: PROJECTILE_SPEED,
-    damage: getWeaponDamage(currentWeapon),
-    size: PROJECTILE_SIZE,
-  };
+  // Add slight randomization to machine gun fire direction
+  if (isMachineGunActive) {
+    // Add random spread to create a machine gun effect
+    projectile.x += random(-10, 10);
+    projectile.z += random(-5, 5);
+  }
 
   projectiles.push(projectile);
+  
+  // If machine gun is active, create an additional projectile for spread effect (one burst = multiple bullets)
+  if (isMachineGunActive && random() > 0.5) { // 50% chance for an extra bullet
+    // Create a second projectile with slight offset
+    let secondProjectile = { ...projectile };
+    secondProjectile.x += random(-15, 15);
+    secondProjectile.z += random(-10, 10);
+    
+    // Use slightly different properties
+    secondProjectile.damage *= random(0.8, 1.2); // Random damage variation
+    
+    projectiles.push(secondProjectile);
+  }
 }
 
 function getWeaponDamage(weapon) {
@@ -856,6 +1783,10 @@ function getWeaponDamage(weapon) {
   return baseDamage + damageBoost;
 }
 
+// Maximum number of projectiles to maintain performance
+const MAX_PROJECTILES = 200;
+let projectilePool = [];
+
 function updateProjectiles() {
   // Move projectiles
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -864,8 +1795,19 @@ function updateProjectiles() {
 
     // Remove projectiles that go off-screen (adjusted for longer bridge)
     if (proj.y < (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2) {
+      // Add to object pool for reuse instead of garbage collection
+      if (projectilePool.length < 50) { // Limit pool size
+        projectilePool.push(proj);
+      }
       projectiles.splice(i, 1);
     }
+  }
+  
+  // Limit total projectiles to avoid performance issues
+  if (projectiles.length > MAX_PROJECTILES) {
+    // Remove oldest projectiles when exceeding limit
+    const excessCount = projectiles.length - MAX_PROJECTILES;
+    projectiles.splice(0, excessCount);
   }
 }
 
@@ -1039,65 +1981,77 @@ function updateEnemies() {
 function spawnPowerUps() {
   // Regular power-ups on a timer
   if (frameCount - lastPowerUpSpawn > POWER_UP_SPAWN_RATE) {
-    // Always spawn power-ups (continuous spawning)
-    const rand = random();
+    // Check if we're under the limit to avoid too many power-ups
+    // if (powerUps.length < MAX_POWER_UPS) {
+      // Determine power-up type based on probability
+      const rand = random();
+      let type = "mirror";
+  
+      if (rand < WEAPON_SPAWN_CHANCE) {
+        // Weapon power-up
+        type = random(WEAPON_TYPES);
+      } else if (rand < SKILL_SPAWN_CHANCE) {
+        // Skill power-up (fire_rate, damage, or aoe)
+        type = random(SKILL_TYPES);
+      }
+  
+      // Add value for skill power-ups
+      let value = 1; // Default value
+      if (type === "fire_rate") value = 3; // +3 fire rate
+      if (type === "damage") value = 4; // +4 damage
+      if (type === "aoe") value = 2; // +2 area effect
+  
+      // Calculate position in the center of power-up lane
+      const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
+  
+      // Start position at the far end of the bridge (where enemies spawn)
+      let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
+  
+      // Use object from pool if available to reduce memory allocations
+      powerUp = {
+        x: x,
+        y: y,
+        z: 0,
+        type: type,
+        value: value,
+        speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+        size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
+        rotation: random(0, TWO_PI), // Random starting rotation
+        rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
+        stackLevel: 1, // Power-ups of same type can stack
+        pulsePhase: random(0, TWO_PI), // For pulsing effect
+        orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
+      };
 
-    // Determine power-up type based on probability
-    let type = "mirror";
-
-    if (rand < WEAPON_SPAWN_CHANCE) {
-      // Weapon power-up
-      type = random(WEAPON_TYPES);
-    } else if (rand < SKILL_SPAWN_CHANCE) {
-      // Skill power-up (fire_rate, damage, or aoe)
-
-      type = random(SKILL_TYPES);
-    }
-
-    // Add value for skill power-ups
-    let value = 1; // Default value
-    if (type === "fire_rate") value = 3; // +3 fire rate
-    if (type === "damage") value = 4; // +4 damage
-    if (type === "aoe") value = 2; // +2 area effect
-
-    // Calculate position in the center of power-up lane
-    const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
-
-    // Start position at the far end of the bridge (where enemies spawn)
-    let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
-
-    // Add the power-up to the game
-    powerUps.push({
-      x: x,
-      y: y,
-      z: 0,
-      type: type,
-      value: value,
-      speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
-      size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
-      rotation: random(0, TWO_PI), // Random starting rotation
-      rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
-      stackLevel: 1, // Power-ups of same type can stack
-      pulsePhase: random(0, TWO_PI), // For pulsing effect
-      orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
-    });
+      powerUps.push(powerUp);
+    // }
+    
     lastPowerUpSpawn = frameCount;
   }
 }
 
 function updatePowerUps() {
   // Move power-ups down the lane
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + POWER_UP_SIZE;
+  
   for (let i = powerUps.length - 1; i >= 0; i--) {
-    powerUps[i].y += powerUps[i].speed;
+    let powerUp = powerUps[i];
+    
+    // Update rotation and animation states
+    powerUp.rotation = (powerUp.rotation || 0) + (powerUp.rotationSpeed || 0.02);
+    powerUp.pulsePhase = (powerUp.pulsePhase || 0) + 0.01;
+    
+    // Move down the lane at varying speeds
+    powerUp.y += powerUp.speed;
 
-    // Remove power-ups that go off-screen (adjusted for longer bridge)
-    if (powerUps[i].y > (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2) {
+    // Remove power-ups that go off-screen 
+    if (powerUp.y > bottomBound) {
       powerUps.splice(i, 1);
     }
   }
 }
 
-// Collision detection
+// Collision detection - optimized with squared distance calculations
 function checkCollisions() {
   // Projectile-Enemy Collisions
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -1105,12 +2059,18 @@ function checkCollisions() {
 
     for (let j = enemies.length - 1; j >= 0; j--) {
       let enemy = enemies[j];
-
-      // Simple distance-based collision
-      if (
-        dist(proj.x, proj.y, proj.z, enemy.x, enemy.y, enemy.z) <
-        enemy.size / 2 + PROJECTILE_SIZE
-      ) {
+      
+      // Skip collision checks for distant objects (culling optimization)
+      if (Math.abs(proj.y - enemy.y) > 100) continue;
+      
+      // Fast squared distance check (avoids expensive sqrt operation)
+      const dx = proj.x - enemy.x;
+      const dy = proj.y - enemy.y;
+      const dz = proj.z - enemy.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(enemy.size/2 + PROJECTILE_SIZE, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Apply damage
         enemy.health -= proj.damage;
 
@@ -1135,23 +2095,7 @@ function checkCollisions() {
           // Thunder effect
           createThunderEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "vortex") {
-          // Vortex AoE effect - apply damage to nearby enemies
-          // for (let k = enemies.length - 1; k >= 0; k--) {
-          //   let nearbyEnemy = enemies[k];
-          //   if (
-          //     dist(
-          //       enemy.x,
-          //       enemy.y,
-          //       enemy.z,
-          //       nearbyEnemy.x,
-          //       nearbyEnemy.y,
-          //       nearbyEnemy.z
-          //     ) < 100
-          //   ) {
-          //     nearbyEnemy.health -= proj.damage * 0.5;
-          //     createVortexEffect(enemy.x, enemy.y, enemy.z);
-          //   }
-          // }
+          // Vortex effect optimized to avoid nested loop
           createVortexEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "plasma") {
           // Plasma shotgun spread effect
@@ -1171,7 +2115,8 @@ function checkCollisions() {
           else if (enemy.type === "boss3") score += 500;
 
           // Increment enemies killed counter
-          enemiesKilled++;
+          waveEnemiesKilled++;
+          totalEnemiesKilled++;
 
           // Create explosion effect
           createExplosion(enemy.x, enemy.y, enemy.z, ENEMY_COLORS[enemy.type]);
@@ -1184,22 +2129,22 @@ function checkCollisions() {
     }
   }
 
-  // Squad-PowerUp Collisions
+  // Squad-PowerUp Collisions - using squared distance
   for (let i = powerUps.length - 1; i >= 0; i--) {
     let powerUp = powerUps[i];
 
     for (let squadMember of squad) {
-      if (
-        dist(
-          powerUp.x,
-          powerUp.y,
-          powerUp.z,
-          squadMember.x,
-          squadMember.y,
-          squadMember.z
-        ) <
-        squadMember.size / 2 + POWER_UP_SIZE / 2
-      ) {
+      // Skip collision checks for distant power-ups (culling optimization)
+      if (Math.abs(powerUp.y - squadMember.y) > 100) continue;
+      
+      // Fast squared distance calculation
+      const dx = powerUp.x - squadMember.x;
+      const dy = powerUp.y - squadMember.y;
+      const dz = powerUp.z - squadMember.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(squadMember.size/2 + POWER_UP_SIZE/2, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Apply power-up effect
         if (powerUp.type === "mirror") {
           // Add a new squad member
@@ -1288,17 +2233,24 @@ function checkCollisions() {
     }
   }
 
-  // Enemy-Squad Collisions
+  // Enemy-Squad Collisions - using squared distance
   for (let i = enemies.length - 1; i >= 0; i--) {
     let enemy = enemies[i];
 
     for (let j = squad.length - 1; j >= 0; j--) {
       let member = squad[j];
-
-      if (
-        dist(enemy.x, enemy.y, enemy.z, member.x, member.y, member.z) <
-        enemy.size / 2 + member.size / 2
-      ) {
+      
+      // Skip collision checks for distant objects (culling optimization)
+      if (Math.abs(enemy.y - member.y) > 100) continue;
+      
+      // Fast squared distance calculation
+      const dx = enemy.x - member.x;
+      const dy = enemy.y - member.y;
+      const dz = enemy.z - member.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(enemy.size/2 + member.size/2, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Squad member takes damage
         member.health -= 20;
 
@@ -1333,52 +2285,42 @@ function checkWaveCompletion() {
 
   // Require all enemies to be gone AND minimum time to pass
   if (
-    enemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE ||
+    waveEnemiesKilled >= ENEMIES_TO_KILL_FOR_NEXT_WAVE ||
     (enemies.length === 0 && timeInWave > waveTime)
   ) {
     // Reset the enemies killed counter for next wave
-    enemiesKilled = 0;
+    waveEnemiesKilled = 0;
     currentWave++;
     gameStartTime = frameCount;
 
     // Spawn some power-ups as rewards
-    for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
-      const x = random(
-        BRIDGE_WIDTH / 2 + 20,
-        BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - 20
-      );
-      const y = random(-BRIDGE_LENGTH / 2 + 100, BRIDGE_LENGTH / 2 - 100);
+    // for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
+    //   const x = random(
+    //     BRIDGE_WIDTH / 2 + 20,
+    //     BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - 20
+    //   );
+    //   const y = random(-BRIDGE_LENGTH / 2 + 100, BRIDGE_LENGTH / 2 - 100);
 
-      powerUps.push({
-        x: x,
-        y: y,
-        z: 0,
-        type: random([
-          "thunderbolt",
-          "inferno",
-          "frostbite",
-          "vortex",
-          "plasma",
-          "photon",
-        ]),
-      });
-
-      powerUps.push({
-        x: x,
-        y: y,
-        z: 0,
-        type: random([
-          "thunderbolt",
-          "inferno",
-          "frostbite",
-          "vortex",
-          "plasma",
-          "photon",
-        ]),
-      });
-    }
+    //   powerUps.push({
+    //     x: x,
+    //     y: y,
+    //     z: 0,
+    //     type: random([
+    //       "thunderbolt",
+    //       "inferno",
+    //       "frostbite",
+    //       "vortex",
+    //       "plasma",
+    //       "photon",
+    //     ]),
+    //   });
+    // }
   }
 }
+
+// Atomic bomb constants for consistent timing
+const ATOMIC_BOMB_FALL_DURATION = 150; // 2.5 seconds at 60fps
+const ATOMIC_BOMB_FALL_DURATION_MS = ATOMIC_BOMB_FALL_DURATION * (1000 / 60); // in milliseconds
 
 // Skill system
 function activateSkill(skillNumber) {
@@ -1437,35 +2379,43 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 2: // Super shot - fewer but more powerful shots
-      // Visual effect around squad members
-      for (let member of [squad[0]]) {
+    case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
+      // Store the normal fire rate to restore later
+      let normalFireRate = squadFireRate;
+      
+      // Activate machine gun mode
+      skills.skill2.active = true;
+      skills.skill2.endTime = frameCount + skills.skill2.activeDuration;
+      
+      // Set the much faster fire rate (machine gun speed)
+      squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
+      
+      // Visual effect for all squad members
+      for (let member of squad) {
         createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
-
-        // Fire a single powerful shot
-        let projectile = {
+        
+        // Create persistent effect around each squad member to show machine gun mode
+        effects.push({
           x: member.x,
           y: member.y,
-          z: member.z + member.size / 2,
-          weapon: currentWeapon,
-          speed: PROJECTILE_SPEED * 1.5, // Faster projectile
-          damage: getWeaponDamage(currentWeapon) + 100,
-          size: PROJECTILE_SIZE * 3, // Larger projectile
-          color: [255, 255, 0], // Yellow super shot
-        };
-
-        const spacing = projectile.size + STANDARD_ENEMY_SIZE / 2;
-        const total = Math.floor(BRIDGE_WIDTH / spacing / 2) + 1;
-        for (j = 0; j < 5; j++) {
-          for (i = -total; i < total; i++) {
-            projectiles.push({
-              ...projectile,
-              x: projectile.x - spacing * i,
-              y: projectile.y - 100 * j,
-            });
-          }
-        }
+          z: member.z,
+          type: "machineGun",
+          size: member.size * 1.2,
+          life: skills.skill2.activeDuration,
+          member: member, // reference to follow the member
+          color: [255, 255, 0], // Yellow for machine gun mode
+        });
       }
+      
+      // Schedule deactivation after duration
+      setTimeout(() => {
+        // Only restore fire rate if machine gun mode is still active
+        // (prevents conflicts with other skills that might have changed fire rate)
+        if (skills.skill2.active) {
+          squadFireRate = normalFireRate;
+          skills.skill2.active = false;
+        }
+      }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
       break;
 
     case 3: // Shield - temporary invulnerability with enhanced durability
@@ -1567,16 +2517,125 @@ function activateSkill(skillNumber) {
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 8: // Ultimate - massive damage to all enemies and spawn power-ups
-      // Enhanced damage based on accumulated damage boost
-      let ultimateDamage = 100 + damageBoost * 15;
-
-      // Damage all enemies with enhanced damage
-      for (let enemy of enemies) {
-        enemy.health -= ultimateDamage;
-        createExplosion(enemy.x, enemy.y, enemy.z, [255, 255, 255]);
+    case 8: // Atomic Bomb - devastating explosion that obliterates enemies
+      // Get bomb drop point - farther ahead of the player for better visibility
+      let bombCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        bombCenter = { 
+          x: squad[0].x, 
+          y: squad[0].y - 900, // Drop much farther ahead of the squad
+          z: squad[0].z 
+        };
       }
-
+      
+      // Create initial bomb drop effect (small object falling from sky)
+      const bombObj = {
+        x: bombCenter.x,
+        y: bombCenter.y,
+        z: 800, // Start higher in the sky for more dramatic effect
+        type: "atomicBomb",
+        size: 30, // Slightly larger bomb
+        life: ATOMIC_BOMB_FALL_DURATION, // Use consistent duration constant
+        endPos: {...bombCenter, z: bombCenter.z}, // Where it will land
+        trail: [], // Store trail points
+        fallStartTime: frameCount, // When bomb started falling
+        forceRenderDetail: true // Force detailed rendering regardless of distance
+      };
+      
+      effects.push(bombObj);
+      
+      // Create atomic explosion after delay (when bomb hits ground)
+      setTimeout(() => {
+        // Enhanced damage based on accumulated damage boost - extremely powerful
+        let atomicDamage = 2000 + damageBoost * 100; // Devastating damage that ensures total destruction
+        
+        // Create massive atomic explosion
+        for (let i = 0; i < 5; i++) { // Multiple explosion layers
+          setTimeout(() => {
+            // Create expanding shockwave effect - enormous explosion sizes
+            const explosionSize = 400 + i * 200; // Truly massive explosion visuals
+            const explosionColors = [
+              [255, 255, 220], // bright flash
+              [255, 200, 50],  // orange fire
+              [150, 75, 0],    // brown/orange
+              [50, 50, 50],    // dark smoke
+              [200, 200, 200]  // light smoke
+            ];
+            
+            // Create expanding explosion at bomb position
+            effects.push({
+              x: bombCenter.x,
+              y: bombCenter.y,
+              z: bombCenter.z,
+              type: "atomicExplosion",
+              size: explosionSize,
+              life: 120 - i * 10, // Longer life for first explosion layers
+              color: explosionColors[i],
+              layer: i,
+              forceRenderDetail: true // Always render at full detail regardless of distance
+            });
+            
+            // Add bright flash during initial explosion
+            if (i === 0) {
+              // Create blinding white flash effect covering the screen temporarily
+              effects.push({
+                x: bombCenter.x,
+                y: bombCenter.y,
+                z: bombCenter.z,
+                type: "atomicFlash",
+                size: 5000, // Massive flash size
+                life: 40, // Longer flash duration
+                color: [255, 255, 255],
+                forceRenderDetail: true // Always render at full detail regardless of distance
+              });
+              
+              // Add secondary radiation flash
+              setTimeout(() => {
+                effects.push({
+                  x: bombCenter.x,
+                  y: bombCenter.y,
+                  z: bombCenter.z,
+                  type: "atomicFlash",
+                  size: 3000,
+                  life: 30,
+                  color: [255, 255, 200], // Slightly yellow tint
+                  forceRenderDetail: true // Always render at full detail regardless of distance
+                });
+              }, 300);
+            }
+            
+            // Apply damage to enemies with distance falloff
+            for (let enemy of enemies) {
+              // Calculate distance from explosion center
+              const dx = enemy.x - bombCenter.x;
+              const dy = enemy.y - bombCenter.y;
+              const dz = enemy.z - bombCenter.z;
+              const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+              
+              // Apply damage with more gradual distance falloff for wider effect
+              // Enormous blast radius of 5000 units (covers entire bridge from any position)
+              const damageMultiplier = Math.max(0.7, 1 - (distance / 5000)); // Minimum 70% damage even at extreme range
+              const damage = atomicDamage * damageMultiplier;
+              
+              // Apply damage to enemy
+              enemy.health -= damage;
+              
+              // Create explosion effects at all enemy positions for dramatic effect
+              if (i === 0) {
+                createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+                
+                // Create additional effects for distant enemies to show shockwave reaching them
+                if (distance > 500) {
+                  setTimeout(() => {
+                    createExplosion(enemy.x, enemy.y, enemy.z, [255, 150, 50]);
+                  }, distance * 0.1); // Delayed explosions based on distance
+                }
+              }
+            }
+          }, i * 200); // Stagger explosion layers
+        }
+      }, ATOMIC_BOMB_FALL_DURATION_MS); // Delay matches the bomb fall duration
+      
       break;
   }
 
@@ -1623,7 +2682,10 @@ function drawGameOverContainer() {
   gameState == "gameOver" ? gameOverContainer.show() : gameOverContainer.hide();
 }
 
-// Create DOM elements for HUD
+// Create DOM elements for HUD - optimized with update frequency control
+let lastStatusUpdateTime = 0;
+const STATUS_UPDATE_INTERVAL = 5; // Update every 5 frames instead of every frame
+
 function createStatusBoardElements() {
   // Create status board element
   statusBoard = createDiv("");
@@ -1639,6 +2701,13 @@ function createStatusBoardElements() {
 }
 
 function updateStatusBoard() {
+  // Only update DOM elements every few frames for better performance
+  if (frameCount - lastStatusUpdateTime < STATUS_UPDATE_INTERVAL) {
+    return;
+  }
+  
+  lastStatusUpdateTime = frameCount;
+  
   // Calculate average health
   const avgHealth =
     squad.length > 0
@@ -1654,11 +2723,14 @@ function updateStatusBoard() {
     <div>Score: ${score}</div>
     <div>Weapon: ${currentWeapon}</div>
     <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
-    <div>Enemies Killed: ${enemiesKilled}</div>
-    <div>For Next Wave: ${enemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div>Total Kills: ${totalEnemiesKilled}</div>
+    <div>Wave Kills: ${waveEnemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
     <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
   `);
 }
+
+let lastTechUpdateTime = 0;
+const TECH_UPDATE_INTERVAL = 15; // Update tech stats less frequently (every 15 frames)
 
 function createTechnicalBoardElements() {
   // Create technical board element
@@ -1675,16 +2747,71 @@ function createTechnicalBoardElements() {
   techBoard.style("use-select", "none");
 }
 
+// FPS smoothing for more stable display
+let fpsHistory = [];
+const FPS_HISTORY_LENGTH = 10;
+
+// Track actual memory usage over time
+let memoryUsageSamples = [];
+const MAX_MEMORY_SAMPLES = 5;
+let peakMemoryUsage = 0;
+
 function updateTechnicalBoard() {
+  // Only update DOM elements every few frames for better performance
+  if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
+    return;
+  }
+  
+  lastTechUpdateTime = frameCount;
+  
+  // Record current FPS for averaging
+  fpsHistory.push(frameRate());
+  if (fpsHistory.length > FPS_HISTORY_LENGTH) {
+    fpsHistory.shift(); // Remove oldest value
+  }
+  
+  // Calculate average FPS for smoother display
+  const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+  
   // Calculate time elapsed
   const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
 
-  // Calculate total objects
+  // Calculate total objects (game complexity metric)
   const objectCount =
-    squad.length + enemies.length + projectiles.length + powerUps.length;
-
+    squad.length + enemies.length + projectiles.length + powerUps.length + effects.length;
+  
+  // Memory usage tracking - attempt to get actual heap size if available
+  let memoryUsage = 0;
+  
+  // Try to get accurate memory usage if performance.memory is available
+  if (window.performance && window.performance.memory) {
+    memoryUsage = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+    memoryUsageSamples.push(memoryUsage);
+    
+    // Keep a rolling window of samples
+    if (memoryUsageSamples.length > MAX_MEMORY_SAMPLES) {
+      memoryUsageSamples.shift();
+    }
+    
+    // Track peak memory
+    if (memoryUsage > peakMemoryUsage) {
+      peakMemoryUsage = memoryUsage;
+    }
+  } else {
+    // Fallback to estimation
+    memoryUsage = (objectCount * 0.5).toFixed(1);
+  }
+  
+  // Calculate average memory usage for smoother display
+  const avgMemory = memoryUsageSamples.length > 0 
+    ? memoryUsageSamples.reduce((sum, mem) => sum + mem, 0) / memoryUsageSamples.length 
+    : memoryUsage;
+  
+  // Memory usage warning
+  const memoryColor = avgMemory > 500 ? "red" : avgMemory > 200 ? "yellow" : "white";
+  
   // Add debug mode indicator if needed
   const debugModeText = DEBUG_MODE
     ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
@@ -1694,13 +2821,26 @@ function updateTechnicalBoard() {
   techBoard.html(`
     <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
     ${debugModeText}
-    <div>FPS: ${Math.floor(frameRate())}</div>
+    <div>FPS: ${Math.floor(avgFPS)}</div>
     <div>Objects: ${objectCount}</div>
+    <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(1)} MB</div>
+    <div>Peak Mem: ${peakMemoryUsage.toFixed(1)} MB</div>
     <div>Time: ${minutes}m ${seconds}s</div>
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
   `);
+  
+  // Force garbage collection attempt (not guaranteed to work, but might help signal)
+  if (frameCount % 600 === 0) { // Every 10 seconds
+    if (window.gc) {
+      try {
+        window.gc();
+      } catch (e) {
+        // Ignore if gc is not available
+      }
+    }
+  }
 }
 
 function createMenuElement() {
@@ -1834,6 +2974,82 @@ function updateSkillBar() {
       skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
     const cooldownPercent =
       max(0, cooldownRemaining) / skills[skillKey].cooldown;
+    
+    // Get skill element and check for active state
+    const skillDiv = select(`#skill${i}`);
+    
+    // Check if skills are active
+    const isSkillActive = (i === 2 && skills.skill2.active);
+    const isAtomicBombActive = (i === 8 && frameCount - skills.skill8.lastUsed < 120); // Show atomic effect for 2 seconds after activation
+    
+    // Update active skill appearance
+    if (skillDiv) {
+      if (isSkillActive) {
+        // Pulsing yellow/gold background for active machine gun skill
+        const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
+        skillDiv.style("background-color", `rgba(255, 215, 0, ${pulseIntensity})`);
+        skillDiv.style("box-shadow", "0 0 10px rgba(255, 215, 0, 0.8)");
+        
+        // Calculate remaining time percentage for active skill
+        const activeTimeRemaining = skills.skill2.endTime - frameCount;
+        const activeTimePercent = activeTimeRemaining / skills.skill2.activeDuration;
+        
+        // Add a timer overlay for active duration
+        select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
+        
+        // Skill key should appear in bright yellow/gold
+        select(`#skillKey${i}`).style("color", "rgba(255, 215, 0, 1.0)");
+      } else if (isAtomicBombActive) {
+        // Atomic bomb explosion effect in skill bar
+        // Rapidly flashing red/orange/yellow background
+        const explosionPhase = frameCount % 6; // Create a rapid flashing effect
+        let bgColor;
+        
+        // Cycle through explosion colors
+        if (explosionPhase < 2) {
+          bgColor = "rgba(255, 255, 220, 0.9)"; // Bright flash
+        } else if (explosionPhase < 4) {
+          bgColor = "rgba(255, 150, 50, 0.8)"; // Orange fire
+        } else {
+          bgColor = "rgba(150, 50, 0, 0.7)"; // Dark red/brown
+        }
+        
+        // Apply explosion styles
+        skillDiv.style("background-color", bgColor);
+        skillDiv.style("box-shadow", "0 0 20px rgba(255, 100, 0, 0.9)");
+        
+        // Create pulsing size effect
+        const pulseScale = 1.0 + 0.1 * Math.sin(frameCount * 0.5);
+        skillDiv.style("transform", `scale(${pulseScale})`);
+        
+        // Mushroom cloud icon on the skill
+        select(`#skillKey${i}`).html("☢");
+        select(`#skillKey${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+        select(`#skillKey${i}`).style("text-shadow", "0 0 10px white");
+        
+        // Add explosion text effect
+        select(`#skillName${i}`).html("☢ BOOM! ☢");
+        select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+      } else {
+        // Reset to normal appearance
+        skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
+        skillDiv.style("box-shadow", "none");
+        skillDiv.style("transform", "scale(1.0)");
+        
+        // Reset the skill name to normal
+        select(`#skillName${i}`).html(getSkillName(i));
+        select(`#skillName${i}`).style("color", "white");
+        
+        // Reset key display
+        if (i === 8) {
+          select(`#skillKey${i}`).html("R");
+        }
+        
+        // Reset key color
+        select(`#skillKey${i}`).style("color", "white");
+        select(`#skillKey${i}`).style("text-shadow", "none");
+      }
+    }
 
     // Update needle rotation
     const needleDiv = select(`#needle${i}`);
@@ -1846,22 +3062,51 @@ function updateSkillBar() {
       );
       needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
 
-      // Update overlay gradient
-      overlayDiv.style(
-        "background",
-        `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-      );
+      // Update overlay gradient - special color for active skills
+      if (isSkillActive) {
+        // Active machine gun skill gets a yellow/gold overlay instead of black
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(255, 215, 0, 0.3) ${rotationDegree}deg, rgba(255, 215, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      } else if (isAtomicBombActive) {
+        // Atomic bomb gets a red/orange overlay with animated effect
+        const explosionPhase = frameCount % 6; // Match the flash effect
+        let overlayColor;
+        
+        if (explosionPhase < 2) {
+          overlayColor = "rgba(255, 255, 50, 0.4)"; // Bright yellow
+        } else if (explosionPhase < 4) {
+          overlayColor = "rgba(255, 100, 0, 0.4)"; // Orange
+        } else {
+          overlayColor = "rgba(255, 0, 0, 0.3)"; // Red
+        }
+        
+        overlayDiv.style(
+          "background",
+          `conic-gradient(${overlayColor} ${rotationDegree}deg, ${overlayColor} ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      } else {
+        // Normal overlay for other skills or inactive skills
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+      }
     } else {
       console.error(`Needle or overlay element for skill #${i} not found`);
     }
   }
 }
 
-// Update the content of DOM HUD elements
+// Update the content of DOM HUD elements - with optimized drawing
 function updateHUD() {
-  updateStatusBoard();
-  updateTechnicalBoard();
-  updateSkillBar();
+  // Only update if in playing state to avoid unnecessary DOM operations
+  if (gameState === "playing") {
+    updateStatusBoard();
+    updateTechnicalBoard();
+    updateSkillBar();
+  }
 }
 
 function getSkillKey(skillNumber) {
@@ -1904,7 +3149,7 @@ function getSkillName(skillNumber) {
     case 7:
       return "Speed+";
     case 8:
-      return "Ultimate";
+      return "Atomic Bomb";
     default:
       return "";
   }
@@ -1993,7 +3238,7 @@ function mouseWheel(event) {
 function resetGame() {
   currentWave = 1;
   score = 0;
-  enemiesKilled = 0;
+  waveEnemiesKilled = 0;
   startTime = millis();
 
   // Reset squad
@@ -2039,9 +3284,51 @@ function applyEffects() {
   // Update effects lifetimes and remove dead effects
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life--;
+    
+    // Special handling for machine gun effects
+    if (effects[i].type === "machineGun") {
+      // Check if the machine gun skill is still active
+      if (!skills.skill2.active) {
+        effects[i].life = 0; // Force effect to end if skill is no longer active
+      }
+      
+      // Update position to follow the squad member
+      if (effects[i].member) {
+        effects[i].x = effects[i].member.x;
+        effects[i].y = effects[i].member.y;
+        effects[i].z = effects[i].member.z;
+      }
+    }
+    
     if (effects[i].life <= 0) {
+      // Remove but don't create new objects
       effects.splice(i, 1);
     }
+  }
+  
+  // Limit total effects to prevent memory issues
+  const maxEffectsBasedOnMemory = memoryUsageSamples.length > 0 && 
+    memoryUsageSamples[memoryUsageSamples.length - 1] > 300 ? 
+    30 : MAX_EFFECTS;
+  
+  // If memory usage is high, be more aggressive with cleanup
+  if (effects.length > maxEffectsBasedOnMemory) {
+    // Sort effects by importance (shields and machine gun effects are most important)
+    effects.sort((a, b) => {
+      // Shield effects have highest priority
+      if (a.type === "shield" && b.type !== "shield") return 1;
+      if (b.type === "shield" && a.type !== "shield") return -1;
+      
+      // Machine gun effects have second highest priority
+      if (a.type === "machineGun" && b.type !== "machineGun") return 1;
+      if (b.type === "machineGun" && a.type !== "machineGun") return -1;
+      
+      // Sort by remaining life (keep ones with most life left)
+      return a.life - b.life;
+    });
+    
+    // Remove excess effects
+    effects.splice(0, effects.length - maxEffectsBasedOnMemory);
   }
 }
 
@@ -2091,7 +3378,7 @@ function applyEnemyEffects() {
       else if (enemy.type === "boss3") score += 500;
 
       // Increment enemies killed counter
-      enemiesKilled++;
+      waveEnemiesKilled++;
 
       // Create explosion effect
       createExplosion(enemy.x, enemy.y, enemy.z, ENEMY_COLORS[enemy.type]);
@@ -2122,88 +3409,39 @@ function getEnemyMaxHealth(enemyType) {
   return Math.floor(baseHealth * (1 + currentWave * 0.1));
 }
 
-// Visual effects functions
-function createExplosion(x, y, z, color) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "explosion",
-    color: color,
-    size: 30,
-    life: EFFECT_DURATION,
-  });
-}
+// Visual effects functions with object pooling optimization
+let MAX_EFFECTS = 100; // Maximum number of simultaneous effects
 
-function createHitEffect(x, y, z, color) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "hit",
-    color: color,
-    size: 15,
-    life: EFFECT_DURATION / 2,
-  });
-}
-
-function createFireEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "fire",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createIceEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "ice",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createThunderEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "thunder",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createVortexEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "vortex",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createPlasmaEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "plasma",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-// Generic effect creator function
+// Create the effect or reuse an existing one from the pool
 function createEffect(type, x, y, z, color, size) {
+  // Check if we've reached the effect limit - if so, look for an expired effect to reuse
+  if (effects.length >= MAX_EFFECTS) {
+    // Find the effect with the lowest remaining life to replace
+    let lowestLifeIndex = 0;
+    let lowestLife = Infinity;
+    
+    for (let i = 0; i < effects.length; i++) {
+      if (effects[i].life < lowestLife) {
+        lowestLife = effects[i].life;
+        lowestLifeIndex = i;
+      }
+    }
+    
+    // Update the properties of the reused effect
+    effects[lowestLifeIndex] = {
+      x: x,
+      y: y,
+      z: z,
+      type: type,
+      color: color || [255, 255, 255],
+      size: size || 15,
+      life: EFFECT_DURATION,
+    };
+    
+    return;
+  }
+  
+  // Otherwise create a new effect if we haven't reached the limit
   effects.push({
     x: x,
     y: y,
@@ -2213,6 +3451,37 @@ function createEffect(type, x, y, z, color, size) {
     size: size || 15,
     life: EFFECT_DURATION,
   });
+}
+
+// Simplified effect functions that use the centralized createEffect function
+function createExplosion(x, y, z, color) {
+  createEffect("explosion", x, y, z, color, 30);
+}
+
+function createHitEffect(x, y, z, color, customSize) {
+  // Use custom size if provided, otherwise use default size of 15
+  const size = customSize || 15;
+  createEffect("hit", x, y, z, color, size, EFFECT_DURATION / 2);
+}
+
+function createFireEffect(x, y, z) {
+  createEffect("fire", x, y, z, null, 20);
+}
+
+function createIceEffect(x, y, z) {
+  createEffect("ice", x, y, z, null, 20);
+}
+
+function createThunderEffect(x, y, z) {
+  createEffect("thunder", x, y, z, null, 20);
+}
+
+function createVortexEffect(x, y, z) {
+  createEffect("vortex", x, y, z, null, 20);
+}
+
+function createPlasmaEffect(x, y, z) {
+  createEffect("plasma", x, y, z, null, 20);
 }
 
 // Window resize handling
