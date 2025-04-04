@@ -2294,27 +2294,7 @@ function checkWaveCompletion() {
     gameStartTime = frameCount;
 
     // Spawn some power-ups as rewards
-    // for (let i = 0; i < Math.floor(currentWave / 5) + 1; i++) {
-    //   const x = random(
-    //     BRIDGE_WIDTH / 2 + 20,
-    //     BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - 20
-    //   );
-    //   const y = random(-BRIDGE_LENGTH / 2 + 100, BRIDGE_LENGTH / 2 - 100);
-
-    //   powerUps.push({
-    //     x: x,
-    //     y: y,
-    //     z: 0,
-    //     type: random([
-    //       "thunderbolt",
-    //       "inferno",
-    //       "frostbite",
-    //       "vortex",
-    //       "plasma",
-    //       "photon",
-    //     ]),
-    //   });
-    // }
+    // TODO
   }
 }
 
@@ -2345,31 +2325,8 @@ function activateSkill(skillNumber) {
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
     case 1: // Area damage - damages all enemies in view
-      // let aoeRadius = 150 + aoeBoost * 15; // Base radius expanded by AOE boost
-      // let aoeDamage = 30 + damageBoost * 2; // Damage enhanced by damage boost
-
-      // // Get squad center for AOE effect
-      // let squadCenter = { x: 0, y: 0, z: 0 };
-      // if (squad.length > 0) {
-      //   squadCenter = { x: squad[0].x, y: squad[0].y, z: squad[0].z };
-      // }
-
-      // // Create larger explosion based on AOE boost
-      // createExplosion(
-      //   squadCenter.x,
-      //   squadCenter.y,
-      //   squadCenter.z,
-      //   [255, 200, 0]
-      // );
-
-      // // Apply damage to all enemies in radius
-      // for (let enemy of enemies) {
-      //   let distance = dist(squadCenter.x, squadCenter.y, enemy.x, enemy.y);
-      //   if (distance <= aoeRadius) {
-      //     enemy.health -= aoeDamage;
-      //     createHitEffect(enemy.x, enemy.y, enemy.z, [255, 200, 0]);
-      //   }
-      // }
+      // TODO: better skill effect as area damage
+      // For now, help to next weapon for testing
       currentWeapon = getNextItem(
         WEAPON_TYPES,
         WEAPON_TYPES.indexOf(currentWeapon)
