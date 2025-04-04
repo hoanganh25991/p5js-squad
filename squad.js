@@ -1429,10 +1429,7 @@ function drawEffects() {
 
     pop();
   }
-}
-
-// Power-up pool for object reuse
-let powerUpPool = [];  
+} 
 
 function drawPowerUps() {
   // Clear any remaining visual artifacts at the beginning of each frame
@@ -2011,41 +2008,21 @@ function spawnPowerUps() {
       let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
   
       // Use object from pool if available to reduce memory allocations
-      let powerUp;
-      if (powerUpPool.length > 0) {
-        powerUp = powerUpPool.pop();
-        // Reset the pooled power-up properties
-        powerUp.x = x;
-        powerUp.y = y;
-        powerUp.z = 0;
-        powerUp.type = type;
-        powerUp.value = value;
-        powerUp.speed = POWER_UP_SPEED + random(-0.5, 1);
-        powerUp.size = type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE;
-        powerUp.rotation = random(0, TWO_PI);
-        powerUp.rotationSpeed = type === "mirror" ? 0.03 : random(0.01, 0.05);
-        powerUp.stackLevel = 1;
-        powerUp.pulsePhase = random(0, TWO_PI);
-        powerUp.orbitals = type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1;
-      } else {
-        // Create a new power-up object
-        powerUp = {
-          x: x,
-          y: y,
-          z: 0,
-          type: type,
-          value: value,
-          speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
-          size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
-          rotation: random(0, TWO_PI), // Random starting rotation
-          rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
-          stackLevel: 1, // Power-ups of same type can stack
-          pulsePhase: random(0, TWO_PI), // For pulsing effect
-          orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
-        };
-      }
-  
-      // Add the power-up to the game
+      powerUp = {
+        x: x,
+        y: y,
+        z: 0,
+        type: type,
+        value: value,
+        speed: POWER_UP_SPEED + random(-0.5, 1), // Slightly varied speeds
+        size: type === "mirror" ? POWER_UP_SIZE * 1.2 : POWER_UP_SIZE, // Slightly larger for mirrors
+        rotation: random(0, TWO_PI), // Random starting rotation
+        rotationSpeed: type === "mirror" ? 0.03 : random(0.01, 0.05), // How fast it rotates
+        stackLevel: 1, // Power-ups of same type can stack
+        pulsePhase: random(0, TWO_PI), // For pulsing effect
+        orbitals: type === "mirror" ? 3 : type.includes("weapon") ? 3 : 1, // Small orbiting particles
+      };
+
       powerUps.push(powerUp);
     }
     
@@ -2069,26 +2046,8 @@ function updatePowerUps() {
 
     // Remove power-ups that go off-screen 
     if (powerUp.y > bottomBound) {
-      // Add to object pool for reuse if it's not at capacity
-      if (powerUpPool.length < 20) {
-        // Reset the powerUp properties before storing
-        powerUp = {
-          type: powerUp.type,
-          value: powerUp.value,
-          rotationSpeed: powerUp.rotationSpeed,
-          orbitals: powerUp.orbitals
-        };
-        powerUpPool.push(powerUp);
-      }
       powerUps.splice(i, 1);
     }
-  }
-  
-  // Limit total power-ups to avoid performance issues
-  if (powerUps.length > MAX_POWER_UPS) {
-    // Remove oldest power-ups when exceeding limit
-    const excessCount = powerUps.length - MAX_POWER_UPS;
-    powerUps.splice(0, excessCount);
   }
 }
 
