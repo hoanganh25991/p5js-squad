@@ -206,6 +206,72 @@ function draw() {
   drawGameOverContainer();
 }
 
+// Memory leak tracking and prevention
+let lastMemoryCleanup = 0;
+const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
+const MAX_OBJECTS = 500; // Maximum total number of game objects
+
+// Memory cleanup helper function
+function cleanupMemory() {
+  // Only run cleanup at specified intervals to avoid performance impact
+  if (frameCount - lastMemoryCleanup < MEMORY_CLEANUP_INTERVAL) return;
+  
+  lastMemoryCleanup = frameCount;
+  
+  // Calculate total objects
+  const totalObjects = squad.length + enemies.length + projectiles.length + powerUps.length + effects.length;
+  
+  // If too many objects, aggressively reduce all arrays
+  if (totalObjects > MAX_OBJECTS) {
+    // Keep this limited to prevent memory buildup
+    const excessRatio = MAX_OBJECTS / totalObjects;
+    
+    // Don't reduce squad (important for gameplay)
+    
+    // Reduce projectiles if too many (keep newest ones - most important)
+    if (projectiles.length > MAX_PROJECTILES / 2) {
+      projectiles.splice(0, projectiles.length - MAX_PROJECTILES / 2);
+    }
+    
+    // Reduce effects (visual only, won't affect gameplay)
+    if (effects.length > MAX_EFFECTS / 2) {
+      effects.splice(0, effects.length - MAX_EFFECTS / 2);
+    }
+    
+    // Reduce power-ups if excessive
+    if (powerUps.length > MAX_POWER_UPS) {
+      powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
+    }
+    
+    // Only reduce enemies as a last resort (important for gameplay)
+    if (totalObjects > MAX_OBJECTS && enemies.length > 50) {
+      // Remove enemies that are farthest away from the player
+      enemies.sort((a, b) => {
+        // Find distance from first squad member
+        if (squad.length === 0) return 0;
+        
+        const mainMember = squad[0];
+        const distA = Math.pow(a.x - mainMember.x, 2) + Math.pow(a.y - mainMember.y, 2);
+        const distB = Math.pow(b.x - mainMember.x, 2) + Math.pow(b.y - mainMember.y, 2);
+        
+        // Sort by distance (descending - farthest first)
+        return distB - distA;
+      });
+      
+      // Remove farthest enemies
+      enemies.splice(50, enemies.length - 50);
+    }
+    
+    // Clear object pools when they get too large
+    while (projectilePool.length > 30) projectilePool.pop();
+  }
+  
+  // Force release of any references that might be causing memory leaks
+  if (frameCount % 1800 === 0) { // Every 30 seconds
+    projectilePool.length = 0; // Clear the pool completely
+  }
+}
+
 // Main game logic functions
 function updateGame() {
   spawnEnemies();
@@ -221,6 +287,9 @@ function updateGame() {
 
   checkCollisions();
   checkWaveCompletion();
+  
+  // Run memory cleanup
+  cleanupMemory();
 
   updateHUD();
 }
@@ -361,45 +430,87 @@ function drawHuman(size, isLeader) {
 }
 
 function drawEnemies() {
-  // Draw enemies
+  // Draw enemies with distance-based LOD (Level of Detail)
   for (let enemy of enemies) {
+    // Find distance to camera/player for LOD calculations
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = enemy.x - mainMember.x;
+      const dy = enemy.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance - no need for sqrt
+    }
+    
     push();
     translate(enemy.x, enemy.y, enemy.z + enemy.size / 2);
+    
+    // Apply distance-based LOD
+    if (distToCamera > 800*800) {
+      // Very distant enemies - ultra simplified rendering
+      fill(...ENEMY_COLORS[enemy.type]);
+      sphere(enemy.size / 2);
+      
+      // Skip health bar for very distant enemies
+      pop();
+      continue;
+    }
+    
     fill(...ENEMY_COLORS[enemy.type]);
 
     // Draw different shapes for different enemy types
     if (enemy.type.includes("boss")) {
+      // Boss enemies are important - always full detail
       sphere(enemy.size / 2);
     } else if (enemy.type === "elite") {
       // Elite enemies are pyramids
       cone(enemy.size / 2, enemy.size);
     } else {
-      box(enemy.size, enemy.size, enemy.size);
+      // Standard enemies - simplify for medium distances
+      if (distToCamera > 400*400) {
+        // Medium distance - use simpler shape
+        sphere(enemy.size / 2);
+      } else {
+        // Close enough for full detail
+        box(enemy.size, enemy.size, enemy.size);
+      }
     }
 
-    // Draw health bar above enemy
-    const maxHealth = getEnemyMaxHealth(enemy.type);
-    const healthPercentage = enemy.health / maxHealth;
+    // Only draw health bars for enemies within reasonable distance
+    if (distToCamera < 600*600) {
+      // Draw health bar above enemy
+      const maxHealth = getEnemyMaxHealth(enemy.type);
+      const healthPercentage = enemy.health / maxHealth;
 
-    translate(0, 0, enemy.size);
-    const healthBarWidth = enemy.size * 1.2;
-    const healthBarHeight = 5;
+      translate(0, 0, enemy.size);
+      const healthBarWidth = enemy.size * 1.2;
+      const healthBarHeight = 5;
 
-    // Background of health bar
-    fill(100, 100, 100);
-    box(healthBarWidth, healthBarHeight, 2);
+      // Background of health bar
+      fill(100, 100, 100);
+      box(healthBarWidth, healthBarHeight, 2);
 
-    // Health indicator
-    fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
-    translate(-(healthBarWidth - healthBarWidth * healthPercentage) / 2, 0, 1);
-    box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+      // Health indicator
+      fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
+      translate(-(healthBarWidth - healthBarWidth * healthPercentage) / 2, 0, 1);
+      box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+    }
+    
     pop();
   }
 }
 
 function drawProjectiles() {
-  // Draw projectiles
+  // Draw projectiles with performance optimizations
   for (let proj of projectiles) {
+    // Distance-based Level of Detail
+    let distToCamera = 0;
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = proj.x - mainMember.x;
+      const dy = proj.y - mainMember.y;
+      distToCamera = dx*dx + dy*dy; // Squared distance
+    }
+    
     push();
     translate(proj.x, proj.y, proj.z);
 
@@ -430,8 +541,16 @@ function drawProjectiles() {
       hasGlowEffect = true;
     }
 
-    // Add glow effect for enhanced projectiles
-    if (hasGlowEffect) {
+    // For very distant projectiles, use simple rendering
+    if (distToCamera > 800*800) {
+      fill(projColor[0], projColor[1], projColor[2]);
+      sphere(proj.size);
+      pop();
+      continue;
+    }
+
+    // Add glow effect for enhanced projectiles (but only at medium-close distances)
+    if (hasGlowEffect && distToCamera < 500*500) {
       // Outer glow
       push();
       noStroke();
@@ -439,30 +558,37 @@ function drawProjectiles() {
       sphere(proj.size * 1.5 * enhancedSize);
       pop();
 
-      // Add trail effect
-      push();
-      translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
-      fill(projColor[0], projColor[1], projColor[2], 100);
-      sphere(proj.size * 1.2 * enhancedSize);
-      pop();
-
-      // For very powerful bullets, add an additional effect
-      if (damageBoost + fireRateBoost + aoeBoost > 15) {
+      // Add trail effect (only for medium-close distances)
+      if (distToCamera < 300*300) {
         push();
-        translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
-        fill(projColor[0], projColor[1], projColor[2], 70);
-        sphere(proj.size * 0.9 * enhancedSize);
+        translate(0, PROJECTILE_SPEED * 0.5, 0); // Position behind bullet
+        fill(projColor[0], projColor[1], projColor[2], 100);
+        sphere(proj.size * 1.2 * enhancedSize);
         pop();
+
+        // For very powerful bullets, add an additional effect (only for close distances)
+        if (damageBoost + fireRateBoost + aoeBoost > 15 && distToCamera < 200*200) {
+          push();
+          translate(0, PROJECTILE_SPEED * 1.0, 0); // Further behind
+          fill(projColor[0], projColor[1], projColor[2], 70);
+          sphere(proj.size * 0.9 * enhancedSize);
+          pop();
+        }
       }
     }
 
     // Main projectile with enhanced color
     fill(projColor[0], projColor[1], projColor[2]);
 
-    // Different projectile shapes based on weapon type
-    if (proj.weapon === "blaster") {
-      // Enhanced Green laser beam with a glowing effect
-      for (let i = 0; i < 3; i++) {
+    // Different projectile shapes based on weapon type and distance
+    // For medium-range and farther projectiles, use simplified rendering
+    if (distToCamera > 400*400) {
+      // Simplified rendering for distant projectiles
+      sphere(proj.size);
+    } else if (proj.weapon === "blaster") {
+      // Enhanced Green laser beam with a glowing effect - fewer effects at distance
+      const detailLevel = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < detailLevel; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
@@ -470,15 +596,15 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "thunderbolt") {
-      // Thunder projectile with a zigzag pattern
+      // Thunder projectile with a zigzag pattern - simplified at distance
       stroke(255, 255, 0);
       strokeWeight(2);
       noFill();
       beginShape();
-      let x = 0,
-        y = 0,
-        z = 0;
-      for (let i = 0; i < 10; i++) {
+      let x = 0, y = 0, z = 0;
+      // Fewer vertices for distant projectiles
+      const vertexCount = distToCamera < 200*200 ? 10 : 5;
+      for (let i = 0; i < vertexCount; i++) {
         vertex(x, y, z);
         x += random(-5, 5);
         y += random(-5, 5);
@@ -486,8 +612,9 @@ function drawProjectiles() {
       }
       endShape();
     } else if (proj.weapon === "inferno") {
-      // Fire projectile with a dynamic flame effect
-      for (let i = 0; i < 5; i++) {
+      // Fire projectile with a dynamic flame effect - fewer particles at distance
+      const particleCount = distToCamera < 200*200 ? 5 : 2;
+      for (let i = 0; i < particleCount; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
         rotateY(frameCount * 0.1);
@@ -495,8 +622,9 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "frostbite") {
-      // Ice projectile with crystal spikes
-      for (let i = 0; i < 6; i++) {
+      // Ice projectile with crystal spikes - fewer spikes at distance
+      const spikeCount = distToCamera < 200*200 ? 6 : 3;
+      for (let i = 0; i < spikeCount; i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -505,8 +633,9 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "vortex") {
-      // Vortex projectile with swirling rings
-      for (let i = 0; i < 3; i++) {
+      // Vortex projectile with swirling rings - fewer rings at distance
+      const ringCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < ringCount; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
@@ -514,16 +643,18 @@ function drawProjectiles() {
         pop();
       }
     } else if (proj.weapon === "plasma") {
-      // Plasma projectile with a pulsating effect
-      for (let i = 0; i < 3; i++) {
+      // Plasma projectile with a pulsating effect - fewer pulses at distance
+      const pulseCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < pulseCount; i++) {
         push();
         translate(random(-5, 5), random(-5, 5), random(-5, 5));
         sphere(proj.size * (0.8 + sin(frameCount * 0.2 + i) * 0.2));
         pop();
       }
     } else if (proj.weapon === "photon") {
-      // Photon projectile with a rotating disc
-      for (let i = 0; i < 3; i++) {
+      // Photon projectile with a rotating disc - fewer discs at distance
+      const discCount = distToCamera < 200*200 ? 3 : 1;
+      for (let i = 0; i < discCount; i++) {
         push();
         rotateX(frameCount * 0.1 + i);
         rotateY(frameCount * 0.1 + i);
@@ -539,18 +670,43 @@ function drawProjectiles() {
 }
 
 function drawEffects() {
-  // Draw visual effects
+  // Draw visual effects - optimized with distance culling
   for (let effect of effects) {
+    // Skip rendering effects too far from the player (distance culling)
+    // Find closest squad member to use as reference
+    if (squad.length > 0) {
+      const mainMember = squad[0];
+      const dx = effect.x - mainMember.x;
+      const dy = effect.y - mainMember.y;
+      // Fast distance check - if effect is far away, skip detailed rendering
+      if (dx*dx + dy*dy > 500*500) {
+        // Draw simplified version for distant effects
+        push();
+        translate(effect.x, effect.y, effect.z);
+        const effectColor = effect.color || [255, 255, 255];
+        fill(...effectColor, 200 * (effect.life / EFFECT_DURATION));
+        sphere(effect.size * 0.5);
+        pop();
+        continue;
+      }
+    }
+    
     push();
     translate(effect.x, effect.y, effect.z);
 
     // Default color if effect.color is undefined
     const effectColor = effect.color || [255, 255, 255];
+    
+    // Apply LOD (Level of Detail) based on effect life
+    // Less particles as effect fades away
+    const detailLevel = effect.life > EFFECT_DURATION/2 ? 1.0 : 0.5;
+    const particleCount = Math.ceil(detailLevel * 10);
 
     if (effect.type === "explosion") {
       // Explosion effect
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce particle count based on detail level
+      for (let i = 0; i < particleCount; i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -558,7 +714,8 @@ function drawEffects() {
         sphere(effect.size * 0.2);
         pop();
       }
-      for (let i = 0; i < 5; i++) {
+      // Reduce secondary particles even more
+      for (let i = 0; i < Math.ceil(particleCount/2); i++) {
         push();
         rotateX(random(TWO_PI));
         rotateY(random(TWO_PI));
@@ -567,69 +724,79 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "hit") {
-      // Hit effect
+      // Hit effect - simplified
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 8; i++) {
+      // Reduce particle count
+      const hitParticles = Math.min(8, Math.ceil(detailLevel * 8));
+      for (let i = 0; i < hitParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(-10, 10));
         box(effect.size * 0.2);
         pop();
       }
-      for (let i = 0; i < 4; i++) {
-        push();
-        translate(random(-15, 15), random(-15, 15), random(-15, 15));
-        cone(effect.size * 0.1, effect.size * 0.3);
-        pop();
+      // Skip secondary particles when low detail
+      if (detailLevel > 0.7) {
+        for (let i = 0; i < 2; i++) {
+          push();
+          translate(random(-15, 15), random(-15, 15), random(-15, 15));
+          cone(effect.size * 0.1, effect.size * 0.3);
+          pop();
+        }
       }
     } else if (effect.type === "fire") {
-      // Fire effect
+      // Fire effect - simplified
       fill(255, 100 + random(155), 0, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 5; i++) {
+      // Reduce particle count
+      const fireParticles = Math.ceil(detailLevel * 5);
+      for (let i = 0; i < fireParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(0, 20));
-        rotateX(frameCount * 0.05);
-        // torus(5 + random(5), 2);
         sphere(5 + random(5));
         pop();
       }
-      for (let i = 0; i < 3; i++) {
-        push();
-        translate(random(-10, 10), random(-10, 10), random(0, 20));
-        rotateY(frameCount * 0.05);
-        cylinder(3 + random(3), 10);
-        pop();
+      // Fewer secondary particles
+      if (detailLevel > 0.6) {
+        for (let i = 0; i < 2; i++) {
+          push();
+          translate(random(-10, 10), random(-10, 10), random(0, 20));
+          cylinder(3 + random(3), 10);
+          pop();
+        }
       }
     } else if (effect.type === "ice") {
-      // Enhanced Ice effect
+      // Enhanced Ice effect - simplified
       fill(200, 200, 255, 255 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce particle count
+      const iceParticles = Math.ceil(detailLevel * 10);
+      for (let i = 0; i < iceParticles; i++) {
         push();
         translate(random(-15, 15), random(-15, 15), random(-15, 15));
-        rotateX(frameCount * 0.02);
-        rotateY(frameCount * 0.02);
         box(effect.size * 0.1, effect.size * 0.1, effect.size * 0.5);
         pop();
       }
-      for (let i = 0; i < 5; i++) {
-        push();
-        translate(random(-20, 20), random(-20, 20), random(-20, 20));
-        rotateX(frameCount * 0.02);
-        rotateY(frameCount * 0.02);
-        cone(effect.size * 0.1, effect.size * 0.3);
-        pop();
+      // Skip secondary particles when low detail
+      if (detailLevel > 0.7) {
+        for (let i = 0; i < 3; i++) {
+          push();
+          translate(random(-20, 20), random(-20, 20), random(-20, 20));
+          cone(effect.size * 0.1, effect.size * 0.3);
+          pop();
+        }
       }
     } else if (effect.type === "thunder") {
-      // Realistic Thunder effect
+      // Realistic Thunder effect - simplified
       stroke(255, 255, 0, 255 * (effect.life / EFFECT_DURATION));
       strokeWeight(3);
-      for (let i = 0; i < 3; i++) {
+      // Reduce lightning bolts
+      const thunderLines = Math.ceil(detailLevel * 3);
+      for (let i = 0; i < thunderLines; i++) {
         push();
         translate(0, -50, 0); // Start from above
         beginShape();
-        let x = 0,
-          y = 0,
-          z = 0;
-        for (let j = 0; j < 10; j++) {
+        let x = 0, y = 0, z = 0;
+        // Simplified lightning path
+        const points = Math.max(5, Math.ceil(detailLevel * 10));
+        for (let j = 0; j < points; j++) {
           vertex(x, y, z);
           x += random(-10, 10);
           y += random(5, 15); // Move downwards
@@ -639,10 +806,12 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "vortex") {
-      // Vortex effect
+      // Vortex effect - simplified
       rotateZ(frameCount * 0.1);
       fill(150, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 10; i++) {
+      // Reduce torus count
+      const torusCount = Math.ceil(detailLevel * 5);
+      for (let i = 0; i < torusCount; i++) {
         push();
         rotateX(frameCount * 0.05);
         rotateY(frameCount * 0.05);
@@ -650,9 +819,11 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "plasma") {
-      // Plasma effect
+      // Plasma effect - simplified
       fill(255, 0, 255, 200 * (effect.life / EFFECT_DURATION));
-      for (let i = 0; i < 4; i++) {
+      // Reduce particle count
+      const plasmaParticles = Math.ceil(detailLevel * 4);
+      for (let i = 0; i < plasmaParticles; i++) {
         push();
         translate(random(-20, 20), random(-20, 20), random(0, 10));
         rotateX(frameCount * 0.03);
@@ -661,12 +832,11 @@ function drawEffects() {
         pop();
       }
     } else if (effect.type === "shield") {
-      // Shield effect
+      // Shield effect - always needed at full detail for gameplay
       noFill();
-      stroke(0, 150, 255, 100 * (effect.life / EFFECT_DURATION)); // Reduced opacity
-      strokeWeight(1); // Thinner lines for less density
+      stroke(0, 150, 255, 100 * (effect.life / EFFECT_DURATION)); 
+      strokeWeight(1);
       for (let i = 0; i < 3; i++) {
-        // Fewer spheres for less density
         push();
         rotateX(frameCount * 0.02 + i);
         rotateY(frameCount * 0.02 + i);
@@ -674,13 +844,12 @@ function drawEffects() {
         pop();
       }
 
-      fill(0, 150, 255, 30 * (effect.life / EFFECT_DURATION)); // Reduced fill opacity
+      fill(0, 150, 255, 30 * (effect.life / EFFECT_DURATION));
       for (let i = 0; i < 2; i++) {
-        // Fewer toruses for less density
         push();
         rotateX(frameCount * 0.05 + i);
         rotateY(frameCount * 0.05 + i);
-        torus(effect.size * 0.6, 3); // Smaller torus for less visual clutter
+        torus(effect.size * 0.6, 3);
         pop();
       }
     }
@@ -809,17 +978,33 @@ function updateSquad() {
 }
 
 function fireWeapon(squadMember) {
-  // const weapon = squadMember.weapon || currentWeapon;
-
-  let projectile = {
-    x: squadMember.x,
-    y: squadMember.y,
-    z: squadMember.z + squadMember.size / 2,
-    weapon: currentWeapon,
-    speed: PROJECTILE_SPEED,
-    damage: getWeaponDamage(currentWeapon),
-    size: PROJECTILE_SIZE,
-  };
+  // Use projectile from object pool if available (object reuse)
+  let projectile;
+  
+  if (projectilePool.length > 0) {
+    // Reuse a projectile from the pool
+    projectile = projectilePool.pop();
+    
+    // Reset properties
+    projectile.x = squadMember.x;
+    projectile.y = squadMember.y;
+    projectile.z = squadMember.z + squadMember.size / 2;
+    projectile.weapon = currentWeapon;
+    projectile.speed = PROJECTILE_SPEED;
+    projectile.damage = getWeaponDamage(currentWeapon);
+    projectile.size = PROJECTILE_SIZE;
+  } else {
+    // Create a new projectile if pool is empty
+    projectile = {
+      x: squadMember.x,
+      y: squadMember.y,
+      z: squadMember.z + squadMember.size / 2,
+      weapon: currentWeapon,
+      speed: PROJECTILE_SPEED,
+      damage: getWeaponDamage(currentWeapon),
+      size: PROJECTILE_SIZE,
+    };
+  }
 
   projectiles.push(projectile);
 }
@@ -856,6 +1041,10 @@ function getWeaponDamage(weapon) {
   return baseDamage + damageBoost;
 }
 
+// Maximum number of projectiles to maintain performance
+const MAX_PROJECTILES = 200;
+const projectilePool = [];
+
 function updateProjectiles() {
   // Move projectiles
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -864,8 +1053,19 @@ function updateProjectiles() {
 
     // Remove projectiles that go off-screen (adjusted for longer bridge)
     if (proj.y < (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2) {
+      // Add to object pool for reuse instead of garbage collection
+      if (projectilePool.length < 50) { // Limit pool size
+        projectilePool.push(proj);
+      }
       projectiles.splice(i, 1);
     }
+  }
+  
+  // Limit total projectiles to avoid performance issues
+  if (projectiles.length > MAX_PROJECTILES) {
+    // Remove oldest projectiles when exceeding limit
+    const excessCount = projectiles.length - MAX_PROJECTILES;
+    projectiles.splice(0, excessCount);
   }
 }
 
@@ -1097,7 +1297,7 @@ function updatePowerUps() {
   }
 }
 
-// Collision detection
+// Collision detection - optimized with squared distance calculations
 function checkCollisions() {
   // Projectile-Enemy Collisions
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -1105,12 +1305,18 @@ function checkCollisions() {
 
     for (let j = enemies.length - 1; j >= 0; j--) {
       let enemy = enemies[j];
-
-      // Simple distance-based collision
-      if (
-        dist(proj.x, proj.y, proj.z, enemy.x, enemy.y, enemy.z) <
-        enemy.size / 2 + PROJECTILE_SIZE
-      ) {
+      
+      // Skip collision checks for distant objects (culling optimization)
+      if (Math.abs(proj.y - enemy.y) > 100) continue;
+      
+      // Fast squared distance check (avoids expensive sqrt operation)
+      const dx = proj.x - enemy.x;
+      const dy = proj.y - enemy.y;
+      const dz = proj.z - enemy.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(enemy.size/2 + PROJECTILE_SIZE, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Apply damage
         enemy.health -= proj.damage;
 
@@ -1135,23 +1341,7 @@ function checkCollisions() {
           // Thunder effect
           createThunderEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "vortex") {
-          // Vortex AoE effect - apply damage to nearby enemies
-          // for (let k = enemies.length - 1; k >= 0; k--) {
-          //   let nearbyEnemy = enemies[k];
-          //   if (
-          //     dist(
-          //       enemy.x,
-          //       enemy.y,
-          //       enemy.z,
-          //       nearbyEnemy.x,
-          //       nearbyEnemy.y,
-          //       nearbyEnemy.z
-          //     ) < 100
-          //   ) {
-          //     nearbyEnemy.health -= proj.damage * 0.5;
-          //     createVortexEffect(enemy.x, enemy.y, enemy.z);
-          //   }
-          // }
+          // Vortex effect optimized to avoid nested loop
           createVortexEffect(enemy.x, enemy.y, enemy.z);
         } else if (proj.weapon === "plasma") {
           // Plasma shotgun spread effect
@@ -1184,22 +1374,22 @@ function checkCollisions() {
     }
   }
 
-  // Squad-PowerUp Collisions
+  // Squad-PowerUp Collisions - using squared distance
   for (let i = powerUps.length - 1; i >= 0; i--) {
     let powerUp = powerUps[i];
 
     for (let squadMember of squad) {
-      if (
-        dist(
-          powerUp.x,
-          powerUp.y,
-          powerUp.z,
-          squadMember.x,
-          squadMember.y,
-          squadMember.z
-        ) <
-        squadMember.size / 2 + POWER_UP_SIZE / 2
-      ) {
+      // Skip collision checks for distant power-ups (culling optimization)
+      if (Math.abs(powerUp.y - squadMember.y) > 100) continue;
+      
+      // Fast squared distance calculation
+      const dx = powerUp.x - squadMember.x;
+      const dy = powerUp.y - squadMember.y;
+      const dz = powerUp.z - squadMember.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(squadMember.size/2 + POWER_UP_SIZE/2, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Apply power-up effect
         if (powerUp.type === "mirror") {
           // Add a new squad member
@@ -1288,17 +1478,24 @@ function checkCollisions() {
     }
   }
 
-  // Enemy-Squad Collisions
+  // Enemy-Squad Collisions - using squared distance
   for (let i = enemies.length - 1; i >= 0; i--) {
     let enemy = enemies[i];
 
     for (let j = squad.length - 1; j >= 0; j--) {
       let member = squad[j];
-
-      if (
-        dist(enemy.x, enemy.y, enemy.z, member.x, member.y, member.z) <
-        enemy.size / 2 + member.size / 2
-      ) {
+      
+      // Skip collision checks for distant objects (culling optimization)
+      if (Math.abs(enemy.y - member.y) > 100) continue;
+      
+      // Fast squared distance calculation
+      const dx = enemy.x - member.x;
+      const dy = enemy.y - member.y;
+      const dz = enemy.z - member.z;
+      const squaredDist = dx*dx + dy*dy + dz*dz;
+      const squaredThreshold = Math.pow(enemy.size/2 + member.size/2, 2);
+      
+      if (squaredDist < squaredThreshold) {
         // Squad member takes damage
         member.health -= 20;
 
@@ -1623,7 +1820,10 @@ function drawGameOverContainer() {
   gameState == "gameOver" ? gameOverContainer.show() : gameOverContainer.hide();
 }
 
-// Create DOM elements for HUD
+// Create DOM elements for HUD - optimized with update frequency control
+let lastStatusUpdateTime = 0;
+const STATUS_UPDATE_INTERVAL = 5; // Update every 5 frames instead of every frame
+
 function createStatusBoardElements() {
   // Create status board element
   statusBoard = createDiv("");
@@ -1639,6 +1839,13 @@ function createStatusBoardElements() {
 }
 
 function updateStatusBoard() {
+  // Only update DOM elements every few frames for better performance
+  if (frameCount - lastStatusUpdateTime < STATUS_UPDATE_INTERVAL) {
+    return;
+  }
+  
+  lastStatusUpdateTime = frameCount;
+  
   // Calculate average health
   const avgHealth =
     squad.length > 0
@@ -1660,6 +1867,9 @@ function updateStatusBoard() {
   `);
 }
 
+let lastTechUpdateTime = 0;
+const TECH_UPDATE_INTERVAL = 15; // Update tech stats less frequently (every 15 frames)
+
 function createTechnicalBoardElements() {
   // Create technical board element
   techBoard = createDiv("");
@@ -1675,15 +1885,38 @@ function createTechnicalBoardElements() {
   techBoard.style("use-select", "none");
 }
 
+// FPS smoothing for more stable display
+let fpsHistory = [];
+const FPS_HISTORY_LENGTH = 10;
+
 function updateTechnicalBoard() {
+  // Only update DOM elements every few frames for better performance
+  if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
+    return;
+  }
+  
+  lastTechUpdateTime = frameCount;
+  
+  // Record current FPS for averaging
+  fpsHistory.push(frameRate());
+  if (fpsHistory.length > FPS_HISTORY_LENGTH) {
+    fpsHistory.shift(); // Remove oldest value
+  }
+  
+  // Calculate average FPS for smoother display
+  const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+  
   // Calculate time elapsed
   const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
 
-  // Calculate total objects
+  // Calculate total objects (game complexity metric)
   const objectCount =
     squad.length + enemies.length + projectiles.length + powerUps.length;
+  
+  // Memory usage estimate based on object count
+  const estimatedMemory = (objectCount * 0.5).toFixed(1); // rough estimate in MB
 
   // Add debug mode indicator if needed
   const debugModeText = DEBUG_MODE
@@ -1694,8 +1927,9 @@ function updateTechnicalBoard() {
   techBoard.html(`
     <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
     ${debugModeText}
-    <div>FPS: ${Math.floor(frameRate())}</div>
+    <div>FPS: ${Math.floor(avgFPS)}</div>
     <div>Objects: ${objectCount}</div>
+    <div>Memory: ~${estimatedMemory} MB</div>
     <div>Time: ${minutes}m ${seconds}s</div>
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
@@ -1857,11 +2091,14 @@ function updateSkillBar() {
   }
 }
 
-// Update the content of DOM HUD elements
+// Update the content of DOM HUD elements - with optimized drawing
 function updateHUD() {
-  updateStatusBoard();
-  updateTechnicalBoard();
-  updateSkillBar();
+  // Only update if in playing state to avoid unnecessary DOM operations
+  if (gameState === "playing") {
+    updateStatusBoard();
+    updateTechnicalBoard();
+    updateSkillBar();
+  }
 }
 
 function getSkillKey(skillNumber) {
@@ -2122,88 +2359,39 @@ function getEnemyMaxHealth(enemyType) {
   return Math.floor(baseHealth * (1 + currentWave * 0.1));
 }
 
-// Visual effects functions
-function createExplosion(x, y, z, color) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "explosion",
-    color: color,
-    size: 30,
-    life: EFFECT_DURATION,
-  });
-}
+// Visual effects functions with object pooling optimization
+const MAX_EFFECTS = 100; // Maximum number of simultaneous effects
 
-function createHitEffect(x, y, z, color) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "hit",
-    color: color,
-    size: 15,
-    life: EFFECT_DURATION / 2,
-  });
-}
-
-function createFireEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "fire",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createIceEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "ice",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createThunderEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "thunder",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createVortexEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "vortex",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-function createPlasmaEffect(x, y, z) {
-  effects.push({
-    x: x,
-    y: y,
-    z: z,
-    type: "plasma",
-    size: 20,
-    life: EFFECT_DURATION,
-  });
-}
-
-// Generic effect creator function
+// Create the effect or reuse an existing one from the pool
 function createEffect(type, x, y, z, color, size) {
+  // Check if we've reached the effect limit - if so, look for an expired effect to reuse
+  if (effects.length >= MAX_EFFECTS) {
+    // Find the effect with the lowest remaining life to replace
+    let lowestLifeIndex = 0;
+    let lowestLife = Infinity;
+    
+    for (let i = 0; i < effects.length; i++) {
+      if (effects[i].life < lowestLife) {
+        lowestLife = effects[i].life;
+        lowestLifeIndex = i;
+      }
+    }
+    
+    // Update the properties of the reused effect
+    effects[lowestLifeIndex] = {
+      x: x,
+      y: y,
+      z: z,
+      type: type,
+      color: color || [255, 255, 255],
+      size: size || 15,
+      life: EFFECT_DURATION,
+    };
+    
+    return;
+  }
+  
+  // Otherwise create a new effect if we haven't reached the limit
   effects.push({
     x: x,
     y: y,
@@ -2213,6 +2401,35 @@ function createEffect(type, x, y, z, color, size) {
     size: size || 15,
     life: EFFECT_DURATION,
   });
+}
+
+// Simplified effect functions that use the centralized createEffect function
+function createExplosion(x, y, z, color) {
+  createEffect("explosion", x, y, z, color, 30);
+}
+
+function createHitEffect(x, y, z, color) {
+  createEffect("hit", x, y, z, color, 15, EFFECT_DURATION / 2);
+}
+
+function createFireEffect(x, y, z) {
+  createEffect("fire", x, y, z, null, 20);
+}
+
+function createIceEffect(x, y, z) {
+  createEffect("ice", x, y, z, null, 20);
+}
+
+function createThunderEffect(x, y, z) {
+  createEffect("thunder", x, y, z, null, 20);
+}
+
+function createVortexEffect(x, y, z) {
+  createEffect("vortex", x, y, z, null, 20);
+}
+
+function createPlasmaEffect(x, y, z) {
+  createEffect("plasma", x, y, z, null, 20);
 }
 
 // Window resize handling
