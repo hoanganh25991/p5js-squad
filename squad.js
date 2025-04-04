@@ -1292,8 +1292,8 @@ function drawEffects() {
         rotateX(HALF_PI);
         
         fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha);
-        // Place stem along NEGATIVE Y-axis to make it rise upward from ground in player view
-        translate(0, -effect.size * 0.3, 0);
+        // Place stem along Y-axis after rotation
+        translate(0, effect.size * 0.3, 0);
         cylinder(effect.size * 0.4, effect.size * 1.5);
         pop();
         
@@ -1309,8 +1309,8 @@ function drawEffects() {
         rotateX(HALF_PI);
         
         fill(explosionColor[0], explosionColor[1], explosionColor[2], alpha * 0.8);
-        // Place cap along NEGATIVE Y-axis to make it appear at the top of the mushroom cloud in player view
-        translate(0, -effect.size * 1.2, 0);
+        // Place cap along Y-axis after rotation
+        translate(0, effect.size * 1.2, 0);
         
         // Mushroom cap top
         push();
@@ -1324,10 +1324,10 @@ function drawEffects() {
           const angle = random(TWO_PI);
           const radius = random(effect.size * 0.8, effect.size * 1.4);
           const height = random(effect.size * 0.1, effect.size * 0.5);
-          // After rotation, debris should spread in X-Z plane with NEGATIVE Y axis pointing upward
+          // After rotation, debris should spread in X-Z plane with NEGATIVE Y as height (to be on top)
           translate(
             cos(angle) * radius,
-            -height, // NEGATIVE Y makes debris rise upward from the mushroom cap in player view
+            height,
             sin(angle) * radius
           );
           fill(100, 100, 100, random(50, 150));
@@ -1351,7 +1351,7 @@ function drawEffects() {
           // In rotated space: X is right/left, Y is up/down, Z is forward/back
           translate(
             random(-effect.size, effect.size), // Spread horizontally (left/right)
-            random(-effect.size * 0.8, -effect.size * 1.6), // NEGATIVE Y range makes the cloud rise upward in player view
+            random(effect.size * 0.8, effect.size * 1.6), // Height (up from ground)
             random(-effect.size, effect.size)  // Spread horizontally (forward/back)
           );
           sphere(random(effect.size * 0.2, effect.size * 0.5));
@@ -1366,7 +1366,7 @@ function drawEffects() {
           const height = random(0, effect.size * 2);
           translate(
             cos(angle) * radius,  // X (horizontal spread after rotation)
-            -height,              // NEGATIVE Y makes the particles rise upward from ground in player view
+            height,              // Up in Y direction (after rotation)
             sin(angle) * radius   // Z (horizontal spread after rotation)
           );
           fill(200, 200, 200, random(30, 80));
