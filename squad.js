@@ -2960,7 +2960,6 @@ function startGame() {
       controlsContainer.style("visibility", "visible");
       controlsContainer.style("opacity", "1");
       controlsContainer.position(0, height - 250); // Ensure correct position
-      // controlsContainer.style("max-width", "1200px");
       controlsContainer.style("margin", "0 auto");
 
       // Make sure D-pad is visible
@@ -3084,7 +3083,6 @@ function createSkillBarElement() {
   skillBar.style("padding", "10px");
   skillBar.style("border-radius", "5px");
   skillBar.style("flex", "0 0 auto"); // Don't grow, don't shrink, auto basis
-  skillBar.style("width", "280px"); // Fixed width for the skill bar
   skillBar.style("height", "220px"); // Match height with d-pad
   skillBar.style("display", "flex");
   skillBar.style("flex-direction", "column"); // Stack rows vertically
@@ -3119,7 +3117,7 @@ function createSkillBarElement() {
     skillDiv.style("margin", "0 5px"); // More margin between buttons
     skillDiv.style("position", "relative");
     skillDiv.style("height", "80px"); // Slightly shorter for two rows
-    skillDiv.style("width", "60px"); // Wider for better touch targets
+    skillDiv.style("width", "80px"); // Wider for better touch targets
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
     skillDiv.style("border-radius", "10px"); // Maintain radius
     skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
@@ -3760,7 +3758,6 @@ function createControlsContainer() {
   controlsContainer.position(0, height - 250); // Position at bottom of screen with more space for larger d-pad
   controlsContainer.style("width", "100%");
   controlsContainer.style("height", "250px"); // Much taller for much bigger d-pad
-  // controlsContainer.style("max-width", "1200px"); // Limit width on large screens
   controlsContainer.style("margin", "0 auto"); // Center horizontally
   controlsContainer.style("display", "flex");
   controlsContainer.style("flex-direction", "row");
@@ -3977,7 +3974,6 @@ function updateDirectionalPad() {
     controlsContainer.style("visibility", "visible");
     controlsContainer.style("opacity", "1");
     controlsContainer.position(0, height - 250); // Reposition in case of window resize
-    // controlsContainer.style("max-width", "1200px");
     controlsContainer.style("margin", "0 auto");
 
     // Make sure the D-pad is visible
@@ -4023,7 +4019,6 @@ function windowResized() {
     controlsContainer.position(0, height - 250);
     controlsContainer.style("width", "100%");
     controlsContainer.style("height", "250px");
-    // controlsContainer.style("max-width", "1200px");
     controlsContainer.style("margin", "0 auto");
   }
 
