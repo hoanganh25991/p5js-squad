@@ -195,8 +195,13 @@ function setup() {
   createPauseElement();
   createResumeElement();
   createGameOverElement();
-  createSkillBarElement();
+
+  // Create container for controls
+  createControlsContainer();
+
+  // Create skill bar and d-pad inside the container
   createDirectionalPadElement(); // Add directional pad for touch/click movement
+  createSkillBarElement();
 
   // Purge any old references
   setTimeout(function() {
@@ -2943,15 +2948,19 @@ function startGame() {
     // Hide game over screen
     gameOverContainer.style("display", "none");
 
-    // Show skill bar
-    skillBar.style("display", "flex");
+    // Show controls container with skill bar and D-pad
+    if (controlsContainer) {
+      controlsContainer.style("display", "flex");
+      controlsContainer.style("visibility", "visible");
+      controlsContainer.style("opacity", "1");
+      controlsContainer.position(0, height - 150); // Ensure correct position
 
-    // Show D-pad for touch controls
-    if (dPad) {
-      dPad.style("display", "block");
-      dPad.style("visibility", "visible");
-      dPad.style("opacity", "1");
-      dPad.position(20, height - 220); // Ensure correct position
+      // Make sure D-pad is visible
+      if (dPad) {
+        dPad.style("visibility", "visible");
+        dPad.style("display", "block");
+        dPad.style("opacity", "1");
+      }
 
       // Reset all direction states
       activeDirections.up = false;
@@ -2960,7 +2969,9 @@ function startGame() {
       activeDirections.right = false;
 
       // Log to console for debugging
-      console.log("Game started, D-pad should be visible");
+      console.log("Game started, controls container should be visible");
+      console.log("D-pad element:", dPad);
+      console.log("Skill bar element:", skillBar);
     }
 
     // Reset memory warning
@@ -3060,16 +3071,22 @@ function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  skillBar.position(width / 2 - 200, height - 110); // Position in the center-right area
   skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
   skillBar.style("color", "white");
   skillBar.style("padding", "10px");
   skillBar.style("border-radius", "5px");
-  skillBar.style("width", "400px"); // Fixed width instead of full width
+  skillBar.style("flex", "1"); // Take up remaining space in the flex container
+  skillBar.style("height", "120px"); // Match height with d-pad
   skillBar.style("display", "flex");
   skillBar.style("justify-content", "space-between");
   skillBar.style("font-family", "monospace");
-  skillBar.style("z-index", "1000");
+  skillBar.style("box-sizing", "border-box");
+  skillBar.style("margin-left", "10px"); // Add margin on right side
+  skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)"); // Add border for visibility
+  skillBar.style("align-items", "center"); // Center items vertically
+
+  // Add skill bar to the controls container
+  controlsContainer.child(skillBar);
 
   // Create individual skill elements
   for (let i = 1; i <= 8; i++) {
@@ -3077,10 +3094,10 @@ function createSkillBarElement() {
     skillDiv.id(`skill${i}`);
     skillDiv.style("flex", "1");
     skillDiv.style("text-align", "center");
-    skillDiv.style("margin", "0 2px"); // Reduced margin for more compact layout
+    skillDiv.style("margin", "0 4px"); // Slightly more margin between buttons
     skillDiv.style("position", "relative");
-    skillDiv.style("height", "80px"); // Maintain height for touch targets
-    skillDiv.style("width", "45px"); // Fixed width for more compact layout
+    skillDiv.style("height", "90px"); // Taller for better touch targets
+    skillDiv.style("width", "50px"); // Wider for better touch targets
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
     skillDiv.style("border-radius", "10px"); // Maintain radius
     skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
@@ -3090,10 +3107,10 @@ function createSkillBarElement() {
     skillDiv.style("-webkit-tap-highlight-color", "transparent"); // Remove tap highlight on mobile
 
     skillDiv.html(`
-      <div id="skillName${i}" style="font-size: 0.7rem; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
+      <div id="skillName${i}" style="font-size: 0.8rem; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
       i
     )}</div>
-      <div id="skillKey${i}" style="font-size: 1.8rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      <div id="skillKey${i}" style="font-size: 2.2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
       i
     )}</div>
       <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
@@ -3701,20 +3718,52 @@ let activeDirections = {
   right: false
 };
 
+// Controls container for bottom row layout
+let controlsContainer;
+
+// Create container for controls (d-pad and skill bar)
+function createControlsContainer() {
+  // Create main container
+  controlsContainer = createDiv("");
+  controlsContainer.id("controls-container");
+  controlsContainer.position(0, height - 150); // Position at bottom of screen with more space
+  controlsContainer.style("width", "100%");
+  controlsContainer.style("height", "150px"); // Taller for bigger d-pad
+  controlsContainer.style("display", "flex");
+  controlsContainer.style("flex-direction", "row");
+  controlsContainer.style("align-items", "center");
+  controlsContainer.style("justify-content", "space-between"); // Space between d-pad and skill bar
+  controlsContainer.style("padding", "10px");
+  controlsContainer.style("box-sizing", "border-box");
+  controlsContainer.style("z-index", "1500"); // Higher z-index
+  controlsContainer.style("background-color", "rgba(0, 0, 0, 0.2)"); // Slight background
+
+  // Initially hide the container, but make it ready to be shown
+  controlsContainer.style("visibility", "hidden");
+  controlsContainer.style("opacity", "0");
+  controlsContainer.style("transition", "opacity 0.3s ease-in-out");
+}
+
 // Create directional pad for touch/click movement
 function createDirectionalPadElement() {
   // Create main d-pad container
   dPad = createDiv("");
   dPad.id("d-pad-container");
-  dPad.position(20, height - 220); // Position above skill bar with more space
-  dPad.style("width", "180px");
-  dPad.style("height", "180px");
-  dPad.style("position", "absolute"); // Use absolute positioning
-  dPad.style("z-index", "1500"); // Higher z-index to ensure visibility
-  dPad.style("background-color", "rgba(30, 30, 30, 0.6)"); // More visible background
-  dPad.style("border-radius", "90px");
-  dPad.style("border", "3px solid rgba(150, 150, 150, 0.7)"); // More visible border
+  dPad.style("width", "140px"); // Bigger d-pad
+  dPad.style("height", "140px"); // Bigger d-pad
+  dPad.style("position", "relative"); // Use relative positioning within flex container
+  dPad.style("background-color", "rgba(30, 30, 30, 0.8)"); // More visible background
+  dPad.style("border-radius", "70px"); // Half of width/height
+  dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
+  dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)"); // More visible border
+  dPad.style("z-index", "1600"); // Higher z-index than the container
   dPad.style("box-shadow", "0 0 15px rgba(0, 0, 0, 0.5)"); // Add shadow for better visibility
+
+  // Add d-pad to the controls container
+  controlsContainer.child(dPad);
+
+  // Log to console for debugging
+  console.log("D-pad created and added to controls container");
   dPad.style("display", "block"); // Ensure it's displayed
   dPad.style("pointer-events", "auto"); // Ensure it receives mouse/touch events
 
@@ -3722,17 +3771,17 @@ function createDirectionalPadElement() {
   upButton = createDiv("▲");
   upButton.id("up-button");
   upButton.style("position", "absolute");
-  upButton.style("top", "5px");
-  upButton.style("left", "65px");
-  upButton.style("width", "50px");
-  upButton.style("height", "50px");
+  upButton.style("top", "10px");
+  upButton.style("left", "55px");
+  upButton.style("width", "35px");
+  upButton.style("height", "35px");
   upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   upButton.style("color", "white");
-  upButton.style("font-size", "28px");
+  upButton.style("font-size", "16px");
   upButton.style("display", "flex");
   upButton.style("align-items", "center");
   upButton.style("justify-content", "center");
-  upButton.style("border-radius", "10px");
+  upButton.style("border-radius", "8px");
   upButton.style("cursor", "pointer");
   upButton.style("user-select", "none");
   upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3743,17 +3792,17 @@ function createDirectionalPadElement() {
   downButton = createDiv("▼");
   downButton.id("down-button");
   downButton.style("position", "absolute");
-  downButton.style("bottom", "5px");
-  downButton.style("left", "65px");
-  downButton.style("width", "50px");
-  downButton.style("height", "50px");
+  downButton.style("bottom", "10px");
+  downButton.style("left", "55px");
+  downButton.style("width", "35px");
+  downButton.style("height", "35px");
   downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   downButton.style("color", "white");
-  downButton.style("font-size", "28px");
+  downButton.style("font-size", "16px");
   downButton.style("display", "flex");
   downButton.style("align-items", "center");
   downButton.style("justify-content", "center");
-  downButton.style("border-radius", "10px");
+  downButton.style("border-radius", "8px");
   downButton.style("cursor", "pointer");
   downButton.style("user-select", "none");
   downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3764,17 +3813,17 @@ function createDirectionalPadElement() {
   leftButton = createDiv("◀");
   leftButton.id("left-button");
   leftButton.style("position", "absolute");
-  leftButton.style("top", "65px");
-  leftButton.style("left", "5px");
-  leftButton.style("width", "50px");
-  leftButton.style("height", "50px");
+  leftButton.style("top", "55px");
+  leftButton.style("left", "10px");
+  leftButton.style("width", "35px");
+  leftButton.style("height", "35px");
   leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   leftButton.style("color", "white");
-  leftButton.style("font-size", "28px");
+  leftButton.style("font-size", "16px");
   leftButton.style("display", "flex");
   leftButton.style("align-items", "center");
   leftButton.style("justify-content", "center");
-  leftButton.style("border-radius", "10px");
+  leftButton.style("border-radius", "8px");
   leftButton.style("cursor", "pointer");
   leftButton.style("user-select", "none");
   leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3785,17 +3834,17 @@ function createDirectionalPadElement() {
   rightButton = createDiv("▶");
   rightButton.id("right-button");
   rightButton.style("position", "absolute");
-  rightButton.style("top", "65px");
-  rightButton.style("right", "5px");
-  rightButton.style("width", "50px");
-  rightButton.style("height", "50px");
+  rightButton.style("top", "55px");
+  rightButton.style("right", "10px");
+  rightButton.style("width", "35px");
+  rightButton.style("height", "35px");
   rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   rightButton.style("color", "white");
-  rightButton.style("font-size", "28px");
+  rightButton.style("font-size", "16px");
   rightButton.style("display", "flex");
   rightButton.style("align-items", "center");
   rightButton.style("justify-content", "center");
-  rightButton.style("border-radius", "10px");
+  rightButton.style("border-radius", "8px");
   rightButton.style("cursor", "pointer");
   rightButton.style("user-select", "none");
   rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3806,35 +3855,35 @@ function createDirectionalPadElement() {
   const centerButton = createDiv("•");
   centerButton.id("center-button");
   centerButton.style("position", "absolute");
-  centerButton.style("top", "65px");
-  centerButton.style("left", "65px");
-  centerButton.style("width", "50px");
-  centerButton.style("height", "50px");
+  centerButton.style("top", "55px");
+  centerButton.style("left", "55px");
+  centerButton.style("width", "35px");
+  centerButton.style("height", "35px");
   centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
   centerButton.style("color", "white");
-  centerButton.style("font-size", "28px");
+  centerButton.style("font-size", "16px");
   centerButton.style("display", "flex");
   centerButton.style("align-items", "center");
   centerButton.style("justify-content", "center");
-  centerButton.style("border-radius", "10px");
+  centerButton.style("border-radius", "8px");
   centerButton.style("cursor", "pointer");
   centerButton.style("user-select", "none");
   centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   centerButton.style("transition", "transform 0.1s, background-color 0.2s");
   centerButton.style("-webkit-tap-highlight-color", "transparent");
 
-  // Add event handlers for up button
-  setupDirectionalButton(upButton, "up");
-  setupDirectionalButton(downButton, "down");
-  setupDirectionalButton(leftButton, "left");
-  setupDirectionalButton(rightButton, "right");
-
-  // Add all buttons to the d-pad container
+  // Add buttons to the d-pad
   dPad.child(upButton);
   dPad.child(downButton);
   dPad.child(leftButton);
   dPad.child(rightButton);
   dPad.child(centerButton);
+
+  // Add event handlers for buttons
+  setupDirectionalButton(upButton, "up");
+  setupDirectionalButton(downButton, "down");
+  setupDirectionalButton(leftButton, "left");
+  setupDirectionalButton(rightButton, "right");
 
   // Initially hide the d-pad
   dPad.style("visibility", "hidden");
@@ -3890,12 +3939,15 @@ function setupDirectionalButton(button, direction) {
 function updateDirectionalPad() {
   // Show/hide based on game state
   if (gameState === "playing") {
-    // Make sure the D-pad is visible and properly positioned
-    dPad.style("display", "block");
+    // Make sure the controls container is visible
+    controlsContainer.style("display", "flex");
+    controlsContainer.style("visibility", "visible");
+    controlsContainer.style("opacity", "1");
+    controlsContainer.position(0, height - 150); // Reposition in case of window resize
+
+    // Make sure the D-pad is visible
     dPad.style("visibility", "visible");
-    dPad.style("opacity", "1");
-    dPad.position(20, height - 240); // Reposition in case of window resize
-    dPad.style("z-index", "1500"); // Higher z-index to ensure visibility
+    dPad.style("display", "block");
 
     // Apply movement based on active directions
     if (activeDirections.up) {
@@ -3916,8 +3968,8 @@ function updateDirectionalPad() {
       console.log("D-pad should be visible, gameState:", gameState);
     }
   } else {
-    dPad.style("visibility", "hidden");
-    dPad.style("display", "none");
+    controlsContainer.style("visibility", "hidden");
+    controlsContainer.style("display", "none");
 
     // Reset all directions when not playing
     activeDirections.up = false;
@@ -3932,24 +3984,20 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
   // Reposition UI elements
-  if (dPad) {
-    dPad.position(20, height - 220);
+  if (controlsContainer) {
+    controlsContainer.position(0, height - 150);
+    controlsContainer.style("width", "100%");
+    controlsContainer.style("height", "150px");
   }
 
-  if (skillBar) {
-    skillBar.position(width / 2 - 200, height - 110);
-    skillBar.style("width", "400px"); // Maintain fixed width
-  }
-
-  // Force D-pad to be visible if in playing state
-  if (gameState === "playing" && dPad) {
-    dPad.style("display", "block");
-    dPad.style("visibility", "visible");
-    dPad.style("opacity", "1");
-    dPad.style("z-index", "1500");
+  // Force controls container to be visible if in playing state
+  if (gameState === "playing" && controlsContainer) {
+    controlsContainer.style("display", "flex");
+    controlsContainer.style("visibility", "visible");
+    controlsContainer.style("opacity", "1");
 
     // Log to console for debugging
-    console.log("Window resized, D-pad repositioned");
+    console.log("Window resized, controls container repositioned");
   }
 }
 
@@ -3971,6 +4019,36 @@ function keyPressed() {
       resumeGame();
     }
     return false; // Prevent default behavior
+  }
+
+  // Handle skill activation with keyboard shortcuts
+  if (gameState === "playing") {
+    // Map keys A, S, D, F, Q, W, E, R to skills 1-8
+    if (key === 'a' || key === 'A') {
+      activateSkill(1);
+      return false;
+    } else if (key === 's' || key === 'S') {
+      activateSkill(2);
+      return false;
+    } else if (key === 'd' || key === 'D') {
+      activateSkill(3);
+      return false;
+    } else if (key === 'f' || key === 'F') {
+      activateSkill(4);
+      return false;
+    } else if (key === 'q' || key === 'Q') {
+      activateSkill(5);
+      return false;
+    } else if (key === 'w' || key === 'W') {
+      activateSkill(6);
+      return false;
+    } else if (key === 'e' || key === 'E') {
+      activateSkill(7);
+      return false;
+    } else if (key === 'r' || key === 'R') {
+      activateSkill(8);
+      return false;
+    }
   }
 
   return true; // Allow other default behaviors
