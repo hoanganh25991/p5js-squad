@@ -2540,8 +2540,8 @@ function activateSkill(skillNumber) {
 
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
-    case 1: // Area Blast - directional damage in 8 possible directions
-      // Create a powerful directional area damage effect
+    case 1: // Star Blast - damages enemies in all 8 directions simultaneously
+      // Create a powerful multi-directional area damage effect
       let areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
       let areaDamageAmount = 100 + damageBoost * 15; // Higher base damage + bonus from damage boost
       let squadCenter = { x: 0, y: 0, z: 0 };
@@ -2559,75 +2559,41 @@ function activateSkill(skillNumber) {
         squadCenter.z = totalZ / squad.length;
       }
 
-      // Determine blast direction based on key pressed or current movement
+      // Define all 8 directions for the star blast
       // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
-      let blastDirection = 0; // Default to right
+      const directions = [0, 1, 2, 3, 4, 5, 6, 7];
 
-      // Check if we have movement keys pressed to determine direction
-      const keysPressed = Object.keys(keyIsDown).filter(k => keyIsDown[k]);
+      // Create visual shockwave effects for all 8 directions
+      for (let direction of directions) {
+        const centerAngle = direction * (Math.PI / 4); // Convert direction to radians
+        const angleStart = centerAngle - Math.PI/8; // 45 degrees to the left of center
+        const angleEnd = centerAngle + Math.PI/8; // 45 degrees to the right of center
 
-      // Check for horizontal movement
-      let horizontalDir = 0; // -1 for left, 0 for none, 1 for right
-      if (keysPressed.includes('65') || keysPressed.includes('37')) { // A or Left arrow
-        horizontalDir = -1;
-      } else if (keysPressed.includes('68') || keysPressed.includes('39')) { // D or Right arrow
-        horizontalDir = 1;
+        // Create multiple expanding rings for each direction
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            effects.push({
+              x: squadCenter.x,
+              y: squadCenter.y,
+              z: squadCenter.z,
+              type: "directionalShockwave",
+              size: areaDamageRadius * (0.5 + i * 0.25), // Expanding size for each ring
+              life: 60 - i * 15, // Shorter life for later rings
+              color: [255, 100, 0], // Red/orange for damage
+              layer: i,
+              angleStart: angleStart,
+              angleEnd: angleEnd,
+              direction: direction,
+              forceRenderDetail: true
+            });
+          }, i * 100 + direction * 50); // Stagger the rings and directions for visual effect
+        }
       }
 
-      // Check for vertical movement
-      let verticalDir = 0; // -1 for up, 0 for none, 1 for down
-      if (keysPressed.includes('87') || keysPressed.includes('38')) { // W or Up arrow
-        verticalDir = -1;
-      } else if (keysPressed.includes('83') || keysPressed.includes('40')) { // S or Down arrow
-        verticalDir = 1;
-      }
-
-      // Determine direction based on combination of horizontal and vertical
-      if (horizontalDir === 1 && verticalDir === 0) {
-        blastDirection = 0; // Right
-      } else if (horizontalDir === 1 && verticalDir === -1) {
-        blastDirection = 1; // Up-Right
-      } else if (horizontalDir === 0 && verticalDir === -1) {
-        blastDirection = 2; // Up
-      } else if (horizontalDir === -1 && verticalDir === -1) {
-        blastDirection = 3; // Up-Left
-      } else if (horizontalDir === -1 && verticalDir === 0) {
-        blastDirection = 4; // Left
-      } else if (horizontalDir === -1 && verticalDir === 1) {
-        blastDirection = 5; // Down-Left
-      } else if (horizontalDir === 0 && verticalDir === 1) {
-        blastDirection = 6; // Down
-      } else if (horizontalDir === 1 && verticalDir === 1) {
-        blastDirection = 7; // Down-Right
-      }
-
-      // Calculate the angle range for the half-circle blast (PI radians = 180 degrees)
-      const centerAngle = blastDirection * (Math.PI / 4); // Convert direction to radians
-      const angleStart = centerAngle - Math.PI/2; // 90 degrees to the left of center
-      const angleEnd = centerAngle + Math.PI/2; // 90 degrees to the right of center
-
-      // Create visual shockwave effect - red/orange for damage, in a half-circle
-      for (let i = 0; i < 3; i++) { // Create multiple expanding rings
-        setTimeout(() => {
-          effects.push({
-            x: squadCenter.x,
-            y: squadCenter.y,
-            z: squadCenter.z,
-            type: "directionalShockwave",
-            size: areaDamageRadius * (0.5 + i * 0.25), // Expanding size for each ring
-            life: 60 - i * 15, // Shorter life for later rings
-            color: [255, 100, 0], // Red/orange for damage
-            layer: i,
-            angleStart: angleStart,
-            angleEnd: angleEnd,
-            direction: blastDirection,
-            forceRenderDetail: true
-          });
-        }, i * 100); // Stagger the rings
-      }
-
-      // Apply damage to enemies within radius and in the correct direction
+      // Apply damage to enemies within radius
       let enemiesHit = 0;
+      let enemiesHitByDirection = Array(8).fill(0); // Track hits in each direction
+
       for (let enemy of enemies) {
         // Calculate distance from squad center
         const dx = enemy.x - squadCenter.x;
@@ -2635,23 +2601,17 @@ function activateSkill(skillNumber) {
         const dz = enemy.z - squadCenter.z;
         const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-        // Calculate angle to enemy (in radians)
-        const angleToEnemy = Math.atan2(dy, dx);
+        // Only process enemies within the damage radius
+        if (distance < areaDamageRadius) {
+          // Calculate angle to enemy (in radians)
+          const angleToEnemy = Math.atan2(dy, dx);
 
-        // Check if enemy is within the half-circle blast area
-        // We need to handle angle wrapping around from -PI to PI
-        let inBlastArea = false;
+          // Determine which direction the enemy is in
+          // Convert angle to 0-2PI range
+          const normalizedAngle = angleToEnemy < 0 ? angleToEnemy + 2 * Math.PI : angleToEnemy;
+          // Find the closest direction (0-7)
+          const directionIndex = Math.round(normalizedAngle / (Math.PI / 4)) % 8;
 
-        if (angleStart <= angleEnd) {
-          // Normal case
-          inBlastArea = angleToEnemy >= angleStart && angleToEnemy <= angleEnd;
-        } else {
-          // Wrapping around case (e.g., from 315° to 45°)
-          inBlastArea = angleToEnemy >= angleStart || angleToEnemy <= angleEnd;
-        }
-
-        // Apply damage with distance falloff if in blast area
-        if (distance < areaDamageRadius && inBlastArea) {
           // More damage to closer enemies
           const damageMultiplier = 1 - (distance / areaDamageRadius);
           const damage = areaDamageAmount * damageMultiplier;
@@ -2662,32 +2622,66 @@ function activateSkill(skillNumber) {
           // Create hit effect on enemy
           createHitEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0]);
 
-          // Push enemy back in the direction of the blast
-          const pushForce = 25 * damageMultiplier; // Stronger push for directional blast
-          const pushX = Math.cos(centerAngle) * pushForce;
-          const pushY = Math.sin(centerAngle) * pushForce;
+          // Push enemy away from the center
+          const pushForce = 25 * damageMultiplier; // Stronger push
+          const pushAngle = Math.atan2(dy, dx); // Push directly away from center
+          const pushX = Math.cos(pushAngle) * pushForce;
+          const pushY = Math.sin(pushAngle) * pushForce;
 
           enemy.x += pushX;
           enemy.y += pushY;
 
           enemiesHit++;
+          enemiesHitByDirection[directionIndex]++;
         }
       }
 
-      // Add a sound/visual feedback based on number of enemies hit
+      // Add visual feedback based on number of enemies hit in each direction
+      for (let i = 0; i < 8; i++) {
+        if (enemiesHitByDirection[i] > 0) {
+          const directionAngle = i * (Math.PI / 4);
+
+          // Add hit effects in the direction where enemies were hit
+          for (let j = 0; j < Math.min(enemiesHitByDirection[i], 3); j++) {
+            effects.push({
+              x: squadCenter.x + Math.cos(directionAngle) * random(100, 200),
+              y: squadCenter.y + Math.sin(directionAngle) * random(100, 200),
+              z: squadCenter.z + random(30, 70),
+              type: "hit",
+              size: 15,
+              life: 60,
+              color: [255, 100, 0]
+            });
+          }
+        }
+      }
+
+      // Create a central explosion effect
+      effects.push({
+        x: squadCenter.x,
+        y: squadCenter.y,
+        z: squadCenter.z,
+        type: "explosion",
+        size: 50,
+        life: 30,
+        color: [255, 100, 0],
+        forceRenderDetail: true
+      });
+
+      // Add a sound/visual feedback based on total number of enemies hit
       if (enemiesHit > 0) {
         // Create a success indicator
         const hitText = `${enemiesHit} enemies hit!`;
         // Add visual effect instead of text (since createFloatingText isn't implemented)
-        for (let i = 0; i < Math.min(enemiesHit, 10); i++) {
+        for (let i = 0; i < Math.min(enemiesHit, 5); i++) {
           effects.push({
-            x: squadCenter.x + Math.cos(centerAngle) * random(30, 80),
-            y: squadCenter.y + Math.sin(centerAngle) * random(30, 80),
-            z: squadCenter.z + random(30, 70),
+            x: squadCenter.x + random(-50, 50),
+            y: squadCenter.y + random(-50, 50),
+            z: squadCenter.z + random(50, 100),
             type: "hit",
-            size: 15,
+            size: 20,
             life: 60,
-            color: [255, 100, 0]
+            color: [255, 150, 0]
           });
         }
       }
@@ -3735,7 +3729,7 @@ function getSkillKey(skillNumber) {
 function getSkillName(skillNumber) {
   switch (skillNumber) {
     case 1:
-      return "Directional Blast";
+      return "Star Blast";
     case 2:
       return "Machine Gun";
     case 3:
