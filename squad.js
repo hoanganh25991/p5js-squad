@@ -2818,6 +2818,7 @@ function createMenuElement() {
     <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER to Start</p>
     <p style="font-size: 16px; margin: 0 0 10px 0;">Arrow Keys: Move Squad</p>
     <p style="font-size: 16px; margin: 0 0 10px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
+    <p style="font-size: 16px; margin: 0 0 10px 0;"><strong>Touch/Click Skills: Activate Skills</strong></p>
     <p style="font-size: 16px; margin: 0 0 10px 0;">Mouse Scroll: Zoom</p>
     <p style="font-size: 16px; margin: 0;">Mouse Drag: Move Camera</p>
   `);
@@ -2882,7 +2883,7 @@ function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  skillBar.position(10, height - 90);
+  skillBar.position(10, height - 110); // Position slightly lower to make room for larger buttons
   skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
   skillBar.style("color", "white");
   skillBar.style("padding", "10px");
@@ -2901,19 +2902,67 @@ function createSkillBarElement() {
     skillDiv.style("text-align", "center");
     skillDiv.style("margin", "0 5px");
     skillDiv.style("position", "relative");
-    skillDiv.style("height", "60px");
+    skillDiv.style("height", "80px"); // Increased height for better touch targets
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
-    skillDiv.style("border-radius", "5px");
+    skillDiv.style("border-radius", "10px"); // Larger radius for better visual appearance
+    skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
+    skillDiv.style("transition", "transform 0.1s, background-color 0.2s"); // Add transition for visual feedback
+    skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)"); // Add shadow for depth
+    skillDiv.style("user-select", "none"); // Prevent text selection
+    skillDiv.style("-webkit-tap-highlight-color", "transparent"); // Remove tap highlight on mobile
+
     skillDiv.html(`
       <div id="skillName${i}" style="font-size: 1rem; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 1;">${getSkillName(
       i
     )}</div>
-      <div id="skillKey${i}" style="font-size: 2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      <div id="skillKey${i}" style="font-size: 2.2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
       i
     )}</div>
       <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
-      <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0;"></div>
+      <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0; border-radius: 10px;"></div>
     `);
+
+    // Add click/touch event handler to activate the skill
+    const skillNumber = i; // Capture the current skill number
+
+    // Visual feedback on mouse/touch down
+    skillDiv.mousePressed(function() {
+      if (gameState === "playing") {
+        // Visual feedback - scale down slightly and change background
+        this.style("transform", "scale(0.95)");
+        this.style("background-color", "rgba(80, 80, 80, 0.9)");
+
+        // Activate the skill
+        activateSkill(skillNumber);
+
+        // Reset visual state after a short delay
+        setTimeout(() => {
+          this.style("transform", "scale(1.0)");
+          this.style("background-color", "rgba(50, 50, 50, 0.8)");
+        }, 150);
+      }
+    });
+
+    // Add touch event handler for mobile devices
+    skillDiv.touchStarted(function() {
+      if (gameState === "playing") {
+        // Visual feedback - scale down slightly and change background
+        this.style("transform", "scale(0.95)");
+        this.style("background-color", "rgba(80, 80, 80, 0.9)");
+
+        // Activate the skill
+        activateSkill(skillNumber);
+
+        // Reset visual state after a short delay
+        setTimeout(() => {
+          this.style("transform", "scale(1.0)");
+          this.style("background-color", "rgba(50, 50, 50, 0.8)");
+        }, 150);
+
+        return false; // Prevent default touch behavior
+      }
+    });
+
     skillBar.child(skillDiv);
   }
   skillBar.style("visibility", "hidden");
@@ -3026,11 +3075,12 @@ function updateSkillBar() {
           "background",
           `conic-gradient(rgba(255, 215, 0, 0.3) ${rotationDegree}deg, rgba(255, 215, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
         );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
       } else if (isAtomicBombActive) {
         // Atomic bomb gets a red/orange overlay with animated effect
         const explosionPhase = frameCount % 6; // Match the flash effect
         let overlayColor;
-        
+
         if (explosionPhase < 2) {
           overlayColor = "rgba(255, 255, 50, 0.4)"; // Bright yellow
         } else if (explosionPhase < 4) {
@@ -3038,17 +3088,34 @@ function updateSkillBar() {
         } else {
           overlayColor = "rgba(255, 0, 0, 0.3)"; // Red
         }
-        
+
         overlayDiv.style(
           "background",
           `conic-gradient(${overlayColor} ${rotationDegree}deg, ${overlayColor} ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
         );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
       } else {
         // Normal overlay for other skills or inactive skills
         overlayDiv.style(
           "background",
           `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
         );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+      }
+
+      // Add visual indicator for ready skills
+      const skillDiv = select(`#skill${i}`);
+      if (skillDiv) {
+        if (cooldownPercent <= 0) {
+          // Skill is ready - add subtle pulsing effect
+          const pulseScale = 1.0 + 0.03 * Math.sin(frameCount * 0.1);
+          skillDiv.style("transform", `scale(${pulseScale})`);
+          skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
+        } else {
+          // Skill on cooldown - normal state
+          skillDiv.style("transform", "scale(1.0)");
+          skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+        }
       }
     } else {
       console.error(`Needle or overlay element for skill #${i} not found`);
@@ -3444,4 +3511,29 @@ function createPlasmaEffect(x, y, z) {
 // Window resize handling
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+// Global touch handler to prevent default touch behavior on skill buttons
+function touchStarted() {
+  // Check if the touch is on a skill button
+  if (gameState === "playing" && skillBar) {
+    // Get touch position
+    const touchX = touches[0]?.x || mouseX;
+    const touchY = touches[0]?.y || mouseY;
+
+    // Check if touch is within skillbar area
+    const skillBarRect = skillBar.elt.getBoundingClientRect();
+    if (
+      touchX >= skillBarRect.left &&
+      touchX <= skillBarRect.right &&
+      touchY >= skillBarRect.top &&
+      touchY <= skillBarRect.bottom
+    ) {
+      // Prevent default touch behavior (scrolling, zooming)
+      return false;
+    }
+  }
+
+  // Allow default touch behavior for other areas
+  return true;
 }
