@@ -120,18 +120,42 @@ let weapons = {
   photon: false,
 };
 
-const WEAPON_TYPES = Object.keys(weapons);
+const WEAPON_TYPES = ["thunderbolt", "blaster", "inferno", "frostbite", "vortex", "plasma", "photon"];
 const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Currently equipped weapon
 let currentWeapon = WEAPON_TYPES[0];
 
-// Skills cooldowns in frames
+// Skills cooldowns and durations in frames (60 frames = 1 second)
 let skills = {
-  skill1: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill2: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0, active: false, activeDuration: 300, endTime: 0 }, // Machine gun skill with duration (5 seconds = 300 frames at 60fps)
-  skill3: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill4: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill1: {
+    cooldown: 600 * (1 + currentWave / 5),
+    lastUsed: 0,
+    active: false,
+    activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
+    endTime: 0
+  },
+  skill2: {
+    cooldown: 600 * (1 + currentWave / 5),
+    lastUsed: 0,
+    active: false,
+    activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
+    endTime: 0
+  },
+  skill3: {
+    cooldown: 600 * (1 + currentWave / 5),
+    lastUsed: 0,
+    active: false,
+    activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
+    endTime: 0
+  },
+  skill4: {
+    cooldown: 600 * (1 + currentWave / 5),
+    lastUsed: 0,
+    active: false,
+    activeDuration: 360, // Freeze duration (6 seconds = 360 frames at 60fps)
+    endTime: 0
+  },
   skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill6: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
   skill7: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
@@ -1763,6 +1787,57 @@ function drawEffects() {
       circle(0, 0, effect.size * 2.2);
 
       pop();
+    } else if (effect.type === "starBlastField") {
+      // Star blast field effect - persistent area damage field
+      push();
+
+      // Get effect color (default to orange if not specified)
+      const effectColor = effect.color || [255, 100, 0, 80];
+
+      // Semi-transparent field
+      const alpha = 80 * (effect.life / 180); // Fade based on life
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
+      strokeWeight(2);
+
+      // Draw a pulsing field
+      const pulseRate = frameCount * 0.05;
+      const pulseSize = effect.size * (0.9 + 0.1 * sin(pulseRate));
+
+      // Draw a flat disc on the ground
+      rotateX(HALF_PI); // Align with ground plane
+      circle(0, 0, pulseSize * 2);
+
+      // Draw energy lines radiating outward
+      noFill();
+      stroke(effectColor[0] + 50, effectColor[1] + 50, effectColor[2], alpha * 0.9);
+      strokeWeight(1.5);
+
+      // Draw 8 directional lines
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * TWO_PI;
+        const x = cos(angle) * pulseSize;
+        const y = sin(angle) * pulseSize;
+
+        line(0, 0, x, y);
+      }
+
+      // Add particle effects around the perimeter
+      noStroke();
+      for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * TWO_PI + frameCount * 0.01;
+        const x = cos(angle) * pulseSize * 0.9;
+        const y = sin(angle) * pulseSize * 0.9;
+
+        push();
+        translate(x, y, random(1, 5));
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * random(0.5, 1.0));
+        const particleSize = 5 + 3 * sin(frameCount * 0.1 + i);
+        circle(0, 0, particleSize);
+        pop();
+      }
+
+      pop();
     } else if (effect.type === "globalFrost") {
       // Global frost effect - adds a blue tint to the scene
       // This is handled in the draw function to apply a filter to the entire scene
@@ -2741,11 +2816,16 @@ function activateSkill(skillNumber) {
 
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
-    case 1: // Star Blast - damages enemies in all 8 directions simultaneously
+    case 1: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
       // Create a powerful multi-directional area damage effect
       let areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
       let areaDamageAmount = 100 + damageBoost * 15; // Higher base damage + bonus from damage boost
+      let starBlastDuration = skills.skill1.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
       let squadCenter = { x: 0, y: 0, z: 0 };
+
+      // Activate star blast mode
+      skills.skill1.active = true;
+      skills.skill1.endTime = frameCount + starBlastDuration;
 
       // Calculate the center point of the squad for the area effect
       if (squad.length > 0) {
@@ -2791,71 +2871,18 @@ function activateSkill(skillNumber) {
         }
       }
 
-      // Apply damage to enemies within radius
-      let enemiesHit = 0;
-      let enemiesHitByDirection = Array(8).fill(0); // Track hits in each direction
-
-      for (let enemy of enemies) {
-        // Calculate distance from squad center
-        const dx = enemy.x - squadCenter.x;
-        const dy = enemy.y - squadCenter.y;
-        const dz = enemy.z - squadCenter.z;
-        const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-        // Only process enemies within the damage radius
-        if (distance < areaDamageRadius) {
-          // Calculate angle to enemy (in radians)
-          const angleToEnemy = Math.atan2(dy, dx);
-
-          // Determine which direction the enemy is in
-          // Convert angle to 0-2PI range
-          const normalizedAngle = angleToEnemy < 0 ? angleToEnemy + 2 * Math.PI : angleToEnemy;
-          // Find the closest direction (0-7)
-          const directionIndex = Math.round(normalizedAngle / (Math.PI / 4)) % 8;
-
-          // More damage to closer enemies
-          const damageMultiplier = 1 - (distance / areaDamageRadius);
-          const damage = areaDamageAmount * damageMultiplier;
-
-          // Apply damage to enemy
-          enemy.health -= damage;
-
-          // Create hit effect on enemy
-          createHitEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0]);
-
-          // Push enemy away from the center
-          const pushForce = 25 * damageMultiplier; // Stronger push
-          const pushAngle = Math.atan2(dy, dx); // Push directly away from center
-          const pushX = Math.cos(pushAngle) * pushForce;
-          const pushY = Math.sin(pushAngle) * pushForce;
-
-          enemy.x += pushX;
-          enemy.y += pushY;
-
-          enemiesHit++;
-          enemiesHitByDirection[directionIndex]++;
-        }
-      }
-
-      // Add visual feedback based on number of enemies hit in each direction
-      for (let i = 0; i < 8; i++) {
-        if (enemiesHitByDirection[i] > 0) {
-          const directionAngle = i * (Math.PI / 4);
-
-          // Add hit effects in the direction where enemies were hit
-          for (let j = 0; j < Math.min(enemiesHitByDirection[i], 3); j++) {
-            effects.push({
-              x: squadCenter.x + Math.cos(directionAngle) * random(100, 200),
-              y: squadCenter.y + Math.sin(directionAngle) * random(100, 200),
-              z: squadCenter.z + random(30, 70),
-              type: "hit",
-              size: 15,
-              life: 60,
-              color: [255, 100, 0]
-            });
-          }
-        }
-      }
+      // Create a persistent star blast field that follows the squad
+      effects.push({
+        x: squadCenter.x,
+        y: squadCenter.y,
+        z: squadCenter.z,
+        type: "starBlastField",
+        size: areaDamageRadius,
+        life: starBlastDuration,
+        color: [255, 100, 0, 80], // Red/orange with transparency
+        damageAmount: areaDamageAmount,
+        forceRenderDetail: true
+      });
 
       // Create a central explosion effect
       effects.push({
@@ -2869,23 +2896,88 @@ function activateSkill(skillNumber) {
         forceRenderDetail: true
       });
 
-      // Add a sound/visual feedback based on total number of enemies hit
-      if (enemiesHit > 0) {
-        // Create a success indicator
-        const hitText = `${enemiesHit} enemies hit!`;
-        // Add visual effect instead of text (since createFloatingText isn't implemented)
-        for (let i = 0; i < Math.min(enemiesHit, 5); i++) {
+      // Initial damage application
+      applyStarBlastDamage(squadCenter, areaDamageRadius, areaDamageAmount);
+
+      // Schedule periodic damage application for the duration
+      const damageInterval = 30; // Apply damage every 0.5 seconds (30 frames)
+      const totalIntervals = Math.floor(starBlastDuration / damageInterval);
+
+      for (let i = 1; i <= totalIntervals; i++) {
+        setTimeout(() => {
+          // Only continue if the skill is still active
+          if (skills.skill1.active && frameCount < skills.skill1.endTime) {
+            // Get updated squad center position
+            let currentCenter = { x: 0, y: 0, z: 0 };
+            if (squad.length > 0) {
+              let totalX = 0, totalY = 0, totalZ = 0;
+              for (let member of squad) {
+                totalX += member.x;
+                totalY += member.y;
+                totalZ += member.z;
+              }
+              currentCenter.x = totalX / squad.length;
+              currentCenter.y = totalY / squad.length;
+              currentCenter.z = totalZ / squad.length;
+            }
+
+            // Apply damage with reduced amount for subsequent pulses
+            const reducedDamage = areaDamageAmount * 0.4; // 40% of initial damage for subsequent pulses
+            applyStarBlastDamage(currentCenter, areaDamageRadius, reducedDamage);
+
+            // Create a smaller pulse effect for each interval
+            for (let direction of directions) {
+              const centerAngle = direction * (Math.PI / 4);
+              effects.push({
+                x: currentCenter.x,
+                y: currentCenter.y,
+                z: currentCenter.z,
+                type: "directionalShockwave",
+                size: areaDamageRadius * 0.6,
+                life: 30,
+                color: [255, 100, 0],
+                layer: 0,
+                angleStart: centerAngle - Math.PI/8,
+                angleEnd: centerAngle + Math.PI/8,
+                direction: direction,
+                forceRenderDetail: true
+              });
+            }
+          }
+        }, i * damageInterval * (1000 / 60)); // Convert frames to ms
+      }
+
+      // Schedule deactivation after duration
+      setTimeout(() => {
+        skills.skill1.active = false;
+
+        // Final explosion effect when the skill ends
+        if (squad.length > 0) {
+          let finalCenter = { x: 0, y: 0, z: 0 };
+          let totalX = 0, totalY = 0, totalZ = 0;
+          for (let member of squad) {
+            totalX += member.x;
+            totalY += member.y;
+            totalZ += member.z;
+          }
+          finalCenter.x = totalX / squad.length;
+          finalCenter.y = totalY / squad.length;
+          finalCenter.z = totalZ / squad.length;
+
+          // Create final explosion
           effects.push({
-            x: squadCenter.x + random(-50, 50),
-            y: squadCenter.y + random(-50, 50),
-            z: squadCenter.z + random(50, 100),
-            type: "hit",
-            size: 20,
-            life: 60,
-            color: [255, 150, 0]
+            x: finalCenter.x,
+            y: finalCenter.y,
+            z: finalCenter.z,
+            type: "explosion",
+            size: 70,
+            life: 45,
+            color: [255, 150, 0],
+            forceRenderDetail: true
           });
         }
-      }
+      }, starBlastDuration * (1000 / 60)); // Convert frames to ms
+
       break;
 
     case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
@@ -2929,8 +3021,12 @@ function activateSkill(skillNumber) {
 
     case 3: // Shield - protective barrier that follows the squad
       let shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
-      let shieldDuration = 300 + fireRateBoost * 30; // Duration enhanced by fire rate (5s + boost)
+      let shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
       let shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
+
+      // Activate shield mode
+      skills.skill3.active = true;
+      skills.skill3.endTime = frameCount + shieldDuration;
 
       // Calculate the center point of the squad for the shield
       let shieldCenter = { x: 0, y: 0, z: 0 };
@@ -2975,12 +3071,48 @@ function activateSkill(skillNumber) {
           });
         }, i * 100);
       }
+
+      // Schedule deactivation after duration
+      setTimeout(() => {
+        skills.skill3.active = false;
+
+        // Final shield collapse effect when the skill ends
+        if (squad.length > 0) {
+          let finalCenter = { x: 0, y: 0, z: 0 };
+          let totalX = 0, totalY = 0, totalZ = 0;
+          for (let member of squad) {
+            totalX += member.x;
+            totalY += member.y;
+            totalZ += member.z;
+          }
+          finalCenter.x = totalX / squad.length;
+          finalCenter.y = totalY / squad.length;
+          finalCenter.z = totalZ / squad.length;
+
+          // Create shield collapse effect
+          effects.push({
+            x: finalCenter.x,
+            y: finalCenter.y,
+            z: finalCenter.z,
+            type: "shockwave",
+            size: shieldRadius * 0.8,
+            life: 45,
+            color: [0, 200, 255],
+            forceRenderDetail: true
+          });
+        }
+      }, shieldDuration * (1000 / 60)); // Convert frames to ms
+
       break;
 
     case 4: // Freeze - dramatic ice effect that freezes the entire bridge and all enemies
-      let freezeDuration = 360 + fireRateBoost * 30; // Base 6s + 0.5s per fire rate boost (longer duration)
+      let freezeDuration = skills.skill4.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
       let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
       let freezeRadius = 2000; // Extremely large radius to cover the entire bridge
+
+      // Activate freeze mode
+      skills.skill4.active = true;
+      skills.skill4.endTime = frameCount + freezeDuration;
 
       // Calculate the center point of the squad for the freeze effect
       let freezeCenter = { x: 0, y: 0, z: 0 };
@@ -3213,6 +3345,44 @@ function activateSkill(skillNumber) {
 
       // 7. Add a screen shake effect for impact
       cameraShake = 10;
+
+      // 8. Schedule deactivation after duration
+      setTimeout(() => {
+        skills.skill4.active = false;
+
+        // Final thaw effect when the skill ends
+        if (squad.length > 0) {
+          let finalCenter = { x: 0, y: 0, z: 0 };
+          let totalX = 0, totalY = 0, totalZ = 0;
+          for (let member of squad) {
+            totalX += member.x;
+            totalY += member.y;
+            totalZ += member.z;
+          }
+          finalCenter.x = totalX / squad.length;
+          finalCenter.y = totalY / squad.length;
+          finalCenter.z = totalZ / squad.length;
+
+          // Create thaw effect - water droplets falling
+          for (let i = 0; i < 20; i++) {
+            const angle = random(TWO_PI);
+            const dist = random(100, 800);
+            const x = finalCenter.x + cos(angle) * dist;
+            const y = finalCenter.y + sin(angle) * dist;
+
+            effects.push({
+              x: x,
+              y: y,
+              z: random(50, 150),
+              type: "hit",
+              size: random(10, 20),
+              life: random(30, 60),
+              color: [100, 200, 255, 150],
+              forceRenderDetail: false
+            });
+          }
+        }
+      }, freezeDuration * (1000 / 60)); // Convert frames to ms
 
       break;
 
@@ -3980,26 +4150,76 @@ function updateSkillBar() {
     const skillDiv = select(`#skill${i}`);
     
     // Check if skills are active
-    const isSkillActive = (i === 2 && skills.skill2.active);
+    const isStarBlastActive = (i === 1 && skills.skill1.active);
+    const isMachineGunActive = (i === 2 && skills.skill2.active);
+    const isShieldActive = (i === 3 && skills.skill3.active);
+    const isFreezeActive = (i === 4 && skills.skill4.active);
     const isAtomicBombActive = (i === 8 && frameCount - skills.skill8.lastUsed < 120); // Show atomic effect for 2 seconds after activation
+
+    const isSkillActive = isStarBlastActive || isMachineGunActive || isShieldActive || isFreezeActive;
     
     // Update active skill appearance
     if (skillDiv) {
-      if (isSkillActive) {
+      if (isStarBlastActive) {
+        // Pulsing red/orange background for active star blast skill
+        const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
+        skillDiv.style("background-color", `rgba(255, 100, 0, ${pulseIntensity})`);
+        skillDiv.style("box-shadow", "0 0 10px rgba(255, 100, 0, 0.8)");
+
+        // Calculate remaining time percentage for active skill
+        const activeTimeRemaining = skills.skill1.endTime - frameCount;
+        const activeTimePercent = activeTimeRemaining / skills.skill1.activeDuration;
+
+        // Add a timer overlay for active duration
+        select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
+
+        // Skill key should appear in bright orange
+        select(`#skillKey${i}`).style("color", "rgba(255, 255, 200, 1.0)");
+      } else if (isMachineGunActive) {
         // Pulsing yellow/gold background for active machine gun skill
         const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
         skillDiv.style("background-color", `rgba(255, 215, 0, ${pulseIntensity})`);
         skillDiv.style("box-shadow", "0 0 10px rgba(255, 215, 0, 0.8)");
-        
+
         // Calculate remaining time percentage for active skill
         const activeTimeRemaining = skills.skill2.endTime - frameCount;
         const activeTimePercent = activeTimeRemaining / skills.skill2.activeDuration;
-        
+
         // Add a timer overlay for active duration
         select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
-        
+
         // Skill key should appear in bright yellow/gold
         select(`#skillKey${i}`).style("color", "rgba(255, 215, 0, 1.0)");
+      } else if (isShieldActive) {
+        // Pulsing blue background for active shield skill
+        const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
+        skillDiv.style("background-color", `rgba(0, 150, 255, ${pulseIntensity})`);
+        skillDiv.style("box-shadow", "0 0 10px rgba(0, 150, 255, 0.8)");
+
+        // Calculate remaining time percentage for active skill
+        const activeTimeRemaining = skills.skill3.endTime - frameCount;
+        const activeTimePercent = activeTimeRemaining / skills.skill3.activeDuration;
+
+        // Add a timer overlay for active duration
+        select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
+
+        // Skill key should appear in bright blue
+        select(`#skillKey${i}`).style("color", "rgba(200, 255, 255, 1.0)");
+      } else if (isFreezeActive) {
+        // Pulsing ice blue background for active freeze skill
+        const pulseIntensity = (frameCount % 20) < 10 ? 1.0 : 0.7;
+        skillDiv.style("background-color", `rgba(100, 200, 255, ${pulseIntensity})`);
+        skillDiv.style("box-shadow", "0 0 10px rgba(100, 200, 255, 0.8)");
+
+        // Calculate remaining time percentage for active skill
+        const activeTimeRemaining = skills.skill4.endTime - frameCount;
+        const activeTimePercent = activeTimeRemaining / skills.skill4.activeDuration;
+
+        // Add a timer overlay for active duration
+        select(`#skillName${i}`).html(`${getSkillName(i)} (${Math.ceil(activeTimeRemaining/60)}s)`);
+
+        // Skill key should appear in bright ice blue
+        select(`#skillKey${i}`).style("color", "rgba(200, 240, 255, 1.0)");
       } else if (isAtomicBombActive) {
         // Atomic bomb explosion effect in skill bar
         // Rapidly flashing red/orange/yellow background
@@ -4064,11 +4284,32 @@ function updateSkillBar() {
       needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
 
       // Update overlay gradient - special color for active skills
-      if (isSkillActive) {
-        // Active machine gun skill gets a yellow/gold overlay instead of black
+      if (isStarBlastActive) {
+        // Active star blast skill gets an orange overlay
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(255, 100, 0, 0.3) ${rotationDegree}deg, rgba(255, 100, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+      } else if (isMachineGunActive) {
+        // Active machine gun skill gets a yellow/gold overlay
         overlayDiv.style(
           "background",
           `conic-gradient(rgba(255, 215, 0, 0.3) ${rotationDegree}deg, rgba(255, 215, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+      } else if (isShieldActive) {
+        // Active shield skill gets a blue overlay
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(0, 150, 255, 0.3) ${rotationDegree}deg, rgba(0, 150, 255, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+        );
+        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+      } else if (isFreezeActive) {
+        // Active freeze skill gets an ice blue overlay
+        overlayDiv.style(
+          "background",
+          `conic-gradient(rgba(100, 200, 255, 0.3) ${rotationDegree}deg, rgba(100, 200, 255, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
         );
         overlayDiv.style("border-radius", "10px"); // Maintain border radius
       } else if (isAtomicBombActive) {
@@ -4319,8 +4560,8 @@ function applyEffects() {
       }
     }
 
-    // Special handling for shield effects
-    if ((effects[i].type === "shield" || effects[i].type === "areaBarrier") && squad.length > 0) {
+    // Special handling for effects that follow the squad
+    if ((effects[i].type === "shield" || effects[i].type === "areaBarrier" || effects[i].type === "starBlastField") && squad.length > 0) {
       // Calculate the new center point of the squad
       let totalX = 0, totalY = 0, totalZ = 0;
       for (let member of squad) {
@@ -4954,6 +5195,76 @@ function drawIcePattern(x, y, size, angle, depth, alpha, color) {
   }
 
   pop();
+}
+
+// Apply star blast damage to enemies within radius
+function applyStarBlastDamage(center, radius, damageAmount) {
+  let enemiesHit = 0;
+  let enemiesHitByDirection = Array(8).fill(0); // Track hits in each direction
+
+  for (let enemy of enemies) {
+    // Calculate distance from center
+    const dx = enemy.x - center.x;
+    const dy = enemy.y - center.y;
+    const dz = enemy.z - center.z;
+    const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+    // Only process enemies within the damage radius
+    if (distance < radius) {
+      // Calculate angle to enemy (in radians)
+      const angleToEnemy = Math.atan2(dy, dx);
+
+      // Determine which direction the enemy is in
+      // Convert angle to 0-2PI range
+      const normalizedAngle = angleToEnemy < 0 ? angleToEnemy + 2 * Math.PI : angleToEnemy;
+      // Find the closest direction (0-7)
+      const directionIndex = Math.round(normalizedAngle / (Math.PI / 4)) % 8;
+
+      // More damage to closer enemies
+      const damageMultiplier = 1 - (distance / radius);
+      const damage = damageAmount * damageMultiplier;
+
+      // Apply damage to enemy
+      enemy.health -= damage;
+
+      // Create hit effect on enemy
+      createHitEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0]);
+
+      // Push enemy away from the center
+      const pushForce = 15 * damageMultiplier; // Moderate push
+      const pushAngle = Math.atan2(dy, dx); // Push directly away from center
+      const pushX = Math.cos(pushAngle) * pushForce;
+      const pushY = Math.sin(pushAngle) * pushForce;
+
+      enemy.x += pushX;
+      enemy.y += pushY;
+
+      enemiesHit++;
+      enemiesHitByDirection[directionIndex]++;
+    }
+  }
+
+  // Add visual feedback based on number of enemies hit in each direction
+  for (let i = 0; i < 8; i++) {
+    if (enemiesHitByDirection[i] > 0) {
+      const directionAngle = i * (Math.PI / 4);
+
+      // Add hit effects in the direction where enemies were hit
+      for (let j = 0; j < Math.min(enemiesHitByDirection[i], 2); j++) {
+        effects.push({
+          x: center.x + Math.cos(directionAngle) * random(80, 150),
+          y: center.y + Math.sin(directionAngle) * random(80, 150),
+          z: center.z + random(30, 70),
+          type: "hit",
+          size: 15,
+          life: 30,
+          color: [255, 100, 0]
+        });
+      }
+    }
+  }
+
+  return enemiesHit;
 }
 
 // Create ice effect on a target
