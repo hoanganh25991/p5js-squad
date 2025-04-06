@@ -304,8 +304,23 @@ function draw() {
     directionalLight(255, 255, 255, 0, -1, -1); // Optimize lighting - only one light source
   }
 
-  // Apply camera transformations
-  translate(cameraOffsetX, -cameraOffsetY, -cameraZoom);
+  // Apply camera transformations with optional shake effect
+  let shakeX = 0;
+  let shakeY = 0;
+
+  // Apply camera shake if active
+  if (typeof cameraShake === 'undefined') {
+    cameraShake = 0;
+  }
+
+  if (cameraShake > 0) {
+    shakeX = random(-cameraShake, cameraShake);
+    shakeY = random(-cameraShake, cameraShake);
+    cameraShake *= 0.9; // Decay the shake effect
+    if (cameraShake < 0.5) cameraShake = 0;
+  }
+
+  translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
   rotateX(PI / 4); // Angle the view down to see the bridge
 
   // 3D
@@ -2962,10 +2977,10 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 4: // Freeze - dramatic ice effect that freezes the bridge and slows enemies
-      let freezeDuration = 300 + fireRateBoost * 30; // Base 5s + 0.5s per fire rate boost (longer duration)
-      let freezeStrength = 0.15 - aoeBoost * 0.02; // More slowdown with AOE boost (slower movement)
-      let freezeRadius = 800 + aoeBoost * 50; // Large radius that covers most of the visible bridge
+    case 4: // Freeze - dramatic ice effect that freezes the entire bridge and all enemies
+      let freezeDuration = 360 + fireRateBoost * 30; // Base 6s + 0.5s per fire rate boost (longer duration)
+      let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
+      let freezeRadius = 2000; // Extremely large radius to cover the entire bridge
 
       // Calculate the center point of the squad for the freeze effect
       let freezeCenter = { x: 0, y: 0, z: 0 };
@@ -2982,24 +2997,25 @@ function activateSkill(skillNumber) {
       }
 
       // Create a global freeze effect
-      // 1. First, create a freezing shockwave that spreads across the bridge
-      for (let i = 0; i < 5; i++) { // Create multiple expanding rings
+      // 1. First, create a massive freezing shockwave that covers the entire bridge
+      for (let i = 0; i < 8; i++) { // More rings for a more dramatic effect
         setTimeout(() => {
           effects.push({
             x: freezeCenter.x,
             y: freezeCenter.y,
             z: freezeCenter.z,
             type: "shockwave",
-            size: freezeRadius * (0.2 + i * 0.2), // Expanding size for each ring
-            life: 90 - i * 10, // Longer life for dramatic effect
+            size: freezeRadius * (0.1 + i * 0.15), // Expanding size for each ring
+            life: 120 - i * 10, // Longer life for dramatic effect
             color: [100, 200, 255], // Ice blue color
             layer: i,
             forceRenderDetail: true
           });
-        }, i * 150); // Slower expansion for dramatic effect
+        }, i * 120); // Slower expansion for dramatic effect
       }
 
-      // 2. Create a bridge freeze effect that stays for the duration
+      // 2. Create multiple bridge freeze effects that cover the entire bridge
+      // Main central frost
       effects.push({
         x: freezeCenter.x,
         y: freezeCenter.y,
@@ -3011,102 +3027,193 @@ function activateSkill(skillNumber) {
         forceRenderDetail: true
       });
 
-      // 3. Create ice crystal formations that rise from the bridge
-      const crystalCount = 20 + aoeBoost; // More crystals with AOE boost
-      for (let i = 0; i < crystalCount; i++) {
-        const angle = random(TWO_PI);
-        const distance = random(50, freezeRadius * 0.8);
-        const x = freezeCenter.x + cos(angle) * distance;
-        const y = freezeCenter.y + sin(angle) * distance;
+      // Additional frost patches for more coverage
+      for (let i = 0; i < 4; i++) {
+        const offsetDistance = 800;
+        const angle = (i / 4) * TWO_PI;
+        const offsetX = cos(angle) * offsetDistance;
+        const offsetY = sin(angle) * offsetDistance;
 
-        // Stagger the crystal formation for dramatic effect
-        setTimeout(() => {
-          effects.push({
-            x: x,
-            y: y,
-            z: 0, // Start at bridge level
-            type: "iceCrystal",
-            size: random(30, 80),
-            life: freezeDuration - random(0, 60),
-            color: [200, 240, 255, 200],
-            growthTime: random(10, 30), // Frames to reach full size
-            forceRenderDetail: true
-          });
-        }, i * 50); // Stagger the crystal formation
+        effects.push({
+          x: freezeCenter.x + offsetX,
+          y: freezeCenter.y + offsetY,
+          z: 0, // At bridge level
+          type: "bridgeFrost",
+          size: freezeRadius * 0.7,
+          life: freezeDuration - random(0, 60),
+          color: [200, 240, 255, 150], // Light blue with transparency
+          forceRenderDetail: true
+        });
       }
 
-      // 4. Apply freeze effect to all enemies within radius
+      // 3. Create ice crystal formations across the entire bridge
+      const crystalCount = 40 + aoeBoost * 2; // Many more crystals
+
+      // Create a grid of ice crystals
+      const gridSize = 5; // 5x5 grid
+      const gridSpacing = 300; // 300 units apart
+
+      for (let gridX = -gridSize/2; gridX <= gridSize/2; gridX++) {
+        for (let gridY = -gridSize/2; gridY <= gridSize/2; gridY++) {
+          // Add some randomness to grid positions
+          const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
+          const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
+
+          // Stagger the crystal formation for dramatic effect
+          setTimeout(() => {
+            // Create a cluster of crystals at each grid point
+            for (let j = 0; j < 3; j++) {
+              const clusterX = x + random(-30, 30);
+              const clusterY = y + random(-30, 30);
+
+              effects.push({
+                x: clusterX,
+                y: clusterY,
+                z: 0, // Start at bridge level
+                type: "iceCrystal",
+                size: random(40, 100),
+                life: freezeDuration - random(0, 60),
+                color: [200, 240, 255, 200],
+                growthTime: random(10, 30), // Frames to reach full size
+                forceRenderDetail: true
+              });
+            }
+          }, (Math.abs(gridX) + Math.abs(gridY)) * 100); // Stagger based on distance from center
+        }
+      }
+
+      // 4. Apply freeze effect to ALL enemies regardless of distance
       let enemiesFrozen = 0;
+
+      // Create a "freeze wave" that moves outward
+      const freezeWaveSpeed = 20; // Units per frame
+      const maxFreezeDelay = 2000; // Maximum delay in ms
+
       for (let enemy of enemies) {
         // Calculate distance from freeze center
         const dx = enemy.x - freezeCenter.x;
         const dy = enemy.y - freezeCenter.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
 
-        // Apply freeze effect with distance falloff
-        if (distance < freezeRadius) {
-          // More slowdown to closer enemies
-          const effectMultiplier = 1 - (distance / freezeRadius) * 0.5; // At least 50% effect at max range
+        // Calculate delay based on distance (freeze wave propagation)
+        const freezeDelay = Math.min(maxFreezeDelay, distance / freezeWaveSpeed * (1000/60));
 
+        // Store original speed for restoration
+        if (!enemy.originalSpeed) {
+          enemy.originalSpeed = enemy.speed;
+        }
+
+        // Apply freeze effect to ALL enemies
+        setTimeout(() => {
           if (!enemy.effects) enemy.effects = {};
           enemy.effects.frozen = {
-            duration: freezeDuration * effectMultiplier,
-            slowFactor: max(0.05, freezeStrength * effectMultiplier), // Min 5% of normal speed
-            originalSpeed: enemy.speed, // Store original speed for restoration
+            duration: freezeDuration,
+            slowFactor: max(0.05, freezeStrength), // Min 5% of normal speed
+            originalSpeed: enemy.originalSpeed || enemy.speed,
           };
 
           // Apply slowdown
           enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
 
-          // Create ice effect on enemy with staggered timing based on distance
-          setTimeout(() => {
-            createIceEffect(enemy.x, enemy.y, enemy.z);
+          // Create ice effect on enemy
+          createIceEffect(enemy.x, enemy.y, enemy.z);
 
-            // Add ice crystals around the enemy
-            for (let j = 0; j < 3; j++) {
-              effects.push({
-                x: enemy.x + random(-20, 20),
-                y: enemy.y + random(-20, 20),
-                z: enemy.z + random(0, 30),
-                type: "iceCrystal",
-                size: random(10, 30),
-                life: freezeDuration * 0.7,
-                color: [200, 240, 255, 200],
-                growthTime: random(5, 15),
-                forceRenderDetail: false
-              });
-            }
-          }, distance * 0.5); // Closer enemies freeze faster
+          // Add ice crystals around the enemy that follow it
+          for (let j = 0; j < 5; j++) {
+            const offsetX = random(-20, 20);
+            const offsetY = random(-20, 20);
+            const offsetZ = random(0, 30);
 
-          enemiesFrozen++;
-        }
-      }
+            effects.push({
+              x: enemy.x + offsetX,
+              y: enemy.y + offsetY,
+              z: enemy.z + offsetZ,
+              type: "iceCrystal",
+              size: random(10, 30),
+              life: freezeDuration * 0.8,
+              color: [200, 240, 255, 200],
+              growthTime: random(5, 15),
+              enemy: enemy, // Reference to follow the enemy
+              offsetX: offsetX,
+              offsetY: offsetY,
+              offsetZ: offsetZ,
+              forceRenderDetail: false
+            });
+          }
 
-      // 5. Add a sound/visual feedback based on number of enemies frozen
-      if (enemiesFrozen > 0) {
-        // Create a success indicator
-        const frozenText = `${enemiesFrozen} enemies frozen!`;
-        // Add visual effect instead of text
-        for (let i = 0; i < Math.min(enemiesFrozen, 5); i++) {
+          // Add a frost burst effect
           effects.push({
-            x: freezeCenter.x + random(-50, 50),
-            y: freezeCenter.y + random(-50, 50),
-            z: freezeCenter.z + random(50, 100),
-            type: "hit",
-            size: 20,
-            life: 60,
-            color: [100, 200, 255]
+            x: enemy.x,
+            y: enemy.y,
+            z: enemy.z + 20,
+            type: "frostBurst",
+            size: 40,
+            life: 30,
+            color: [200, 240, 255]
           });
-        }
+        }, freezeDelay);
+
+        enemiesFrozen++;
       }
 
-      // 6. Create a global frost effect (slight blue tint to the scene)
+      // 5. Add dramatic visual feedback for the massive freeze
+      // Create a central ice explosion
+      effects.push({
+        x: freezeCenter.x,
+        y: freezeCenter.y,
+        z: freezeCenter.z + 50,
+        type: "frostBurst",
+        size: 100,
+        life: 60,
+        color: [200, 240, 255]
+      });
+
+      // Add floating ice shards
+      for (let i = 0; i < 30; i++) {
+        setTimeout(() => {
+          const angle = random(TWO_PI);
+          const dist = random(100, 500);
+          effects.push({
+            x: freezeCenter.x + cos(angle) * dist,
+            y: freezeCenter.y + sin(angle) * dist,
+            z: random(50, 200),
+            type: "iceCrystal",
+            size: random(20, 40),
+            life: random(120, 240),
+            color: [200, 240, 255, 180],
+            growthTime: 5,
+            rotationSpeed: random(-0.1, 0.1),
+            forceRenderDetail: true
+          });
+        }, i * 50);
+      }
+
+      // Add a success indicator
+      const frozenText = `${enemiesFrozen} enemies frozen!`;
+      // Add visual effect instead of text
+      for (let i = 0; i < 10; i++) {
+        effects.push({
+          x: freezeCenter.x + random(-100, 100),
+          y: freezeCenter.y + random(-100, 100),
+          z: freezeCenter.z + random(50, 150),
+          type: "hit",
+          size: 25,
+          life: 90,
+          color: [100, 200, 255]
+        });
+      }
+
+      // 6. Create a stronger global frost effect (blue tint to the scene)
       effects.push({
         type: "globalFrost",
         life: freezeDuration,
-        intensity: 0.5 + aoeBoost * 0.05, // Stronger effect with AOE boost
+        intensity: 0.7 + aoeBoost * 0.05, // Stronger effect with AOE boost
         forceRenderDetail: true
       });
+
+      // 7. Add a screen shake effect for impact
+      cameraShake = 10;
+
       break;
 
     case 5: // Heal all squad members with enhanced healing
