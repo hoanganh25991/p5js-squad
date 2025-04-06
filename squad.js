@@ -278,10 +278,31 @@ function draw() {
   checkMemoryUsage();
 
   background(0);
-  ambientLight(200); // Higher value for more brightness
 
-  // Optimize lighting - only one light source to save performance
-  directionalLight(255, 255, 255, 0, -1, -1);
+  // Check for global frost effect
+  let globalFrostEffect = effects.find(e => e.type === "globalFrost");
+  if (globalFrostEffect) {
+    // Apply a blue tint to the scene based on the frost intensity
+    const intensity = globalFrostEffect.intensity || 0.5;
+    const fadeAlpha = (globalFrostEffect.life / 300) * intensity * 30; // Fade as effect expires
+
+    // Apply a semi-transparent blue overlay
+    push();
+    // Use a 2D overlay for the frost effect
+    translate(0, 0, 1000); // Move in front of everything
+    fill(200, 240, 255, fadeAlpha);
+    noStroke();
+    plane(width * 2, height * 2); // Cover the entire screen
+    pop();
+
+    // Adjust lighting for frost effect - cooler, bluer light
+    ambientLight(180, 200, 220); // Bluer ambient light
+    directionalLight(200, 220, 255, 0, -1, -1); // Bluer directional light
+  } else {
+    // Normal lighting
+    ambientLight(200); // Higher value for more brightness
+    directionalLight(255, 255, 255, 0, -1, -1); // Optimize lighting - only one light source
+  }
 
   // Apply camera transformations
   translate(cameraOffsetX, -cameraOffsetY, -cameraZoom);
@@ -1566,6 +1587,171 @@ function drawEffects() {
       circle(0, 0, pulseSize * 2);
 
       pop();
+    } else if (effect.type === "iceCrystal") {
+      // Ice crystal effect for freeze skill
+      push();
+
+      // Get the growth factor (crystals grow from 0 to full size)
+      const growthTime = effect.growthTime || 10;
+      const growthFactor = min(1, (growthTime - min(growthTime, effect.life % growthTime)) / growthTime);
+
+      // Get effect color (default to ice blue if not specified)
+      const effectColor = effect.color || [200, 240, 255];
+
+      // Semi-transparent ice crystal
+      const alpha = 200 * (effect.life / 120); // Fade based on life
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
+
+      // Add slight blue glow
+      stroke(effectColor[0] - 50, effectColor[1] - 20, effectColor[2], alpha * 0.5);
+      strokeWeight(1);
+
+      // Rotate the crystal for visual interest
+      const rotationSpeed = effect.rotationSpeed || 0.02;
+      rotateX(frameCount * rotationSpeed);
+      rotateY(frameCount * rotationSpeed * 1.5);
+      rotateZ(frameCount * rotationSpeed * 0.7);
+
+      // Scale based on growth factor
+      const currentSize = effect.size * growthFactor;
+
+      // Draw crystal shape - use custom geometry for ice crystal
+      // Main body
+      push();
+      scale(currentSize / 25); // Normalize to a standard size
+
+      // Draw a crystal shape using multiple cones
+      // Main vertical spike
+      push();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.9);
+      cone(5, 25);
+      pop();
+
+      // Secondary spikes at angles
+      for (let i = 0; i < 6; i++) {
+        push();
+        const angle = (i / 6) * TWO_PI;
+        rotateY(angle);
+        translate(0, -5, 7);
+        rotateX(-PI/4);
+        fill(effectColor[0] + 20, effectColor[1] + 20, effectColor[2] + 20, alpha * 0.8);
+        cone(3, 15);
+        pop();
+      }
+
+      // Small crystal facets
+      for (let i = 0; i < 8; i++) {
+        push();
+        const angle = (i / 8) * TWO_PI;
+        rotateY(angle);
+        translate(0, 0, 4);
+        rotateX(PI/3);
+        fill(effectColor[0] + 40, effectColor[1] + 40, effectColor[2] + 40, alpha * 0.7);
+        cone(2, 8);
+        pop();
+      }
+
+      pop();
+
+      // Add a subtle glow effect
+      if (effect.life > 30) {
+        noStroke();
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.2);
+        sphere(currentSize * 1.2);
+      }
+
+      pop();
+    } else if (effect.type === "frostBurst") {
+      // Frost burst effect (expanding particles)
+      push();
+
+      // Get effect color (default to ice blue if not specified)
+      const effectColor = effect.color || [200, 240, 255];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 20);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 20;
+      const expansionFactor = 1 - (effect.life / 20); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with slight variation
+        fill(
+          effectColor[0] + random(-20, 20),
+          effectColor[1] + random(-20, 20),
+          effectColor[2] + random(-20, 20),
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(2, 5) * (1 - expansionFactor);
+        sphere(particleSize);
+        pop();
+      }
+
+      pop();
+    } else if (effect.type === "bridgeFrost") {
+      // Bridge frost effect - covers the bridge with ice
+      push();
+
+      // Get effect color (default to ice blue if not specified)
+      const effectColor = effect.color || [200, 240, 255];
+
+      // Semi-transparent ice layer
+      const alpha = 150 * (effect.life / 300); // Fade based on life
+
+      // Draw a flat disc on the bridge
+      rotateX(HALF_PI); // Align with ground plane
+
+      // Ice layer
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+      circle(0, 0, effect.size * 2);
+
+      // Ice patterns
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
+      strokeWeight(2);
+      noFill();
+
+      // Draw fractal-like ice patterns
+      const patternCount = 12;
+      for (let i = 0; i < patternCount; i++) {
+        const angle = (i / patternCount) * TWO_PI;
+        const startX = cos(angle) * (effect.size * 0.2);
+        const startY = sin(angle) * (effect.size * 0.2);
+
+        push();
+        translate(startX, startY, 1); // Slightly above bridge
+        drawIcePattern(0, 0, effect.size * 0.8, angle, 4, alpha * 0.7, effectColor);
+        pop();
+      }
+
+      // Add a subtle glow
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.1);
+      circle(0, 0, effect.size * 2.2);
+
+      pop();
+    } else if (effect.type === "globalFrost") {
+      // Global frost effect - adds a blue tint to the scene
+      // This is handled in the draw function to apply a filter to the entire scene
+      // No rendering needed here
     } else if (effect.type === "atomicFlash") {
       // Full screen bright flash effect
       push();
@@ -2776,19 +2962,151 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 4: // Freeze all enemies with enhanced duration/effect
-      let freezeDuration = 180 + fireRateBoost * 15; // Base 3s + 0.25s per fire rate boost
-      let freezeStrength = 0.2 - aoeBoost * 0.02; // More slowdown with AOE boost
+    case 4: // Freeze - dramatic ice effect that freezes the bridge and slows enemies
+      let freezeDuration = 300 + fireRateBoost * 30; // Base 5s + 0.5s per fire rate boost (longer duration)
+      let freezeStrength = 0.15 - aoeBoost * 0.02; // More slowdown with AOE boost (slower movement)
+      let freezeRadius = 800 + aoeBoost * 50; // Large radius that covers most of the visible bridge
 
-      for (let enemy of enemies) {
-        if (!enemy.effects) enemy.effects = {};
-        enemy.effects.frozen = {
-          duration: freezeDuration,
-          slowFactor: max(0.05, freezeStrength), // Min 5% of normal speed
-        };
-        enemy.speed *= enemy.effects.frozen.slowFactor;
-        createIceEffect(enemy.x, enemy.y, enemy.z);
+      // Calculate the center point of the squad for the freeze effect
+      let freezeCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        freezeCenter.x = totalX / squad.length;
+        freezeCenter.y = totalY / squad.length;
+        freezeCenter.z = totalZ / squad.length;
       }
+
+      // Create a global freeze effect
+      // 1. First, create a freezing shockwave that spreads across the bridge
+      for (let i = 0; i < 5; i++) { // Create multiple expanding rings
+        setTimeout(() => {
+          effects.push({
+            x: freezeCenter.x,
+            y: freezeCenter.y,
+            z: freezeCenter.z,
+            type: "shockwave",
+            size: freezeRadius * (0.2 + i * 0.2), // Expanding size for each ring
+            life: 90 - i * 10, // Longer life for dramatic effect
+            color: [100, 200, 255], // Ice blue color
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 150); // Slower expansion for dramatic effect
+      }
+
+      // 2. Create a bridge freeze effect that stays for the duration
+      effects.push({
+        x: freezeCenter.x,
+        y: freezeCenter.y,
+        z: 0, // At bridge level
+        type: "bridgeFrost",
+        size: freezeRadius,
+        life: freezeDuration,
+        color: [200, 240, 255, 150], // Light blue with transparency
+        forceRenderDetail: true
+      });
+
+      // 3. Create ice crystal formations that rise from the bridge
+      const crystalCount = 20 + aoeBoost; // More crystals with AOE boost
+      for (let i = 0; i < crystalCount; i++) {
+        const angle = random(TWO_PI);
+        const distance = random(50, freezeRadius * 0.8);
+        const x = freezeCenter.x + cos(angle) * distance;
+        const y = freezeCenter.y + sin(angle) * distance;
+
+        // Stagger the crystal formation for dramatic effect
+        setTimeout(() => {
+          effects.push({
+            x: x,
+            y: y,
+            z: 0, // Start at bridge level
+            type: "iceCrystal",
+            size: random(30, 80),
+            life: freezeDuration - random(0, 60),
+            color: [200, 240, 255, 200],
+            growthTime: random(10, 30), // Frames to reach full size
+            forceRenderDetail: true
+          });
+        }, i * 50); // Stagger the crystal formation
+      }
+
+      // 4. Apply freeze effect to all enemies within radius
+      let enemiesFrozen = 0;
+      for (let enemy of enemies) {
+        // Calculate distance from freeze center
+        const dx = enemy.x - freezeCenter.x;
+        const dy = enemy.y - freezeCenter.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+
+        // Apply freeze effect with distance falloff
+        if (distance < freezeRadius) {
+          // More slowdown to closer enemies
+          const effectMultiplier = 1 - (distance / freezeRadius) * 0.5; // At least 50% effect at max range
+
+          if (!enemy.effects) enemy.effects = {};
+          enemy.effects.frozen = {
+            duration: freezeDuration * effectMultiplier,
+            slowFactor: max(0.05, freezeStrength * effectMultiplier), // Min 5% of normal speed
+            originalSpeed: enemy.speed, // Store original speed for restoration
+          };
+
+          // Apply slowdown
+          enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
+
+          // Create ice effect on enemy with staggered timing based on distance
+          setTimeout(() => {
+            createIceEffect(enemy.x, enemy.y, enemy.z);
+
+            // Add ice crystals around the enemy
+            for (let j = 0; j < 3; j++) {
+              effects.push({
+                x: enemy.x + random(-20, 20),
+                y: enemy.y + random(-20, 20),
+                z: enemy.z + random(0, 30),
+                type: "iceCrystal",
+                size: random(10, 30),
+                life: freezeDuration * 0.7,
+                color: [200, 240, 255, 200],
+                growthTime: random(5, 15),
+                forceRenderDetail: false
+              });
+            }
+          }, distance * 0.5); // Closer enemies freeze faster
+
+          enemiesFrozen++;
+        }
+      }
+
+      // 5. Add a sound/visual feedback based on number of enemies frozen
+      if (enemiesFrozen > 0) {
+        // Create a success indicator
+        const frozenText = `${enemiesFrozen} enemies frozen!`;
+        // Add visual effect instead of text
+        for (let i = 0; i < Math.min(enemiesFrozen, 5); i++) {
+          effects.push({
+            x: freezeCenter.x + random(-50, 50),
+            y: freezeCenter.y + random(-50, 50),
+            z: freezeCenter.z + random(50, 100),
+            type: "hit",
+            size: 20,
+            life: 60,
+            color: [100, 200, 255]
+          });
+        }
+      }
+
+      // 6. Create a global frost effect (slight blue tint to the scene)
+      effects.push({
+        type: "globalFrost",
+        life: freezeDuration,
+        intensity: 0.5 + aoeBoost * 0.05, // Stronger effect with AOE boost
+        forceRenderDetail: true
+      });
       break;
 
     case 5: // Heal all squad members with enhanced healing
@@ -3907,6 +4225,16 @@ function applyEffects() {
       effects[i].y = totalY / squad.length;
       effects[i].z = totalZ / squad.length;
     }
+
+    // Special handling for ice crystals attached to enemies
+    if (effects[i].type === "iceCrystal" && effects[i].enemy) {
+      // Update position to follow the enemy
+      if (effects[i].enemy) {
+        effects[i].x = effects[i].enemy.x + (effects[i].offsetX || 0);
+        effects[i].y = effects[i].enemy.y + (effects[i].offsetY || 0);
+        effects[i].z = effects[i].enemy.z + (effects[i].offsetZ || 0);
+      }
+    }
     
     if (effects[i].life <= 0) {
       // Remove but don't create new objects
@@ -4484,4 +4812,84 @@ function touchStarted() {
 
   // Allow default touch behavior for other areas
   return true;
+}
+
+// Draw a recursive ice pattern (fractal-like)
+function drawIcePattern(x, y, size, angle, depth, alpha, color) {
+  if (depth <= 0 || size < 5) return;
+
+  // Draw the main branch
+  push();
+  translate(x, y, 0);
+  rotate(angle);
+
+  // Draw the main line
+  stroke(color[0], color[1], color[2], alpha);
+  line(0, 0, 0, size);
+
+  // Draw branches
+  const branchSize = size * 0.6;
+  const branchAngle1 = PI / 4; // 45 degrees
+  const branchAngle2 = -PI / 4; // -45 degrees
+
+  // Recursive branches
+  translate(0, size * 0.7, 0);
+
+  // Right branch
+  drawIcePattern(0, 0, branchSize, branchAngle1, depth - 1, alpha * 0.9, color);
+
+  // Left branch
+  drawIcePattern(0, 0, branchSize, branchAngle2, depth - 1, alpha * 0.9, color);
+
+  // Optional middle branch (smaller)
+  if (random() > 0.5) {
+    drawIcePattern(0, 0, branchSize * 0.7, 0, depth - 1, alpha * 0.8, color);
+  }
+
+  pop();
+}
+
+// Create ice effect on a target
+function createIceEffect(x, y, z) {
+  // Create ice crystals around the target
+  const iceColor = [200, 240, 255];
+
+  // Create a main ice crystal
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: "iceCrystal",
+    size: 25,
+    life: 120,
+    color: iceColor,
+    growthTime: 10, // Frames to reach full size
+    rotationSpeed: random(-0.05, 0.05)
+  });
+
+  // Create smaller ice crystals around the main one
+  for (let i = 0; i < 5; i++) {
+    effects.push({
+      x: x + random(-15, 15),
+      y: y + random(-15, 15),
+      z: z + random(0, 20),
+      type: "iceCrystal",
+      size: random(5, 15),
+      life: random(60, 100),
+      color: iceColor,
+      growthTime: random(5, 15),
+      rotationSpeed: random(-0.1, 0.1)
+    });
+  }
+
+  // Create a frost burst effect
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: "frostBurst",
+    size: 30,
+    life: 20,
+    color: iceColor
+  });
 }
