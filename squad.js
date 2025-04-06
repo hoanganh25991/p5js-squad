@@ -2828,9 +2828,37 @@ function createMenuElement() {
   menuContainer.style("font-family", "monospace");
   menuContainer.style("text-align", "center");
   menuContainer.style("z-index", "1000");
+  menuContainer.style("cursor", "pointer"); // Add pointer cursor
+
+  // Add a start button for touch devices
+  const startButtonDiv = createDiv("TAP TO START");
+  startButtonDiv.style("background-color", "rgba(0, 200, 0, 0.7)");
+  startButtonDiv.style("color", "white");
+  startButtonDiv.style("font-size", "24px");
+  startButtonDiv.style("padding", "15px");
+  startButtonDiv.style("margin", "10px auto 20px auto");
+  startButtonDiv.style("border-radius", "10px");
+  startButtonDiv.style("width", "80%");
+  startButtonDiv.style("text-align", "center");
+  startButtonDiv.style("cursor", "pointer");
+  startButtonDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  startButtonDiv.style("user-select", "none");
+  startButtonDiv.style("-webkit-tap-highlight-color", "transparent");
+
+  // Add event handlers to start the game
+  startButtonDiv.mousePressed(startGame);
+  startButtonDiv.touchStarted(startGame);
+
   menuContainer.html(`
     <h2 style="margin: 0 0 20px 0;">SQUAD SURVIVAL</h2>
-    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER to Start</p>
+    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER or Tap Below</p>
+  `);
+
+  // Add the start button to the menu
+  menuContainer.child(startButtonDiv);
+
+  // Add the rest of the menu content
+  const controlsDiv = createDiv(`
     <h3 style="margin: 10px 0; color: #aaffaa;">KEYBOARD CONTROLS</h3>
     <p style="font-size: 16px; margin: 0 0 5px 0;">Arrow Keys: Move Squad</p>
     <p style="font-size: 16px; margin: 0 0 5px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
@@ -2841,6 +2869,108 @@ function createMenuElement() {
     <p style="font-size: 16px; margin: 0 0 5px 0;"><strong>Touch Skills: Activate Skills</strong></p>
     <p style="font-size: 16px; margin: 0 0 5px 0;">Pinch: Zoom / Drag: Move Camera</p>
   `);
+
+  menuContainer.child(controlsDiv);
+
+  // Add click/touch event to the entire menu to start the game
+  menuContainer.mousePressed(startGame);
+  menuContainer.touchStarted(startGame);
+}
+
+// Function to start the game
+function startGame() {
+  if (gameState === "menu" || gameState === "gameOver") {
+    // Reset game state
+    gameState = "playing";
+    currentWave = 1;
+    score = 0;
+    gameStartTime = frameCount;
+    startTime = millis();
+    totalEnemiesKilled = 0;
+    waveEnemiesKilled = 0;
+
+    // Reset squad
+    squad = [];
+    squad.push(squadLeader);
+
+    // Reset enemies
+    enemies = [];
+
+    // Reset projectiles
+    projectiles = [];
+
+    // Reset effects
+    effects = [];
+
+    // Reset power-ups
+    powerUps = [];
+
+    // Reset weapons
+    weapons = {
+      thunderbolt: true,
+      blaster: false,
+      inferno: false,
+      frostbite: false,
+      vortex: false,
+      plasma: false,
+      photon: false,
+    };
+
+    // Reset current weapon
+    currentWeapon = WEAPON_TYPES[0];
+
+    // Reset skill upgrades
+    fireRateBoost = DEBUG_MODE ? 10 : 0;
+    damageBoost = DEBUG_MODE ? 10 : 0;
+    aoeBoost = DEBUG_MODE ? 10 : 0;
+
+    // Reset skills cooldowns
+    for (let skillName in skills) {
+      skills[skillName].lastUsed = 0;
+      if (skills[skillName].active) {
+        skills[skillName].active = false;
+      }
+    }
+
+    // Reset camera
+    cameraOffsetX = CAMERA_OFFSET_X;
+    cameraOffsetY = CAMERA_OFFSET_Y;
+    cameraZoom = CAMERA_OFFSET_Z;
+
+    // Hide menu
+    menuContainer.style("display", "none");
+
+    // Hide game over screen
+    gameOverContainer.style("display", "none");
+
+    // Show skill bar
+    skillBar.style("display", "flex");
+
+    // Show D-pad for touch controls
+    if (dPad) {
+      dPad.style("display", "block");
+      dPad.style("visibility", "visible");
+      dPad.style("opacity", "1");
+      dPad.position(20, height - 220); // Ensure correct position
+
+      // Reset all direction states
+      activeDirections.up = false;
+      activeDirections.down = false;
+      activeDirections.left = false;
+      activeDirections.right = false;
+
+      // Log to console for debugging
+      console.log("Game started, D-pad should be visible");
+    }
+
+    // Reset memory warning
+    memoryWarningShown = false;
+    if (memoryWarningOverlay) {
+      memoryWarningOverlay.style("display", "none");
+    }
+
+    return false; // Prevent default behavior
+  }
 }
 
 function createPauseElement() {
@@ -2890,24 +3020,52 @@ function createGameOverElement() {
   gameOverContainer.style("text-align", "center");
   gameOverContainer.style("font-family", "monospace");
   gameOverContainer.style("z-index", "1000");
+  gameOverContainer.style("cursor", "pointer"); // Add pointer cursor
+
+  // Create HTML content
   gameOverContainer.html(`
     <h2 style="color: red; margin: 0;">GAME OVER</h2>
     <div style="margin-top: 20px;">Wave Reached: <span id="wave-reached">0</span></div>
     <div>Final Score: <span id="final-score">0</span></div>
-    <div style="margin-top: 20px; font-size: 18px;">Press ENTER to Restart</div>
   `);
+
+  // Add a restart button for touch devices
+  const restartButtonDiv = createDiv("TAP TO RESTART");
+  restartButtonDiv.style("background-color", "rgba(200, 0, 0, 0.7)");
+  restartButtonDiv.style("color", "white");
+  restartButtonDiv.style("font-size", "20px");
+  restartButtonDiv.style("padding", "15px");
+  restartButtonDiv.style("margin", "20px auto 10px auto");
+  restartButtonDiv.style("border-radius", "10px");
+  restartButtonDiv.style("width", "80%");
+  restartButtonDiv.style("text-align", "center");
+  restartButtonDiv.style("cursor", "pointer");
+  restartButtonDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  restartButtonDiv.style("user-select", "none");
+  restartButtonDiv.style("-webkit-tap-highlight-color", "transparent");
+
+  // Add event handlers to restart the game
+  restartButtonDiv.mousePressed(startGame);
+  restartButtonDiv.touchStarted(startGame);
+
+  // Add the restart button to the game over screen
+  gameOverContainer.child(restartButtonDiv);
+
+  // Add click/touch event to the entire game over screen to restart the game
+  gameOverContainer.mousePressed(startGame);
+  gameOverContainer.touchStarted(startGame);
 }
 
 function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  skillBar.position(10, height - 110); // Position slightly lower to make room for larger buttons
+  skillBar.position(width / 2 - 200, height - 110); // Position in the center-right area
   skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
   skillBar.style("color", "white");
   skillBar.style("padding", "10px");
   skillBar.style("border-radius", "5px");
-  skillBar.style("width", `${width - 20}px`);
+  skillBar.style("width", "400px"); // Fixed width instead of full width
   skillBar.style("display", "flex");
   skillBar.style("justify-content", "space-between");
   skillBar.style("font-family", "monospace");
@@ -2919,11 +3077,12 @@ function createSkillBarElement() {
     skillDiv.id(`skill${i}`);
     skillDiv.style("flex", "1");
     skillDiv.style("text-align", "center");
-    skillDiv.style("margin", "0 5px");
+    skillDiv.style("margin", "0 2px"); // Reduced margin for more compact layout
     skillDiv.style("position", "relative");
-    skillDiv.style("height", "80px"); // Increased height for better touch targets
+    skillDiv.style("height", "80px"); // Maintain height for touch targets
+    skillDiv.style("width", "45px"); // Fixed width for more compact layout
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
-    skillDiv.style("border-radius", "10px"); // Larger radius for better visual appearance
+    skillDiv.style("border-radius", "10px"); // Maintain radius
     skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
     skillDiv.style("transition", "transform 0.1s, background-color 0.2s"); // Add transition for visual feedback
     skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)"); // Add shadow for depth
@@ -2931,10 +3090,10 @@ function createSkillBarElement() {
     skillDiv.style("-webkit-tap-highlight-color", "transparent"); // Remove tap highlight on mobile
 
     skillDiv.html(`
-      <div id="skillName${i}" style="font-size: 1rem; font-weight: bold; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 1;">${getSkillName(
+      <div id="skillName${i}" style="font-size: 0.7rem; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
       i
     )}</div>
-      <div id="skillKey${i}" style="font-size: 2.2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      <div id="skillKey${i}" style="font-size: 1.8rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
       i
     )}</div>
       <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
@@ -3547,7 +3706,7 @@ function createDirectionalPadElement() {
   // Create main d-pad container
   dPad = createDiv("");
   dPad.id("d-pad-container");
-  dPad.position(20, height - 240); // Position above skill bar
+  dPad.position(20, height - 220); // Position above skill bar with more space
   dPad.style("width", "180px");
   dPad.style("height", "180px");
   dPad.style("position", "absolute"); // Use absolute positioning
@@ -3774,11 +3933,12 @@ function windowResized() {
 
   // Reposition UI elements
   if (dPad) {
-    dPad.position(20, height - 240);
+    dPad.position(20, height - 220);
   }
 
   if (skillBar) {
-    skillBar.position(width / 2 - 200, height - 100);
+    skillBar.position(width / 2 - 200, height - 110);
+    skillBar.style("width", "400px"); // Maintain fixed width
   }
 
   // Force D-pad to be visible if in playing state
@@ -3791,6 +3951,29 @@ function windowResized() {
     // Log to console for debugging
     console.log("Window resized, D-pad repositioned");
   }
+}
+
+// Handle keyboard input
+function keyPressed() {
+  // Start/restart game with ENTER key
+  if (keyCode === ENTER) {
+    if (gameState === "menu" || gameState === "gameOver") {
+      startGame();
+      return false; // Prevent default behavior
+    }
+  }
+
+  // Toggle pause with ESC key
+  if (keyCode === ESCAPE) {
+    if (gameState === "playing") {
+      pauseGame();
+    } else if (gameState === "paused") {
+      resumeGame();
+    }
+    return false; // Prevent default behavior
+  }
+
+  return true; // Allow other default behaviors
 }
 
 // Global touch handler to prevent default touch behavior on skill buttons and d-pad
