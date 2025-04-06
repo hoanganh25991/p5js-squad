@@ -3063,6 +3063,243 @@ function drawEffects() {
       }
 
       pop();
+    } else if (effect.type === "infernoField") {
+      // Inferno field effect - persistent fire area on the bridge
+      push();
+
+      // Get effect color (default to red-orange if not specified)
+      const effectColor = effect.color || [255, 50, 0, 150];
+
+      // Semi-transparent field
+      const alpha = effectColor[3] * (effect.life / 600); // Fade based on life
+
+      // Draw inferno field on the ground
+      rotateX(HALF_PI); // Align with ground plane
+
+      // Draw pulsing field
+      const pulseRate = frameCount * (effect.pulseRate || 0.05);
+      const pulseSize = effect.size * (0.95 + 0.05 * sin(pulseRate));
+
+      // Main inferno field
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.2);
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+      strokeWeight(1);
+      circle(0, 0, pulseSize * 2);
+
+      // Draw fire symbol
+      push();
+      noFill();
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
+      strokeWeight(3);
+
+      // Draw stylized flame in center
+      beginShape();
+      for (let angle = -PI/6; angle <= PI/6; angle += 0.1) {
+        const r = pulseSize * 0.3;
+        const flameHeight = 0.8 + 0.2 * sin(frameCount * 0.1);
+        const x = cos(angle) * r;
+        const y = sin(angle) * r * flameHeight;
+        vertex(x, y);
+      }
+      endShape();
+
+      // Draw outer flames
+      for (let i = 0; i < 5; i++) {
+        push();
+        rotate(i * TWO_PI / 5);
+
+        // Draw flame
+        beginShape();
+        for (let angle = -PI/8; angle <= PI/8; angle += 0.1) {
+          const r = pulseSize * 0.6;
+          const flameHeight = 0.7 + 0.3 * sin(frameCount * 0.1 + i);
+          const x = cos(angle) * r;
+          const y = sin(angle) * r * flameHeight;
+          vertex(x, y);
+        }
+        endShape();
+        pop();
+      }
+      pop();
+
+      // Add fire particles
+      noStroke();
+      for (let i = 0; i < 30; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(0, pulseSize * 0.9);
+        const x = cos(angle) * dist;
+        const y = sin(angle) * dist;
+
+        push();
+        translate(x, y, random(1, 10));
+        fill(255, 50 + random(0, 150), 0, alpha * random(0.5, 1.0));
+
+        // Draw fire particle
+        const particleSize = 3 + 2 * sin(frameCount * 0.1 + i);
+        sphere(particleSize);
+        pop();
+      }
+
+      // Add rising fire particles
+      if (frameCount % 2 === 0) {
+        const angle = random(TWO_PI);
+        const dist = random(0, pulseSize * 0.8);
+        effects.push({
+          x: effect.x + cos(angle) * dist,
+          y: effect.y + sin(angle) * dist,
+          z: effect.z,
+          type: "flameEruption",
+          size: random(20, 40),
+          life: random(30, 60),
+          color: [255, 50 + random(0, 150), 0],
+          velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(2, 4) }
+        });
+      }
+
+      pop();
+    } else if (effect.type === "firePatch") {
+      // Fire patch effect - individual fire on the bridge
+      push();
+
+      // Get effect color (default to red-orange if not specified)
+      const effectColor = effect.color || [255, 50, 0, 200];
+
+      // Semi-transparent fire
+      const alpha = effectColor[3] * (effect.life / 600); // Fade based on life
+
+      // Draw fire patch on the ground
+      rotateX(HALF_PI); // Align with ground plane
+
+      // Draw pulsing fire
+      const pulseRate = frameCount * (effect.pulseRate || 0.05);
+      const pulseSize = effect.size * (0.9 + 0.1 * sin(pulseRate));
+
+      // Main fire patch
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+      noStroke();
+      circle(0, 0, pulseSize);
+
+      // Add fire particles
+      for (let i = 0; i < 15; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(0, pulseSize * 0.4);
+        const x = cos(angle) * dist;
+        const y = sin(angle) * dist;
+
+        push();
+        translate(x, y, random(1, 20));
+
+        // Gradient colors from yellow to red
+        const colorPos = random();
+        if (colorPos < 0.3) {
+          // Yellow-white center
+          fill(255, 200 + random(0, 55), 0, alpha * random(0.7, 1.0));
+        } else if (colorPos < 0.7) {
+          // Orange middle
+          fill(255, 100 + random(0, 100), 0, alpha * random(0.6, 0.9));
+        } else {
+          // Red outer
+          fill(255, 50 + random(0, 50), 0, alpha * random(0.5, 0.8));
+        }
+
+        // Draw fire particle
+        const particleSize = 5 + 3 * sin(frameCount * 0.2 + i);
+        sphere(particleSize);
+        pop();
+      }
+
+      // Add rising fire particles occasionally
+      if (frameCount % 10 === 0 && random() > 0.5) {
+        effects.push({
+          x: effect.x,
+          y: effect.y,
+          z: effect.z,
+          type: "flameBurst",
+          size: random(15, 30),
+          life: random(20, 40),
+          color: [255, 100 + random(0, 155), 0],
+          velocity: { x: random(-0.3, 0.3), y: random(-0.3, 0.3), z: random(1, 3) }
+        });
+      }
+
+      pop();
+    } else if (effect.type === "flameEruption") {
+      // Flame eruption effect - rising column of fire
+      push();
+
+      // Move particle based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+
+        // Slow down over time
+        effect.velocity.x *= 0.98;
+        effect.velocity.y *= 0.98;
+        effect.velocity.z *= 0.96; // Slower vertical slowdown for longer rise
+      }
+
+      // Get effect color (default to orange if not specified)
+      const effectColor = effect.color || [255, 100, 0];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 75);
+
+      // No stroke for particle
+      noStroke();
+
+      // Draw flame column
+      const flameHeight = effect.size * (effect.life / 75) * 1.5;
+      const flameWidth = effect.size * 0.5;
+
+      // Draw multiple flame layers
+      for (let i = 0; i < 5; i++) {
+        const layerHeight = flameHeight * (1 - i * 0.15);
+        const layerWidth = flameWidth * (1 - i * 0.1);
+        const layerAlpha = alpha * (1 - i * 0.15);
+
+        // Color gradient from yellow center to red outer
+        if (i === 0) {
+          // Yellow-white center
+          fill(255, 220, 50, layerAlpha);
+        } else if (i === 1) {
+          // Yellow
+          fill(255, 180, 0, layerAlpha);
+        } else if (i === 2) {
+          // Orange
+          fill(255, 120, 0, layerAlpha);
+        } else {
+          // Red outer
+          fill(255, 50, 0, layerAlpha * 0.8);
+        }
+
+        // Draw flame layer
+        push();
+        translate(0, 0, layerHeight / 2);
+
+        // Use cone for flame shape
+        cone(layerWidth, layerHeight, 8, 1, true);
+        pop();
+      }
+
+      // Add small particles around the flame
+      for (let i = 0; i < 3; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(5, flameWidth * 0.8);
+        const height = random(0, flameHeight);
+
+        push();
+        translate(cos(angle) * dist, sin(angle) * dist, height);
+
+        // Ember color
+        fill(255, 100 + random(0, 155), 0, alpha * 0.7);
+
+        // Draw ember
+        sphere(random(3, 8));
+        pop();
+      }
+
+      pop();
     } else if (effect.type === "atomicFlash") {
       // Full screen bright flash effect
       push();
@@ -3070,20 +3307,20 @@ function drawEffects() {
       // Create a fullscreen flash effect that covers everything
       // This is rendered as a large sphere that encompasses the camera
       noStroke();
-      
+
       // Fade based on life
       const flashOpacity = effect.life / 40; // Fades from 1 to 0
-      
+
       // Use custom color if provided
       const flashColor = effect.color || [255, 255, 255];
       fill(flashColor[0], flashColor[1], flashColor[2], 255 * flashOpacity);
-      
+
       // Position in front of camera - follow camera position
       translate(cameraOffsetX, -cameraOffsetY, -cameraZoom + 100);
-      
+
       // Large enough to cover the view
       sphere(10000); // Much larger to ensure full coverage
-      
+
       // Add additional inner flash layers for more intensity
       push();
       fill(255, 255, 255, 200 * flashOpacity);
@@ -4673,14 +4910,14 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 6: // Infernal Rage - Dramatic damage boost with fire effects
+    case 6: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
       let damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
       let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
       let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
       let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + fireRateBoost * 60; // 30s in debug mode, 10s + 1s per fire rate in normal mode
 
       // Calculate the center of the squad
-      let rageCenter = { x: 0, y: 0, z: 0 };
+      let infernoSquadCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
         let totalX = 0, totalY = 0, totalZ = 0;
         for (let member of squad) {
@@ -4688,112 +4925,183 @@ function activateSkill(skillNumber) {
           totalY += member.y;
           totalZ += member.z;
         }
-        rageCenter.x = totalX / squad.length;
-        rageCenter.y = totalY / squad.length;
-        rageCenter.z = totalZ / squad.length;
+        infernoSquadCenter.x = totalX / squad.length;
+        infernoSquadCenter.y = totalY / squad.length;
+        infernoSquadCenter.z = totalZ / squad.length;
       }
 
-      // Create initial explosion effect
-      effects.push({
-        x: rageCenter.x,
-        y: rageCenter.y,
-        z: rageCenter.z,
-        type: "rageExplosion",
-        size: 100,
-        life: 60,
-        color: [255, 50, 0],
-        forceRenderDetail: true
-      });
-
-      // Create shockwave
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: rageCenter.x,
-            y: rageCenter.y,
-            z: rageCenter.z,
-            type: "shockwave",
-            size: 150 * (1 + i * 0.5),
-            life: 45 - i * 5,
-            color: [255, 50, 0],
-            layer: i,
-            forceRenderDetail: true
-          });
-        }, i * 100);
-      }
+      // Create inferno center ahead of the squad (on enemy side)
+      const infernoDistance = 800; // Distance ahead of squad
+      const infernoRadius = 400 + aoeBoost * 20; // Size of the inferno area
+      const infernoCenter = {
+        x: infernoSquadCenter.x,
+        y: infernoSquadCenter.y - infernoDistance, // Negative Y is forward (toward enemies)
+        z: infernoSquadCenter.z
+      };
 
       // Store original damage multiplier
       let originalDamageMultiplier = {};
 
-      // Apply effect to each squad member
+      // Apply damage boost to each squad member (gameplay effect)
       for (let member of squad) {
         originalDamageMultiplier[member.id] = member.damageBoost || 1;
         member.damageBoost = damageBoostTotalMultiplier;
 
-        // Create flame aura effect for each squad member
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z,
-          type: "flameAura",
-          size: 30,
-          life: damageBoostDuration,
-          color: [255, 50, 0],
-          member: member, // Reference to follow the member
-          forceRenderDetail: true
-        });
+        // Enhanced bullet damage effect
+        member.bulletEffect = "fire";
 
-        // Create initial burst effect
+        // Just a small visual indicator on squad members (minimal)
         effects.push({
           x: member.x,
           y: member.y,
           z: member.z + 20,
-          type: "rageBurst",
-          size: 40,
+          type: "flameBurst",
+          size: 30,
           life: 45,
-          color: [255, 50, 0]
+          color: [255, 100, 0]
         });
+      }
 
-        // Add floating damage symbols
-        for (let i = 0; i < 5; i++) {
-          setTimeout(() => {
-            effects.push({
-              x: member.x + random(-20, 20),
-              y: member.y + random(-20, 20),
-              z: member.z + random(20, 50),
-              type: "damageSymbol",
-              size: random(10, 20),
-              life: random(60, 90),
-              color: [255, 50, 0, 200],
-              velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(1, 2) }
-            });
-          }, i * 100);
-        }
+      // Create initial massive explosion at inferno center
+      effects.push({
+        x: infernoCenter.x,
+        y: infernoCenter.y,
+        z: infernoCenter.z,
+        type: "rageExplosion",
+        size: 200,
+        life: 90,
+        color: [255, 50, 0],
+        forceRenderDetail: true
+      });
+
+      // Create expanding fire shockwaves
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: infernoCenter.x,
+            y: infernoCenter.y,
+            z: infernoCenter.z,
+            type: "shockwave",
+            size: infernoRadius * (0.5 + i * 0.2),
+            life: 60 - i * 5,
+            color: [255, 50, 0],
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 150);
+      }
+
+      // Create persistent inferno field effect
+      effects.push({
+        x: infernoCenter.x,
+        y: infernoCenter.y,
+        z: 0, // At ground level
+        type: "infernoField",
+        size: infernoRadius,
+        life: damageBoostDuration,
+        color: [255, 50, 0, 150],
+        pulseRate: 0.05,
+        forceRenderDetail: true
+      });
+
+      // Create burning bridge effect - multiple fire patches on the bridge
+      const firePatchCount = 15 + Math.floor(aoeBoost / 2);
+      for (let i = 0; i < firePatchCount; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(50, infernoRadius * 0.9);
+        const x = infernoCenter.x + cos(angle) * dist;
+        const y = infernoCenter.y + sin(angle) * dist;
+
+        effects.push({
+          x: x,
+          y: y,
+          z: 0, // At bridge level
+          type: "firePatch",
+          size: random(50, 100),
+          life: damageBoostDuration,
+          color: [255, 50, 0, 200],
+          pulseRate: random(0.03, 0.08),
+          forceRenderDetail: true
+        });
       }
 
       // Add periodic flame bursts throughout the duration
       const burstInterval = 60; // Every second
       const totalBursts = Math.floor(damageBoostDuration / burstInterval);
 
+      // Create interval to damage enemies in the inferno area
+      const burnDamage = 5 + damageBoost * 2; // Base damage per tick
+      const burnInterval = setInterval(() => {
+        // Check if effect is still active
+        if (frameCount > skills.skill6.lastUsed + damageBoostDuration) {
+          clearInterval(burnInterval);
+          return;
+        }
+
+        // Apply damage to enemies in the inferno area
+        for (let enemy of enemies) {
+          const dx = enemy.x - infernoCenter.x;
+          const dy = enemy.y - infernoCenter.y;
+          const distance = Math.sqrt(dx*dx + dy*dy);
+
+          if (distance < infernoRadius) {
+            // Apply burn damage with falloff based on distance
+            const damageMultiplier = 1 - (distance / infernoRadius) * 0.7; // At least 30% damage at edges
+            enemy.health -= burnDamage * damageMultiplier;
+
+            // Create burn effect on enemy
+            if (random() > 0.5) {
+              effects.push({
+                x: enemy.x,
+                y: enemy.y,
+                z: enemy.z + random(10, 30),
+                type: "flameBurst",
+                size: random(15, 25),
+                life: random(20, 40),
+                color: [255, 50 + random(0, 50), 0]
+              });
+            }
+          }
+        }
+      }, 500); // Check every 0.5 seconds
+
+      // Add random flame eruptions in the inferno area
       for (let i = 1; i <= totalBursts; i++) {
         setTimeout(() => {
           // Only create effects if skill is still active
           if (frameCount < skills.skill6.lastUsed + damageBoostDuration) {
-            for (let member of squad) {
-              // Create flame burst
-              if (random() > 0.3) { // 70% chance for each member
-                effects.push({
-                  x: member.x,
-                  y: member.y,
-                  z: member.z + 10,
-                  type: "flameBurst",
-                  size: random(15, 25),
-                  life: random(30, 45),
-                  color: [255, 50 + random(0, 50), 0]
-                });
+            // Create 3-5 flame eruptions per burst
+            const eruptions = random(3, 6);
+            for (let j = 0; j < eruptions; j++) {
+              const angle = random(TWO_PI);
+              const dist = random(0, infernoRadius * 0.9);
+              const x = infernoCenter.x + cos(angle) * dist;
+              const y = infernoCenter.y + sin(angle) * dist;
 
-                // Enhanced bullet damage effect
-                member.bulletEffect = "fire";
+              // Create flame eruption
+              effects.push({
+                x: x,
+                y: y,
+                z: 0, // Start at ground level
+                type: "flameEruption",
+                size: random(40, 80),
+                life: random(45, 75),
+                color: [255, 50 + random(0, 50), 0],
+                velocity: { x: 0, y: 0, z: random(2, 5) }
+              });
+
+              // Add floating damage symbols
+              if (random() > 0.7) {
+                effects.push({
+                  x: x + random(-20, 20),
+                  y: y + random(-20, 20),
+                  z: random(30, 70),
+                  type: "damageSymbol",
+                  size: random(15, 25),
+                  life: random(60, 90),
+                  color: [255, 50, 0, 200],
+                  velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(1, 2) }
+                });
               }
             }
           }
@@ -4813,6 +5121,10 @@ function activateSkill(skillNumber) {
 
       // Reset after duration
       setTimeout(() => {
+        // Clear interval (redundant safety check)
+        clearInterval(burnInterval);
+
+        // Reset damage multipliers
         for (let member of squad) {
           if (member && originalDamageMultiplier[member.id]) {
             member.damageBoost = originalDamageMultiplier[member.id];
@@ -4822,16 +5134,36 @@ function activateSkill(skillNumber) {
 
           // Remove bullet effect
           member.bulletEffect = null;
+        }
 
-          // Create final burst effect when skill ends
+        // Create final explosion when inferno dissipates
+        effects.push({
+          x: infernoCenter.x,
+          y: infernoCenter.y,
+          z: infernoCenter.z,
+          type: "rageExplosion",
+          size: 150,
+          life: 60,
+          color: [255, 100, 0],
+          forceRenderDetail: true
+        });
+
+        // Add smoke aftermath
+        for (let i = 0; i < 10; i++) {
+          const angle = random(TWO_PI);
+          const dist = random(50, infernoRadius * 0.8);
+          const x = infernoCenter.x + cos(angle) * dist;
+          const y = infernoCenter.y + sin(angle) * dist;
+
           effects.push({
-            x: member.x,
-            y: member.y,
-            z: member.z + 20,
-            type: "flameBurst",
-            size: 30,
-            life: 30,
-            color: [255, 150, 0]
+            x: x,
+            y: y,
+            z: random(10, 50),
+            type: "smoke",
+            size: random(50, 100),
+            life: random(120, 240),
+            color: [100, 100, 100, 150],
+            velocity: { x: random(-0.2, 0.2), y: random(-0.2, 0.2), z: random(0.5, 1) }
           });
         }
       }, damageBoostDuration * (1000 / 60)); // Convert frames to ms
