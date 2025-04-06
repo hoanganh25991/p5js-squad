@@ -845,10 +845,12 @@ function drawEffects() {
       const dy = effect.y - mainMember.y;
       
       // Skip distance culling for effects that should always render in detail
-      const forceDetailedRendering = effect.forceRenderDetail || 
-                                    effect.type === "atomicBomb" || 
-                                    effect.type === "atomicExplosion" || 
-                                    effect.type === "atomicFlash";
+      const forceDetailedRendering = effect.forceRenderDetail ||
+                                    effect.type === "atomicBomb" ||
+                                    effect.type === "atomicExplosion" ||
+                                    effect.type === "atomicFlash" ||
+                                    effect.type === "shockwave" ||
+                                    effect.type === "areaBarrier";
       
       // Fast distance check - if effect is far away AND not forced to render in detail, skip detailed rendering
       if (!forceDetailedRendering && dx*dx + dy*dy > 500*500) {
@@ -1389,10 +1391,185 @@ function drawEffects() {
       }
       
       pop();
+    } else if (effect.type === "shockwave" || effect.type === "directionalShockwave") {
+      // Shockwave effect for area damage skill
+      push();
+      noFill();
+
+      // Get effect color (default to blue if not specified)
+      const effectColor = effect.color || [0, 200, 255];
+
+      // Pulsing ring
+      const alpha = 200 * (effect.life / 60); // Fade based on life
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha);
+      strokeWeight(5);
+
+      // Expanding ring
+      rotateX(HALF_PI); // Align with ground plane
+
+      if (effect.type === "directionalShockwave") {
+        // Draw half-circle arc for directional shockwave
+        const angleStart = effect.angleStart || 0;
+        const angleEnd = effect.angleEnd || PI;
+
+        // Draw main arc
+        push();
+        beginShape();
+        for (let angle = angleStart; angle <= angleEnd; angle += 0.1) {
+          const x = cos(angle) * effect.size;
+          const z = sin(angle) * effect.size;
+          vertex(x, 0, z);
+        }
+        endShape();
+
+        // Draw radius lines to complete the half-circle
+        line(0, 0, cos(angleStart) * effect.size, 0, sin(angleStart) * effect.size);
+        line(0, 0, cos(angleEnd) * effect.size, 0, sin(angleEnd) * effect.size);
+        pop();
+
+        // Add inner arc for more visual interest
+        // Lighter version of the main color
+        const innerColor = [
+          Math.min(255, effectColor[0] + 50),
+          Math.min(255, effectColor[1] + 50),
+          Math.min(255, effectColor[2] + 50)
+        ];
+        stroke(innerColor[0], innerColor[1], innerColor[2], alpha * 0.7);
+        strokeWeight(3);
+
+        push();
+        beginShape();
+        for (let angle = angleStart; angle <= angleEnd; angle += 0.1) {
+          const x = cos(angle) * effect.size * 0.8;
+          const z = sin(angle) * effect.size * 0.8;
+          vertex(x, 0, z);
+        }
+        endShape();
+        pop();
+
+        // Add energy particles around the arc
+        if (effect.life > 30) { // Only show particles during first half of effect
+          noStroke();
+          fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
+
+          // Number of particles based on size
+          const particleCount = Math.min(15, Math.ceil(effect.size / 25));
+
+          for (let i = 0; i < particleCount; i++) {
+            push();
+            // Random angle within the arc range
+            const angle = random(angleStart, angleEnd);
+            const radius = effect.size * random(0.9, 1.1);
+
+            // Position particles around the arc
+            translate(cos(angle) * radius, 0, sin(angle) * radius);
+
+            // Particle size varies
+            const particleSize = random(5, 15);
+            sphere(particleSize);
+            pop();
+          }
+        }
+      } else {
+        // Draw full circle for regular shockwave
+        // Draw main ring
+        torus(effect.size, 10);
+
+        // Add inner rings for more visual interest
+        // Lighter version of the main color
+        const innerColor = [
+          Math.min(255, effectColor[0] + 50),
+          Math.min(255, effectColor[1] + 50),
+          Math.min(255, effectColor[2] + 50)
+        ];
+        stroke(innerColor[0], innerColor[1], innerColor[2], alpha * 0.7);
+        strokeWeight(3);
+        torus(effect.size * 0.8, 5);
+
+        // Add energy particles around the ring
+        if (effect.life > 30) { // Only show particles during first half of effect
+          noStroke();
+          fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
+
+          // Number of particles based on size
+          const particleCount = Math.min(20, Math.ceil(effect.size / 20));
+
+          for (let i = 0; i < particleCount; i++) {
+            push();
+            const angle = random(TWO_PI);
+            const radius = effect.size * random(0.9, 1.1);
+
+            // Position particles around the ring
+            translate(cos(angle) * radius, 0, sin(angle) * radius);
+
+            // Particle size varies
+            const particleSize = random(5, 15);
+            sphere(particleSize);
+            pop();
+          }
+        }
+      }
+      pop();
+    } else if (effect.type === "shield" || effect.type === "areaBarrier") {
+      // Protective barrier effect that stays around the squad
+      push();
+
+      // Get effect color (default to blue if not specified)
+      const effectColor = effect.color || [0, 200, 255];
+
+      // Semi-transparent dome
+      const alpha = 100 * (effect.life / 300); // Fade based on life
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
+      strokeWeight(2);
+
+      // Draw dome shape
+      rotateX(HALF_PI); // Align with ground plane
+
+      // Draw hemisphere (half sphere)
+      push();
+      translate(0, 0, -effect.size/2); // Move down so hemisphere sits on ground
+      sphere(effect.size);
+      pop();
+
+      // Add energy field lines
+      stroke(effectColor[0] + 100, effectColor[1] + 20, effectColor[2], alpha * 0.8);
+      strokeWeight(1);
+
+      // Draw field lines
+      const lineCount = 12;
+      for (let i = 0; i < lineCount; i++) {
+        const angle = (i / lineCount) * TWO_PI;
+        const x = cos(angle) * effect.size;
+        const z = sin(angle) * effect.size;
+
+        push();
+        // Draw line from ground up in a curve
+        beginShape();
+        for (let j = 0; j <= 10; j++) {
+          const t = j / 10;
+          const curveHeight = sin(t * PI) * effect.size;
+          const curveRadius = effect.size * (1 - t * 0.3);
+          const curveX = cos(angle) * curveRadius;
+          const curveZ = sin(angle) * curveRadius;
+          vertex(curveX, -curveHeight, curveZ);
+        }
+        endShape();
+        pop();
+      }
+
+      // Pulsing effect
+      const pulseSize = effect.size * (1 + 0.05 * sin(frameCount * 0.1));
+      noFill();
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+      rotateX(HALF_PI); // Align with ground plane
+      circle(0, 0, pulseSize * 2);
+
+      pop();
     } else if (effect.type === "atomicFlash") {
       // Full screen bright flash effect
       push();
-      
+
       // Create a fullscreen flash effect that covers everything
       // This is rendered as a large sphere that encompasses the camera
       noStroke();
@@ -1988,10 +2165,23 @@ function updateEnemies() {
     );
 
     if (distanceToShield < shieldRadius) {
-      // Push enemy out of the shield
-      const pushFactor = (shieldRadius - distanceToShield) / distanceToShield;
+      // Push enemy out of the shield with stronger force
+      const pushFactor = (shieldRadius - distanceToShield) / distanceToShield * 1.5;
       enemy.x += (enemy.x - shieldX) * pushFactor;
       enemy.y += (enemy.y - shieldY) * pushFactor;
+
+      // Create a small visual effect to show the shield is working
+      if (frameCount % 10 === 0) {
+        effects.push({
+          x: enemy.x,
+          y: enemy.y,
+          z: enemy.z,
+          type: "hit",
+          size: 10,
+          life: 20,
+          color: [0, 200, 255]
+        });
+      }
     }
 
     // Keep within bridge boundaries
@@ -2350,15 +2540,156 @@ function activateSkill(skillNumber) {
 
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
-    case 1: // Area damage - damages all enemies in view
-      // TODO: better skill effect as area damage
-      // For now, help to next weapon for testing
-      currentWeapon = getNextItem(
-        WEAPON_TYPES,
-        WEAPON_TYPES.indexOf(currentWeapon)
-      );
-      for (let member of squad) {
-        member.weapon = currentWeapon;
+    case 1: // Area Blast - directional damage in 8 possible directions
+      // Create a powerful directional area damage effect
+      let areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
+      let areaDamageAmount = 100 + damageBoost * 15; // Higher base damage + bonus from damage boost
+      let squadCenter = { x: 0, y: 0, z: 0 };
+
+      // Calculate the center point of the squad for the area effect
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        squadCenter.x = totalX / squad.length;
+        squadCenter.y = totalY / squad.length;
+        squadCenter.z = totalZ / squad.length;
+      }
+
+      // Determine blast direction based on key pressed or current movement
+      // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
+      let blastDirection = 0; // Default to right
+
+      // Check if we have movement keys pressed to determine direction
+      const keysPressed = Object.keys(keyIsDown).filter(k => keyIsDown[k]);
+
+      // Check for horizontal movement
+      let horizontalDir = 0; // -1 for left, 0 for none, 1 for right
+      if (keysPressed.includes('65') || keysPressed.includes('37')) { // A or Left arrow
+        horizontalDir = -1;
+      } else if (keysPressed.includes('68') || keysPressed.includes('39')) { // D or Right arrow
+        horizontalDir = 1;
+      }
+
+      // Check for vertical movement
+      let verticalDir = 0; // -1 for up, 0 for none, 1 for down
+      if (keysPressed.includes('87') || keysPressed.includes('38')) { // W or Up arrow
+        verticalDir = -1;
+      } else if (keysPressed.includes('83') || keysPressed.includes('40')) { // S or Down arrow
+        verticalDir = 1;
+      }
+
+      // Determine direction based on combination of horizontal and vertical
+      if (horizontalDir === 1 && verticalDir === 0) {
+        blastDirection = 0; // Right
+      } else if (horizontalDir === 1 && verticalDir === -1) {
+        blastDirection = 1; // Up-Right
+      } else if (horizontalDir === 0 && verticalDir === -1) {
+        blastDirection = 2; // Up
+      } else if (horizontalDir === -1 && verticalDir === -1) {
+        blastDirection = 3; // Up-Left
+      } else if (horizontalDir === -1 && verticalDir === 0) {
+        blastDirection = 4; // Left
+      } else if (horizontalDir === -1 && verticalDir === 1) {
+        blastDirection = 5; // Down-Left
+      } else if (horizontalDir === 0 && verticalDir === 1) {
+        blastDirection = 6; // Down
+      } else if (horizontalDir === 1 && verticalDir === 1) {
+        blastDirection = 7; // Down-Right
+      }
+
+      // Calculate the angle range for the half-circle blast (PI radians = 180 degrees)
+      const centerAngle = blastDirection * (Math.PI / 4); // Convert direction to radians
+      const angleStart = centerAngle - Math.PI/2; // 90 degrees to the left of center
+      const angleEnd = centerAngle + Math.PI/2; // 90 degrees to the right of center
+
+      // Create visual shockwave effect - red/orange for damage, in a half-circle
+      for (let i = 0; i < 3; i++) { // Create multiple expanding rings
+        setTimeout(() => {
+          effects.push({
+            x: squadCenter.x,
+            y: squadCenter.y,
+            z: squadCenter.z,
+            type: "directionalShockwave",
+            size: areaDamageRadius * (0.5 + i * 0.25), // Expanding size for each ring
+            life: 60 - i * 15, // Shorter life for later rings
+            color: [255, 100, 0], // Red/orange for damage
+            layer: i,
+            angleStart: angleStart,
+            angleEnd: angleEnd,
+            direction: blastDirection,
+            forceRenderDetail: true
+          });
+        }, i * 100); // Stagger the rings
+      }
+
+      // Apply damage to enemies within radius and in the correct direction
+      let enemiesHit = 0;
+      for (let enemy of enemies) {
+        // Calculate distance from squad center
+        const dx = enemy.x - squadCenter.x;
+        const dy = enemy.y - squadCenter.y;
+        const dz = enemy.z - squadCenter.z;
+        const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        // Calculate angle to enemy (in radians)
+        const angleToEnemy = Math.atan2(dy, dx);
+
+        // Check if enemy is within the half-circle blast area
+        // We need to handle angle wrapping around from -PI to PI
+        let inBlastArea = false;
+
+        if (angleStart <= angleEnd) {
+          // Normal case
+          inBlastArea = angleToEnemy >= angleStart && angleToEnemy <= angleEnd;
+        } else {
+          // Wrapping around case (e.g., from 315° to 45°)
+          inBlastArea = angleToEnemy >= angleStart || angleToEnemy <= angleEnd;
+        }
+
+        // Apply damage with distance falloff if in blast area
+        if (distance < areaDamageRadius && inBlastArea) {
+          // More damage to closer enemies
+          const damageMultiplier = 1 - (distance / areaDamageRadius);
+          const damage = areaDamageAmount * damageMultiplier;
+
+          // Apply damage to enemy
+          enemy.health -= damage;
+
+          // Create hit effect on enemy
+          createHitEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0]);
+
+          // Push enemy back in the direction of the blast
+          const pushForce = 25 * damageMultiplier; // Stronger push for directional blast
+          const pushX = Math.cos(centerAngle) * pushForce;
+          const pushY = Math.sin(centerAngle) * pushForce;
+
+          enemy.x += pushX;
+          enemy.y += pushY;
+
+          enemiesHit++;
+        }
+      }
+
+      // Add a sound/visual feedback based on number of enemies hit
+      if (enemiesHit > 0) {
+        // Create a success indicator
+        const hitText = `${enemiesHit} enemies hit!`;
+        // Add visual effect instead of text (since createFloatingText isn't implemented)
+        for (let i = 0; i < Math.min(enemiesHit, 10); i++) {
+          effects.push({
+            x: squadCenter.x + Math.cos(centerAngle) * random(30, 80),
+            y: squadCenter.y + Math.sin(centerAngle) * random(30, 80),
+            z: squadCenter.z + random(30, 70),
+            type: "hit",
+            size: 15,
+            life: 60,
+            color: [255, 100, 0]
+          });
+        }
       }
       break;
 
@@ -2401,33 +2732,54 @@ function activateSkill(skillNumber) {
       }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 3: // Shield - temporary invulnerability with enhanced durability
+    case 3: // Shield - protective barrier that follows the squad
       let shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
       let shieldDuration = 300 + fireRateBoost * 30; // Duration enhanced by fire rate (5s + boost)
+      let shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
 
-      for (let member of [squad[0]]) {
-        member.shielded = true;
-        member.shieldHealth = shieldStrength;
-
-        // Visual shield effect
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z,
-          type: "shield",
-          size: member.size * (1.5 + aoeBoost * 0.1) * 5, // Shield size enhanced by AOE
-          life: shieldDuration * 5,
-          member: member, // reference to follow the member
-        });
+      // Calculate the center point of the squad for the shield
+      let shieldCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        shieldCenter.x = totalX / squad.length;
+        shieldCenter.y = totalY / squad.length;
+        shieldCenter.z = totalZ / squad.length;
       }
 
-      // Remove shields after duration
-      setTimeout(() => {
-        for (let member of squad) {
-          member.shielded = false;
-          member.shieldHealth = 0;
-        }
-      }, shieldDuration * (1000 / 60)); // Convert frames to ms
+      // Create a protective barrier effect that stays around the squad
+      effects.push({
+        x: shieldCenter.x,
+        y: shieldCenter.y,
+        z: shieldCenter.z,
+        type: "shield", // Changed to "shield" type for consistency with updateEnemies
+        size: shieldRadius,
+        life: shieldDuration,
+        color: [0, 200, 255, 100],
+        strength: shieldStrength, // Store shield strength for enemy repulsion
+        forceRenderDetail: true
+      });
+
+      // Create a visual feedback effect
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: shieldCenter.x,
+            y: shieldCenter.y,
+            z: shieldCenter.z,
+            type: "shockwave",
+            size: shieldRadius * (0.5 + i * 0.25),
+            life: 60 - i * 15,
+            color: [0, 200, 255], // Blue for protection
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 100);
+      }
       break;
 
     case 4: // Freeze all enemies with enhanced duration/effect
@@ -3383,7 +3735,7 @@ function getSkillKey(skillNumber) {
 function getSkillName(skillNumber) {
   switch (skillNumber) {
     case 1:
-      return "Next Weapon";
+      return "Directional Blast";
     case 2:
       return "Machine Gun";
     case 3:
@@ -3532,20 +3884,34 @@ function applyEffects() {
   // Update effects lifetimes and remove dead effects
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life--;
-    
+
     // Special handling for machine gun effects
     if (effects[i].type === "machineGun") {
       // Check if the machine gun skill is still active
       if (!skills.skill2.active) {
         effects[i].life = 0; // Force effect to end if skill is no longer active
       }
-      
+
       // Update position to follow the squad member
       if (effects[i].member) {
         effects[i].x = effects[i].member.x;
         effects[i].y = effects[i].member.y;
         effects[i].z = effects[i].member.z;
       }
+    }
+
+    // Special handling for shield effects
+    if ((effects[i].type === "shield" || effects[i].type === "areaBarrier") && squad.length > 0) {
+      // Calculate the new center point of the squad
+      let totalX = 0, totalY = 0, totalZ = 0;
+      for (let member of squad) {
+        totalX += member.x;
+        totalY += member.y;
+        totalZ += member.z;
+      }
+      effects[i].x = totalX / squad.length;
+      effects[i].y = totalY / squad.length;
+      effects[i].z = totalZ / squad.length;
     }
     
     if (effects[i].life <= 0) {
