@@ -2959,7 +2959,7 @@ function startGame() {
       controlsContainer.style("display", "flex");
       controlsContainer.style("visibility", "visible");
       controlsContainer.style("opacity", "1");
-      controlsContainer.position(0, height - 150); // Ensure correct position
+      controlsContainer.position(0, height - 250); // Ensure correct position
 
       // Make sure D-pad is visible
       if (dPad) {
@@ -3082,7 +3082,7 @@ function createSkillBarElement() {
   skillBar.style("padding", "10px");
   skillBar.style("border-radius", "5px");
   skillBar.style("flex", "1"); // Take up remaining space in the flex container
-  skillBar.style("height", "120px"); // Match height with d-pad
+  skillBar.style("height", "220px"); // Match height with d-pad
   skillBar.style("display", "flex");
   skillBar.style("justify-content", "space-between");
   skillBar.style("font-family", "monospace");
@@ -3732,9 +3732,9 @@ function createControlsContainer() {
   // Create main container
   controlsContainer = createDiv("");
   controlsContainer.id("controls-container");
-  controlsContainer.position(0, height - 150); // Position at bottom of screen with more space
+  controlsContainer.position(0, height - 250); // Position at bottom of screen with more space for larger d-pad
   controlsContainer.style("width", "100%");
-  controlsContainer.style("height", "150px"); // Taller for bigger d-pad
+  controlsContainer.style("height", "250px"); // Much taller for much bigger d-pad
   controlsContainer.style("display", "flex");
   controlsContainer.style("flex-direction", "row");
   controlsContainer.style("align-items", "center");
@@ -3755,11 +3755,11 @@ function createDirectionalPadElement() {
   // Create main d-pad container
   dPad = createDiv("");
   dPad.id("d-pad-container");
-  dPad.style("width", "140px"); // Bigger d-pad
-  dPad.style("height", "140px"); // Bigger d-pad
+  dPad.style("width", "240px"); // Much bigger d-pad
+  dPad.style("height", "240px"); // Much bigger d-pad
   dPad.style("position", "relative"); // Use relative positioning within flex container
   dPad.style("background-color", "rgba(30, 30, 30, 0.8)"); // More visible background
-  dPad.style("border-radius", "70px"); // Half of width/height
+  dPad.style("border-radius", "120px"); // Half of width/height
   dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
   dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)"); // More visible border
   dPad.style("z-index", "1600"); // Higher z-index than the container
@@ -3777,17 +3777,17 @@ function createDirectionalPadElement() {
   upButton = createDiv("▲");
   upButton.id("up-button");
   upButton.style("position", "absolute");
-  upButton.style("top", "10px");
-  upButton.style("left", "55px");
-  upButton.style("width", "35px");
-  upButton.style("height", "35px");
+  upButton.style("top", "20px");
+  upButton.style("left", "95px");
+  upButton.style("width", "60px");
+  upButton.style("height", "60px");
   upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   upButton.style("color", "white");
-  upButton.style("font-size", "16px");
+  upButton.style("font-size", "28px");
   upButton.style("display", "flex");
   upButton.style("align-items", "center");
   upButton.style("justify-content", "center");
-  upButton.style("border-radius", "8px");
+  upButton.style("border-radius", "15px");
   upButton.style("cursor", "pointer");
   upButton.style("user-select", "none");
   upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3798,17 +3798,17 @@ function createDirectionalPadElement() {
   downButton = createDiv("▼");
   downButton.id("down-button");
   downButton.style("position", "absolute");
-  downButton.style("bottom", "10px");
-  downButton.style("left", "55px");
-  downButton.style("width", "35px");
-  downButton.style("height", "35px");
+  downButton.style("bottom", "20px");
+  downButton.style("left", "95px");
+  downButton.style("width", "60px");
+  downButton.style("height", "60px");
   downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   downButton.style("color", "white");
-  downButton.style("font-size", "16px");
+  downButton.style("font-size", "28px");
   downButton.style("display", "flex");
   downButton.style("align-items", "center");
   downButton.style("justify-content", "center");
-  downButton.style("border-radius", "8px");
+  downButton.style("border-radius", "15px");
   downButton.style("cursor", "pointer");
   downButton.style("user-select", "none");
   downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3819,17 +3819,17 @@ function createDirectionalPadElement() {
   leftButton = createDiv("◀");
   leftButton.id("left-button");
   leftButton.style("position", "absolute");
-  leftButton.style("top", "55px");
-  leftButton.style("left", "10px");
-  leftButton.style("width", "35px");
-  leftButton.style("height", "35px");
+  leftButton.style("top", "95px");
+  leftButton.style("left", "20px");
+  leftButton.style("width", "60px");
+  leftButton.style("height", "60px");
   leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   leftButton.style("color", "white");
-  leftButton.style("font-size", "16px");
+  leftButton.style("font-size", "28px");
   leftButton.style("display", "flex");
   leftButton.style("align-items", "center");
   leftButton.style("justify-content", "center");
-  leftButton.style("border-radius", "8px");
+  leftButton.style("border-radius", "15px");
   leftButton.style("cursor", "pointer");
   leftButton.style("user-select", "none");
   leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3840,17 +3840,17 @@ function createDirectionalPadElement() {
   rightButton = createDiv("▶");
   rightButton.id("right-button");
   rightButton.style("position", "absolute");
-  rightButton.style("top", "55px");
-  rightButton.style("right", "10px");
-  rightButton.style("width", "35px");
-  rightButton.style("height", "35px");
+  rightButton.style("top", "95px");
+  rightButton.style("right", "20px");
+  rightButton.style("width", "60px");
+  rightButton.style("height", "60px");
   rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
   rightButton.style("color", "white");
-  rightButton.style("font-size", "16px");
+  rightButton.style("font-size", "28px");
   rightButton.style("display", "flex");
   rightButton.style("align-items", "center");
   rightButton.style("justify-content", "center");
-  rightButton.style("border-radius", "8px");
+  rightButton.style("border-radius", "15px");
   rightButton.style("cursor", "pointer");
   rightButton.style("user-select", "none");
   rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3861,17 +3861,17 @@ function createDirectionalPadElement() {
   const centerButton = createDiv("•");
   centerButton.id("center-button");
   centerButton.style("position", "absolute");
-  centerButton.style("top", "55px");
-  centerButton.style("left", "55px");
-  centerButton.style("width", "35px");
-  centerButton.style("height", "35px");
+  centerButton.style("top", "95px");
+  centerButton.style("left", "95px");
+  centerButton.style("width", "60px");
+  centerButton.style("height", "60px");
   centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
   centerButton.style("color", "white");
-  centerButton.style("font-size", "16px");
+  centerButton.style("font-size", "32px");
   centerButton.style("display", "flex");
   centerButton.style("align-items", "center");
   centerButton.style("justify-content", "center");
-  centerButton.style("border-radius", "8px");
+  centerButton.style("border-radius", "15px");
   centerButton.style("cursor", "pointer");
   centerButton.style("user-select", "none");
   centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
@@ -3949,7 +3949,7 @@ function updateDirectionalPad() {
     controlsContainer.style("display", "flex");
     controlsContainer.style("visibility", "visible");
     controlsContainer.style("opacity", "1");
-    controlsContainer.position(0, height - 150); // Reposition in case of window resize
+    controlsContainer.position(0, height - 250); // Reposition in case of window resize
 
     // Make sure the D-pad is visible
     dPad.style("visibility", "visible");
@@ -3991,9 +3991,9 @@ function windowResized() {
 
   // Reposition UI elements
   if (controlsContainer) {
-    controlsContainer.position(0, height - 150);
+    controlsContainer.position(0, height - 250);
     controlsContainer.style("width", "100%");
-    controlsContainer.style("height", "150px");
+    controlsContainer.style("height", "250px");
   }
 
   // Force controls container to be visible if in playing state
