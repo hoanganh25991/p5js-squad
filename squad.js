@@ -2960,6 +2960,8 @@ function startGame() {
       controlsContainer.style("visibility", "visible");
       controlsContainer.style("opacity", "1");
       controlsContainer.position(0, height - 250); // Ensure correct position
+      // controlsContainer.style("max-width", "1200px");
+      controlsContainer.style("margin", "0 auto");
 
       // Make sure D-pad is visible
       if (dPad) {
@@ -3081,29 +3083,43 @@ function createSkillBarElement() {
   skillBar.style("color", "white");
   skillBar.style("padding", "10px");
   skillBar.style("border-radius", "5px");
-  skillBar.style("flex", "1"); // Take up remaining space in the flex container
+  skillBar.style("flex", "0 0 auto"); // Don't grow, don't shrink, auto basis
+  skillBar.style("width", "280px"); // Fixed width for the skill bar
   skillBar.style("height", "220px"); // Match height with d-pad
   skillBar.style("display", "flex");
-  skillBar.style("justify-content", "space-between");
+  skillBar.style("flex-direction", "column"); // Stack rows vertically
+  skillBar.style("justify-content", "center"); // Center vertically
   skillBar.style("font-family", "monospace");
   skillBar.style("box-sizing", "border-box");
-  skillBar.style("margin-left", "10px"); // Add margin on right side
+  skillBar.style("margin-left", "10px"); // Add margin on left side
   skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)"); // Add border for visibility
-  skillBar.style("align-items", "center"); // Center items vertically
 
   // Add skill bar to the controls container
   controlsContainer.child(skillBar);
+
+  // Create top row (Q, W, E, R) and bottom row (A, S, D, F) containers
+  const topRow = createDiv("");
+  topRow.style("display", "flex");
+  topRow.style("justify-content", "space-around");
+  topRow.style("margin-bottom", "20px");
+
+  const bottomRow = createDiv("");
+  bottomRow.style("display", "flex");
+  bottomRow.style("justify-content", "space-around");
+
+  // Add rows to skill bar
+  skillBar.child(topRow);
+  skillBar.child(bottomRow);
 
   // Create individual skill elements
   for (let i = 1; i <= 8; i++) {
     const skillDiv = createDiv("");
     skillDiv.id(`skill${i}`);
-    skillDiv.style("flex", "1");
     skillDiv.style("text-align", "center");
-    skillDiv.style("margin", "0 4px"); // Slightly more margin between buttons
+    skillDiv.style("margin", "0 5px"); // More margin between buttons
     skillDiv.style("position", "relative");
-    skillDiv.style("height", "90px"); // Taller for better touch targets
-    skillDiv.style("width", "50px"); // Wider for better touch targets
+    skillDiv.style("height", "80px"); // Slightly shorter for two rows
+    skillDiv.style("width", "60px"); // Wider for better touch targets
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
     skillDiv.style("border-radius", "10px"); // Maintain radius
     skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
@@ -3164,7 +3180,16 @@ function createSkillBarElement() {
       }
     });
 
-    skillBar.child(skillDiv);
+    // Add to the appropriate row based on index
+    // Q, W, E, R (skills 5-8) go in top row
+    // A, S, D, F (skills 1-4) go in bottom row
+    if (i >= 5) {
+      // Q, W, E, R (skills 5-8)
+      topRow.child(skillDiv);
+    } else {
+      // A, S, D, F (skills 1-4)
+      bottomRow.child(skillDiv);
+    }
   }
   skillBar.style("visibility", "hidden");
 }
@@ -3735,11 +3760,13 @@ function createControlsContainer() {
   controlsContainer.position(0, height - 250); // Position at bottom of screen with more space for larger d-pad
   controlsContainer.style("width", "100%");
   controlsContainer.style("height", "250px"); // Much taller for much bigger d-pad
+  // controlsContainer.style("max-width", "1200px"); // Limit width on large screens
+  controlsContainer.style("margin", "0 auto"); // Center horizontally
   controlsContainer.style("display", "flex");
   controlsContainer.style("flex-direction", "row");
   controlsContainer.style("align-items", "center");
   controlsContainer.style("justify-content", "space-between"); // Space between d-pad and skill bar
-  controlsContainer.style("padding", "10px");
+  controlsContainer.style("padding", "10px 20px"); // Add more horizontal padding
   controlsContainer.style("box-sizing", "border-box");
   controlsContainer.style("z-index", "1500"); // Higher z-index
   controlsContainer.style("background-color", "rgba(0, 0, 0, 0.2)"); // Slight background
@@ -3950,6 +3977,8 @@ function updateDirectionalPad() {
     controlsContainer.style("visibility", "visible");
     controlsContainer.style("opacity", "1");
     controlsContainer.position(0, height - 250); // Reposition in case of window resize
+    // controlsContainer.style("max-width", "1200px");
+    controlsContainer.style("margin", "0 auto");
 
     // Make sure the D-pad is visible
     dPad.style("visibility", "visible");
@@ -3994,6 +4023,8 @@ function windowResized() {
     controlsContainer.position(0, height - 250);
     controlsContainer.style("width", "100%");
     controlsContainer.style("height", "250px");
+    // controlsContainer.style("max-width", "1200px");
+    controlsContainer.style("margin", "0 auto");
   }
 
   // Force controls container to be visible if in playing state
