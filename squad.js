@@ -176,13 +176,13 @@ function setup() {
   // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
   // This can improve performance in some cases
   setAttributes('antialias', true);
-  
+
   // Disable texture mipmapping to save memory
   textureMode(NORMAL);
-  
+
   // Set lower precision to improve performance
   setAttributes('perPixelLighting', false);
-  
+
   // Auto-start the game (no need to press enter)
   // resetGame();
   gameStartTime = frameCount;
@@ -196,14 +196,15 @@ function setup() {
   createResumeElement();
   createGameOverElement();
   createSkillBarElement();
-  
+  createDirectionalPadElement(); // Add directional pad for touch/click movement
+
   // Purge any old references
   setTimeout(function() {
     // Clear arrays just in case
     effects = [];
     projectiles = [];
     projectilePool = [];
-    
+
     // Attempt to trigger garbage collection
     if (window.gc) {
       try {
@@ -270,10 +271,10 @@ function checkMemoryUsage() {
 function draw() {
   // Check memory usage each frame
   checkMemoryUsage();
-  
+
   background(0);
   ambientLight(200); // Higher value for more brightness
-  
+
   // Optimize lighting - only one light source to save performance
   directionalLight(255, 255, 255, 0, -1, -1);
 
@@ -293,13 +294,14 @@ function draw() {
   drawPauseContainer();
   drawResumeContainer();
   drawGameOverContainer();
-  
+  updateDirectionalPad(); // Update the directional pad visibility and state
+
   // Periodically try to clear memory
   if (frameCount % 900 === 0) { // Every 15 seconds
     // Delete unused references that might be causing memory leaks
     fpsHistory = fpsHistory.slice(-5); // Keep only last 5 samples
     memoryUsageSamples = memoryUsageSamples.slice(-3); // Keep only last 3 samples
-    
+
     // Force texture cache cleanup if possible
     if (typeof p5 !== 'undefined' && p5._renderer) {
       try {
@@ -1588,6 +1590,26 @@ function drawPowerUps() {
   }
 }
 
+// Helper function to move the squad in a specific direction
+function moveSquad(deltaX, deltaY) {
+  if (squad.length == 0) {
+    return;
+  }
+
+  let mainMember = squad[0];
+  mainMember.x += deltaX;
+  mainMember.y += deltaY;
+
+  // Apply constraints immediately to prevent going out of bounds
+  const leftBound = -BRIDGE_WIDTH / 2;
+  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+
+  mainMember.x = constrain(mainMember.x, leftBound, rightBound);
+  mainMember.y = constrain(mainMember.y, topBound, bottomBound);
+}
+
 // Squad Movement and Controls
 function updateSquad() {
   if (squad.length == 0) {
@@ -1599,26 +1621,19 @@ function updateSquad() {
 
   // Arrow key movement
   if (keyIsDown(LEFT_ARROW)) {
-    mainMember.x -= squadSpeed;
+    moveSquad(-squadSpeed, 0);
   }
   if (keyIsDown(RIGHT_ARROW)) {
-    mainMember.x += squadSpeed;
+    moveSquad(squadSpeed, 0);
   }
   if (keyIsDown(UP_ARROW)) {
-    mainMember.y -= squadSpeed;
+    moveSquad(0, -squadSpeed);
   }
   if (keyIsDown(DOWN_ARROW)) {
-    mainMember.y += squadSpeed;
+    moveSquad(0, squadSpeed);
   }
 
-  // Constrain to bridge boundaries
-  const leftBound = -BRIDGE_WIDTH / 2;
-  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
-  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-
-  mainMember.x = constrain(mainMember.x, leftBound, rightBound);
-  mainMember.y = constrain(mainMember.y, topBound, bottomBound);
+  // Bridge boundaries are now handled in the moveSquad function
 
   // Formation - arrange other squad members around the leader
   if (squad.length > 0) {
@@ -2804,7 +2819,7 @@ function createMenuElement() {
   // Create menu container element
   menuContainer = createDiv("");
   menuContainer.id("menu-container");
-  menuContainer.position(width / 2 - 125, height / 2 - 150); // Center the menu
+  menuContainer.position(width / 2 - 175, height / 2 - 180); // Center the menu, slightly larger
   menuContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
   menuContainer.style("color", "white");
   menuContainer.style("padding", "20px");
@@ -2816,11 +2831,15 @@ function createMenuElement() {
   menuContainer.html(`
     <h2 style="margin: 0 0 20px 0;">SQUAD SURVIVAL</h2>
     <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER to Start</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">Arrow Keys: Move Squad</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;"><strong>Touch/Click Skills: Activate Skills</strong></p>
-    <p style="font-size: 16px; margin: 0 0 10px 0;">Mouse Scroll: Zoom</p>
-    <p style="font-size: 16px; margin: 0;">Mouse Drag: Move Camera</p>
+    <h3 style="margin: 10px 0; color: #aaffaa;">KEYBOARD CONTROLS</h3>
+    <p style="font-size: 16px; margin: 0 0 5px 0;">Arrow Keys: Move Squad</p>
+    <p style="font-size: 16px; margin: 0 0 5px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
+    <p style="font-size: 16px; margin: 0 0 15px 0;">Mouse Scroll: Zoom / Mouse Drag: Move Camera</p>
+
+    <h3 style="margin: 10px 0; color: #aaffaa;">TOUCH CONTROLS</h3>
+    <p style="font-size: 16px; margin: 0 0 5px 0;"><strong>D-Pad: Move Squad</strong></p>
+    <p style="font-size: 16px; margin: 0 0 5px 0;"><strong>Touch Skills: Activate Skills</strong></p>
+    <p style="font-size: 16px; margin: 0 0 5px 0;">Pinch: Zoom / Drag: Move Camera</p>
   `);
 }
 
@@ -3513,24 +3532,301 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-// Global touch handler to prevent default touch behavior on skill buttons
+// Directional pad variables
+let dPad;
+let upButton, downButton, leftButton, rightButton;
+let activeDirections = {
+  up: false,
+  down: false,
+  left: false,
+  right: false
+};
+
+// Create directional pad for touch/click movement
+function createDirectionalPadElement() {
+  // Create main d-pad container
+  dPad = createDiv("");
+  dPad.id("d-pad-container");
+  dPad.position(20, height - 240); // Position above skill bar
+  dPad.style("width", "180px");
+  dPad.style("height", "180px");
+  dPad.style("position", "absolute"); // Use absolute positioning
+  dPad.style("z-index", "1500"); // Higher z-index to ensure visibility
+  dPad.style("background-color", "rgba(30, 30, 30, 0.6)"); // More visible background
+  dPad.style("border-radius", "90px");
+  dPad.style("border", "3px solid rgba(150, 150, 150, 0.7)"); // More visible border
+  dPad.style("box-shadow", "0 0 15px rgba(0, 0, 0, 0.5)"); // Add shadow for better visibility
+  dPad.style("display", "block"); // Ensure it's displayed
+  dPad.style("pointer-events", "auto"); // Ensure it receives mouse/touch events
+
+  // Create up button
+  upButton = createDiv("▲");
+  upButton.id("up-button");
+  upButton.style("position", "absolute");
+  upButton.style("top", "5px");
+  upButton.style("left", "65px");
+  upButton.style("width", "50px");
+  upButton.style("height", "50px");
+  upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  upButton.style("color", "white");
+  upButton.style("font-size", "28px");
+  upButton.style("display", "flex");
+  upButton.style("align-items", "center");
+  upButton.style("justify-content", "center");
+  upButton.style("border-radius", "10px");
+  upButton.style("cursor", "pointer");
+  upButton.style("user-select", "none");
+  upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  upButton.style("transition", "transform 0.1s, background-color 0.2s");
+  upButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create down button
+  downButton = createDiv("▼");
+  downButton.id("down-button");
+  downButton.style("position", "absolute");
+  downButton.style("bottom", "5px");
+  downButton.style("left", "65px");
+  downButton.style("width", "50px");
+  downButton.style("height", "50px");
+  downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  downButton.style("color", "white");
+  downButton.style("font-size", "28px");
+  downButton.style("display", "flex");
+  downButton.style("align-items", "center");
+  downButton.style("justify-content", "center");
+  downButton.style("border-radius", "10px");
+  downButton.style("cursor", "pointer");
+  downButton.style("user-select", "none");
+  downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  downButton.style("transition", "transform 0.1s, background-color 0.2s");
+  downButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create left button
+  leftButton = createDiv("◀");
+  leftButton.id("left-button");
+  leftButton.style("position", "absolute");
+  leftButton.style("top", "65px");
+  leftButton.style("left", "5px");
+  leftButton.style("width", "50px");
+  leftButton.style("height", "50px");
+  leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  leftButton.style("color", "white");
+  leftButton.style("font-size", "28px");
+  leftButton.style("display", "flex");
+  leftButton.style("align-items", "center");
+  leftButton.style("justify-content", "center");
+  leftButton.style("border-radius", "10px");
+  leftButton.style("cursor", "pointer");
+  leftButton.style("user-select", "none");
+  leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  leftButton.style("transition", "transform 0.1s, background-color 0.2s");
+  leftButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create right button
+  rightButton = createDiv("▶");
+  rightButton.id("right-button");
+  rightButton.style("position", "absolute");
+  rightButton.style("top", "65px");
+  rightButton.style("right", "5px");
+  rightButton.style("width", "50px");
+  rightButton.style("height", "50px");
+  rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  rightButton.style("color", "white");
+  rightButton.style("font-size", "28px");
+  rightButton.style("display", "flex");
+  rightButton.style("align-items", "center");
+  rightButton.style("justify-content", "center");
+  rightButton.style("border-radius", "10px");
+  rightButton.style("cursor", "pointer");
+  rightButton.style("user-select", "none");
+  rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  rightButton.style("transition", "transform 0.1s, background-color 0.2s");
+  rightButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create center button (optional - can be used for special actions)
+  const centerButton = createDiv("•");
+  centerButton.id("center-button");
+  centerButton.style("position", "absolute");
+  centerButton.style("top", "65px");
+  centerButton.style("left", "65px");
+  centerButton.style("width", "50px");
+  centerButton.style("height", "50px");
+  centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
+  centerButton.style("color", "white");
+  centerButton.style("font-size", "28px");
+  centerButton.style("display", "flex");
+  centerButton.style("align-items", "center");
+  centerButton.style("justify-content", "center");
+  centerButton.style("border-radius", "10px");
+  centerButton.style("cursor", "pointer");
+  centerButton.style("user-select", "none");
+  centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  centerButton.style("transition", "transform 0.1s, background-color 0.2s");
+  centerButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Add event handlers for up button
+  setupDirectionalButton(upButton, "up");
+  setupDirectionalButton(downButton, "down");
+  setupDirectionalButton(leftButton, "left");
+  setupDirectionalButton(rightButton, "right");
+
+  // Add all buttons to the d-pad container
+  dPad.child(upButton);
+  dPad.child(downButton);
+  dPad.child(leftButton);
+  dPad.child(rightButton);
+  dPad.child(centerButton);
+
+  // Initially hide the d-pad
+  dPad.style("visibility", "hidden");
+}
+
+// Helper function to set up event handlers for directional buttons
+function setupDirectionalButton(button, direction) {
+  // Mouse down event - start moving in that direction
+  button.mousePressed(function() {
+    if (gameState === "playing") {
+      activeDirections[direction] = true;
+
+      // Visual feedback
+      this.style("transform", "scale(0.95)");
+      this.style("background-color", "rgba(100, 100, 255, 0.9)");
+    }
+  });
+
+  // Mouse up event - stop moving in that direction
+  button.mouseReleased(function() {
+    activeDirections[direction] = false;
+
+    // Reset visual state
+    this.style("transform", "scale(1.0)");
+    this.style("background-color", "rgba(50, 50, 50, 0.8)");
+  });
+
+  // Touch events for mobile
+  button.touchStarted(function() {
+    if (gameState === "playing") {
+      activeDirections[direction] = true;
+
+      // Visual feedback
+      this.style("transform", "scale(0.95)");
+      this.style("background-color", "rgba(100, 100, 255, 0.9)");
+
+      return false; // Prevent default
+    }
+  });
+
+  button.touchEnded(function() {
+    activeDirections[direction] = false;
+
+    // Reset visual state
+    this.style("transform", "scale(1.0)");
+    this.style("background-color", "rgba(50, 50, 50, 0.8)");
+
+    return false; // Prevent default
+  });
+}
+
+// Update directional pad visibility and apply movement
+function updateDirectionalPad() {
+  // Show/hide based on game state
+  if (gameState === "playing") {
+    // Make sure the D-pad is visible and properly positioned
+    dPad.style("display", "block");
+    dPad.style("visibility", "visible");
+    dPad.style("opacity", "1");
+    dPad.position(20, height - 240); // Reposition in case of window resize
+    dPad.style("z-index", "1500"); // Higher z-index to ensure visibility
+
+    // Apply movement based on active directions
+    if (activeDirections.up) {
+      moveSquad(0, -squadSpeed);
+    }
+    if (activeDirections.down) {
+      moveSquad(0, squadSpeed);
+    }
+    if (activeDirections.left) {
+      moveSquad(-squadSpeed, 0);
+    }
+    if (activeDirections.right) {
+      moveSquad(squadSpeed, 0);
+    }
+
+    // Debug - log to console once to confirm the function is running
+    if (frameCount % 300 === 0) {
+      console.log("D-pad should be visible, gameState:", gameState);
+    }
+  } else {
+    dPad.style("visibility", "hidden");
+    dPad.style("display", "none");
+
+    // Reset all directions when not playing
+    activeDirections.up = false;
+    activeDirections.down = false;
+    activeDirections.left = false;
+    activeDirections.right = false;
+  }
+}
+
+// Handle window resizing
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  // Reposition UI elements
+  if (dPad) {
+    dPad.position(20, height - 240);
+  }
+
+  if (skillBar) {
+    skillBar.position(width / 2 - 200, height - 100);
+  }
+
+  // Force D-pad to be visible if in playing state
+  if (gameState === "playing" && dPad) {
+    dPad.style("display", "block");
+    dPad.style("visibility", "visible");
+    dPad.style("opacity", "1");
+    dPad.style("z-index", "1500");
+
+    // Log to console for debugging
+    console.log("Window resized, D-pad repositioned");
+  }
+}
+
+// Global touch handler to prevent default touch behavior on skill buttons and d-pad
 function touchStarted() {
-  // Check if the touch is on a skill button
-  if (gameState === "playing" && skillBar) {
+  // Check if the touch is on a skill button or d-pad
+  if (gameState === "playing") {
     // Get touch position
     const touchX = touches[0]?.x || mouseX;
     const touchY = touches[0]?.y || mouseY;
 
     // Check if touch is within skillbar area
-    const skillBarRect = skillBar.elt.getBoundingClientRect();
-    if (
-      touchX >= skillBarRect.left &&
-      touchX <= skillBarRect.right &&
-      touchY >= skillBarRect.top &&
-      touchY <= skillBarRect.bottom
-    ) {
-      // Prevent default touch behavior (scrolling, zooming)
-      return false;
+    if (skillBar) {
+      const skillBarRect = skillBar.elt.getBoundingClientRect();
+      if (
+        touchX >= skillBarRect.left &&
+        touchX <= skillBarRect.right &&
+        touchY >= skillBarRect.top &&
+        touchY <= skillBarRect.bottom
+      ) {
+        // Prevent default touch behavior (scrolling, zooming)
+        return false;
+      }
+    }
+
+    // Check if touch is within d-pad area
+    if (dPad) {
+      const dPadRect = dPad.elt.getBoundingClientRect();
+      if (
+        touchX >= dPadRect.left &&
+        touchX <= dPadRect.right &&
+        touchY >= dPadRect.top &&
+        touchY <= dPadRect.bottom
+      ) {
+        // Prevent default touch behavior (scrolling, zooming)
+        return false;
+      }
     }
   }
 
