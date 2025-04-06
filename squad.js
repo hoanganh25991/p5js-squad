@@ -303,9 +303,142 @@ function draw() {
 
   background(0);
 
-  // Check for global frost effect
+  // Check for global effects
   let globalFrostEffect = effects.find(e => e.type === "globalFrost");
-  if (globalFrostEffect) {
+  let globalFireEffect = effects.find(e => e.type === "globalFire");
+  let globalTimeDilationEffect = effects.find(e => e.type === "globalTimeDilation");
+
+  // Handle multiple global effects with priority
+  if (globalFrostEffect && globalFireEffect && globalTimeDilationEffect) {
+    // If all three effects are active, create a complex blend
+    const frostIntensity = globalFrostEffect.intensity || 0.5;
+    const fireIntensity = globalFireEffect.intensity || 0.3;
+    const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
+
+    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 15; // Reduced for blending
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 15; // Reduced for blending
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 15; // Reduced for blending
+
+    // Apply a multi-layered overlay
+    push();
+    translate(0, 0, 1000); // Move in front of everything
+    noStroke();
+
+    // First layer - fire effect
+    fill(255, 100, 50, fireFadeAlpha);
+    plane(width * 2, height * 2);
+
+    // Second layer - frost effect
+    fill(200, 240, 255, frostFadeAlpha * 0.6);
+    plane(width * 2, height * 2);
+
+    // Third layer - time dilation effect
+    fill(0, 200, 255, dilationFadeAlpha * 0.5);
+    plane(width * 2, height * 2);
+
+    // Add special combined effect
+    if (frameCount % 3 === 0) {
+      fill(200, 200, 255, random(5, 10));
+      plane(width * 2, height * 2);
+    }
+
+    pop();
+
+    // Balanced lighting for combined effects
+    ambientLight(200, 200, 210);
+    directionalLight(220, 220, 240, 0, -1, -1);
+  } else if (globalFrostEffect && globalFireEffect) {
+    // If both frost and fire effects are active, blend them
+    const frostIntensity = globalFrostEffect.intensity || 0.5;
+    const fireIntensity = globalFireEffect.intensity || 0.3;
+
+    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 20; // Reduced for blending
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 20; // Reduced for blending
+
+    // Apply a semi-transparent blended overlay
+    push();
+    // Use a 2D overlay for the combined effect
+    translate(0, 0, 1000); // Move in front of everything
+
+    // First layer - fire effect
+    fill(255, 100, 50, fireFadeAlpha);
+    noStroke();
+    plane(width * 2, height * 2); // Cover the entire screen
+
+    // Second layer - frost effect (with blending)
+    fill(200, 240, 255, frostFadeAlpha * 0.7); // Reduced opacity for blending
+    plane(width * 2, height * 2); // Cover the entire screen
+
+    pop();
+
+    // Adjust lighting for combined effect - balanced light
+    ambientLight(200, 190, 210); // Balanced ambient light
+    directionalLight(230, 220, 230, 0, -1, -1); // Balanced directional light
+  } else if (globalFrostEffect && globalTimeDilationEffect) {
+    // If both frost and time dilation effects are active, blend them
+    const frostIntensity = globalFrostEffect.intensity || 0.5;
+    const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
+
+    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 20; // Reduced for blending
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 20; // Reduced for blending
+
+    // Apply a semi-transparent blended overlay
+    push();
+    translate(0, 0, 1000); // Move in front of everything
+    noStroke();
+
+    // First layer - frost effect
+    fill(200, 240, 255, frostFadeAlpha * 0.7);
+    plane(width * 2, height * 2);
+
+    // Second layer - time dilation effect
+    fill(0, 200, 255, dilationFadeAlpha * 0.6);
+    plane(width * 2, height * 2);
+
+    // Add special combined effect - frozen time particles
+    if (frameCount % 4 === 0) {
+      fill(150, 220, 255, random(5, 10));
+      plane(width * 2, height * 2);
+    }
+
+    pop();
+
+    // Adjust lighting for combined effect - cool cyan light
+    ambientLight(180, 210, 230);
+    directionalLight(190, 230, 255, 0, -1, -1);
+  } else if (globalFireEffect && globalTimeDilationEffect) {
+    // If both fire and time dilation effects are active, blend them
+    const fireIntensity = globalFireEffect.intensity || 0.3;
+    const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
+
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 20; // Reduced for blending
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 20; // Reduced for blending
+
+    // Apply a semi-transparent blended overlay
+    push();
+    translate(0, 0, 1000); // Move in front of everything
+    noStroke();
+
+    // First layer - fire effect
+    fill(255, 100, 50, fireFadeAlpha * 0.7);
+    plane(width * 2, height * 2);
+
+    // Second layer - time dilation effect
+    fill(0, 200, 255, dilationFadeAlpha * 0.6);
+    plane(width * 2, height * 2);
+
+    // Add special combined effect - energy flicker
+    if (frameCount % 3 === 0) {
+      fill(200, 150, 200, random(5, 10));
+      plane(width * 2, height * 2);
+    }
+
+    pop();
+
+    // Adjust lighting for combined effect - energized light
+    ambientLight(210, 190, 200);
+    directionalLight(230, 210, 220, 0, -1, -1);
+  } else if (globalFrostEffect) {
     // Apply a blue tint to the scene based on the frost intensity
     const intensity = globalFrostEffect.intensity || 0.5;
     const fadeAlpha = (globalFrostEffect.life / 300) * intensity * 30; // Fade as effect expires
@@ -322,6 +455,60 @@ function draw() {
     // Adjust lighting for frost effect - cooler, bluer light
     ambientLight(180, 200, 220); // Bluer ambient light
     directionalLight(200, 220, 255, 0, -1, -1); // Bluer directional light
+  } else if (globalFireEffect) {
+    // Apply a red-orange tint to the scene based on the fire intensity
+    const intensity = globalFireEffect.intensity || 0.3;
+    const fadeAlpha = (globalFireEffect.life / 600) * intensity * 30; // Fade as effect expires
+
+    // Apply a semi-transparent red-orange overlay
+    push();
+    // Use a 2D overlay for the fire effect
+    translate(0, 0, 1000); // Move in front of everything
+    fill(255, 100, 50, fadeAlpha);
+    noStroke();
+    plane(width * 2, height * 2); // Cover the entire screen
+
+    // Add flickering effect
+    if (frameCount % 5 === 0) {
+      // Random flicker overlay
+      fill(255, 150, 0, random(5, 15));
+      plane(width * 2, height * 2);
+    }
+    pop();
+
+    // Adjust lighting for fire effect - warmer, redder light
+    ambientLight(220, 180, 160); // Warmer ambient light
+    directionalLight(255, 220, 180, 0, -1, -1); // Warmer directional light
+  } else if (globalTimeDilationEffect) {
+    // Apply a cyan tint to the scene based on the time dilation intensity
+    const intensity = globalTimeDilationEffect.intensity || 0.2;
+    const fadeAlpha = (globalTimeDilationEffect.life / 480) * intensity * 25; // Fade as effect expires
+
+    // Apply a semi-transparent cyan overlay
+    push();
+    // Use a 2D overlay for the time dilation effect
+    translate(0, 0, 1000); // Move in front of everything
+    fill(0, 200, 255, fadeAlpha);
+    noStroke();
+    plane(width * 2, height * 2); // Cover the entire screen
+
+    // Add time ripple effect
+    if (frameCount % 6 === 0) {
+      // Subtle ripple overlay
+      fill(100, 220, 255, random(3, 8));
+      plane(width * 2, height * 2);
+    }
+
+    // Add occasional bright flash for time distortion
+    if (frameCount % 60 === 0) {
+      fill(200, 240, 255, random(10, 20));
+      plane(width * 2, height * 2);
+    }
+    pop();
+
+    // Adjust lighting for time dilation effect - cooler, cyan-tinted light
+    ambientLight(190, 210, 220); // Cyan-tinted ambient light
+    directionalLight(200, 240, 255, 0, -1, -1); // Cyan-tinted directional light
   } else {
     // Normal lighting
     ambientLight(200); // Higher value for more brightness
@@ -1859,10 +2046,1023 @@ function drawEffects() {
       }
 
       pop();
+    } else if (effect.type === "flameAura") {
+      // Flame aura effect - surrounds squad member with fire
+      push();
+
+      // Follow the squad member if reference exists
+      if (effect.member) {
+        effect.x = effect.member.x;
+        effect.y = effect.member.y;
+        effect.z = effect.member.z;
+      }
+
+      // Get effect color (default to orange-red if not specified)
+      const effectColor = effect.color || [255, 50, 0];
+
+      // Semi-transparent flame aura
+      const alpha = 150 * (effect.life / 600); // Fade based on life
+
+      // Draw flame particles around the member
+      noStroke();
+
+      // Number of flame particles
+      const particleCount = 20;
+
+      for (let i = 0; i < particleCount; i++) {
+        // Calculate particle position in a sphere around the member
+        const angle1 = (i / particleCount) * TWO_PI + frameCount * 0.02;
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * (0.7 + 0.3 * sin(frameCount * 0.1 + i));
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius * 0.7; // Flatten slightly
+
+        push();
+        translate(x, y, z);
+
+        // Flame color with variation
+        const flameIntensity = 0.7 + 0.3 * sin(frameCount * 0.2 + i);
+        fill(
+          effectColor[0],
+          effectColor[1] * flameIntensity,
+          effectColor[2] * flameIntensity,
+          alpha * random(0.5, 1.0)
+        );
+
+        // Flame particle size varies and pulses
+        const particleSize = random(5, 10) * (0.8 + 0.2 * sin(frameCount * 0.1 + i));
+
+        // Draw flame particle - use cone for flame shape
+        push();
+        // Random rotation for variety
+        rotateX(random(TWO_PI));
+        rotateY(random(TWO_PI));
+        rotateZ(random(TWO_PI));
+
+        // Draw flame shape
+        if (random() > 0.5) {
+          // Cone for flame tip
+          cone(particleSize * 0.7, particleSize * 2);
+        } else {
+          // Sphere for flame body
+          sphere(particleSize);
+        }
+        pop();
+
+        pop();
+      }
+
+      // Add inner glow
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.2);
+      sphere(effect.size * 0.7);
+
+      // Add occasional spark effects
+      if (frameCount % 5 === 0) {
+        effects.push({
+          x: effect.x + random(-effect.size/2, effect.size/2),
+          y: effect.y + random(-effect.size/2, effect.size/2),
+          z: effect.z + random(-effect.size/2, effect.size/2),
+          type: "spark",
+          size: random(3, 6),
+          life: random(15, 30),
+          color: [255, 200, 0],
+          velocity: { x: random(-2, 2), y: random(-2, 2), z: random(1, 3) }
+        });
+      }
+
+      pop();
+    } else if (effect.type === "rageBurst") {
+      // Rage burst effect - explosive burst of fire
+      push();
+
+      // Get effect color (default to orange-red if not specified)
+      const effectColor = effect.color || [255, 50, 0];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 45);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 25;
+      const expansionFactor = 1 - (effect.life / 45); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with variation
+        fill(
+          effectColor[0],
+          effectColor[1] + random(-20, 20),
+          effectColor[2] + random(0, 20),
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(3, 8) * (1 - expansionFactor * 0.5);
+
+        // Draw flame shape
+        if (random() > 0.5) {
+          // Cone for flame tip
+          push();
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          cone(particleSize * 0.7, particleSize * 2);
+          pop();
+        } else {
+          // Sphere for flame body
+          sphere(particleSize);
+        }
+
+        pop();
+      }
+
+      // Add central flash
+      fill(255, 255, 200, alpha * 0.7);
+      sphere(effect.size * 0.3 * (1 - expansionFactor));
+
+      pop();
+    } else if (effect.type === "flameBurst") {
+      // Flame burst effect - smaller fire burst
+      push();
+
+      // Get effect color (default to orange-red if not specified)
+      const effectColor = effect.color || [255, 100, 0];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 30);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw flame particles
+      const particleCount = 15;
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Random position within a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = random(effect.size * 0.2, effect.size * 0.8);
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius + random(0, effect.size * 0.5); // Bias upward
+
+        translate(x, y, z);
+
+        // Flame color with variation
+        fill(
+          effectColor[0],
+          effectColor[1] + random(-30, 30),
+          effectColor[2] + random(0, 30),
+          alpha * random(0.5, 1.0)
+        );
+
+        // Flame particle size
+        const particleSize = random(3, 7);
+
+        // Draw flame shape - use cone for flame
+        push();
+        rotateX(random(TWO_PI));
+        rotateY(random(TWO_PI));
+        cone(particleSize * 0.7, particleSize * 2);
+        pop();
+
+        pop();
+      }
+
+      // Add central glow
+      fill(255, 200, 100, alpha * 0.5);
+      sphere(effect.size * 0.3);
+
+      pop();
+    } else if (effect.type === "damageSymbol") {
+      // Damage symbol effect - floating damage indicators
+      push();
+
+      // Move particle based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+      }
+
+      // Get effect color (default to red if not specified)
+      const effectColor = effect.color || [255, 50, 0, 200];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 90);
+
+      // No stroke for text
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw a damage symbol (+ or x)
+      push();
+      // Face the camera
+      rotateY(PI); // Rotate to face forward
+
+      // Draw a plus or cross symbol
+      if (random() > 0.5) {
+        // Plus symbol
+        rectMode(CENTER);
+        const symbolSize = effect.size * 0.8;
+        rect(0, 0, symbolSize, symbolSize/4); // Horizontal bar
+        rect(0, 0, symbolSize/4, symbolSize); // Vertical bar
+      } else {
+        // Cross/X symbol
+        const symbolSize = effect.size * 0.6;
+        push();
+        rotateZ(PI/4); // 45 degrees
+        rectMode(CENTER);
+        rect(0, 0, symbolSize, symbolSize/4); // Rotated bar
+        rotateZ(PI/2); // 90 degrees more
+        rect(0, 0, symbolSize, symbolSize/4); // Perpendicular bar
+        pop();
+      }
+
+      pop();
+
+      pop();
+    } else if (effect.type === "spark") {
+      // Spark effect - small bright particles
+      push();
+
+      // Move spark based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+
+        // Slow down over time
+        effect.velocity.x *= 0.95;
+        effect.velocity.y *= 0.95;
+        effect.velocity.z *= 0.95;
+      }
+
+      // Get effect color (default to yellow if not specified)
+      const effectColor = effect.color || [255, 200, 0];
+
+      // Fade based on life
+      const alpha = 255 * (effect.life / 30);
+
+      // No stroke for particles
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw spark as a small sphere
+      sphere(effect.size * (effect.life / 30)); // Shrink as it fades
+
+      // Add trail effect
+      if (effect.life > 5) {
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+        push();
+        // Draw trail in opposite direction of velocity
+        if (effect.velocity) {
+          translate(-effect.velocity.x * 2, -effect.velocity.y * 2, -effect.velocity.z * 2);
+          sphere(effect.size * 0.7 * (effect.life / 30));
+        }
+        pop();
+      }
+
+      pop();
+    } else if (effect.type === "rageExplosion") {
+      // Rage explosion effect - central explosion for the damage boost
+      push();
+
+      // Get effect color (default to orange-red if not specified)
+      const effectColor = effect.color || [255, 50, 0];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 60);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 30;
+      const expansionFactor = 1 - (effect.life / 60); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with variation - more yellow at center, more red at edges
+        const centerFactor = 1 - (radius / (effect.size * expansionFactor));
+        fill(
+          effectColor[0],
+          effectColor[1] + centerFactor * 150, // More yellow at center
+          effectColor[2] + centerFactor * 50,
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(5, 15) * (1 - expansionFactor * 0.5);
+
+        // Draw flame shape
+        if (random() > 0.3) {
+          // Cone for flame tip
+          push();
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          cone(particleSize * 0.7, particleSize * 2);
+          pop();
+        } else {
+          // Sphere for flame body
+          sphere(particleSize);
+        }
+
+        pop();
+      }
+
+      // Add central bright flash
+      fill(255, 255, 200, alpha * 0.8);
+      sphere(effect.size * 0.4 * (1 - expansionFactor * 0.8));
+
+      pop();
     } else if (effect.type === "globalFrost") {
       // Global frost effect - adds a blue tint to the scene
       // This is handled in the draw function to apply a filter to the entire scene
       // No rendering needed here
+    } else if (effect.type === "globalFire") {
+      // Global fire effect - adds a red tint to the scene
+      // This is handled in the draw function to apply a filter to the entire scene
+      // No rendering needed here
+    } else if (effect.type === "globalTimeDilation") {
+      // Global time dilation effect - adds a cyan tint to the scene
+      // This is handled in the draw function to apply a filter to the entire scene
+      // No rendering needed here
+    } else if (effect.type === "speedAura") {
+      // Speed aura effect - surrounds squad member with energy
+      push();
+
+      // Follow the squad member if reference exists
+      if (effect.member) {
+        effect.x = effect.member.x;
+        effect.y = effect.member.y;
+        effect.z = effect.member.z;
+      }
+
+      // Get effect color (default to cyan if not specified)
+      const effectColor = effect.color || [0, 200, 255];
+
+      // Semi-transparent energy aura
+      const alpha = 150 * (effect.life / 480); // Fade based on life
+
+      // Draw energy particles around the member
+      noStroke();
+
+      // Number of energy particles
+      const particleCount = 16;
+
+      for (let i = 0; i < particleCount; i++) {
+        // Calculate particle position in a sphere around the member
+        const angle1 = (i / particleCount) * TWO_PI + frameCount * 0.1; // Faster rotation
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * (0.7 + 0.3 * sin(frameCount * 0.2 + i));
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius * 0.7; // Flatten slightly
+
+        push();
+        translate(x, y, z);
+
+        // Energy color with variation
+        const energyIntensity = 0.7 + 0.3 * sin(frameCount * 0.3 + i);
+        fill(
+          effectColor[0] * energyIntensity,
+          effectColor[1] * energyIntensity,
+          effectColor[2],
+          alpha * random(0.5, 1.0)
+        );
+
+        // Energy particle size varies and pulses
+        const particleSize = random(3, 8) * (0.8 + 0.2 * sin(frameCount * 0.2 + i));
+
+        // Draw energy particle - use various shapes
+        if (random() > 0.7) {
+          // Small sphere for energy node
+          sphere(particleSize);
+        } else {
+          // Stretched box for energy streak
+          push();
+          // Random rotation for variety
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          rotateZ(random(TWO_PI));
+
+          // Draw stretched box
+          box(particleSize * 0.5, particleSize * 0.5, particleSize * 3);
+          pop();
+        }
+
+        pop();
+      }
+
+      // Add inner glow
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.2);
+      sphere(effect.size * 0.7);
+
+      // Add motion streaks
+      if (frameCount % 3 === 0) {
+        // Direction of movement (assuming forward is negative Y)
+        const moveAngle = random(TWO_PI);
+        const moveX = cos(moveAngle) * effect.size;
+        const moveY = -abs(sin(moveAngle) * effect.size * 1.5); // Bias backward
+
+        effects.push({
+          x: effect.x + moveX,
+          y: effect.y + moveY,
+          z: effect.z + random(-effect.size/2, effect.size/2),
+          type: "speedStreak",
+          size: random(15, 25),
+          life: random(10, 20),
+          color: [effectColor[0], effectColor[1], effectColor[2], 150],
+          angle: moveAngle
+        });
+      }
+
+      pop();
+    } else if (effect.type === "speedBurst") {
+      // Speed burst effect - explosive burst of energy
+      push();
+
+      // Get effect color (default to cyan if not specified)
+      const effectColor = effect.color || [0, 200, 255];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 45);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 20;
+      const expansionFactor = 1 - (effect.life / 45); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with variation
+        fill(
+          effectColor[0] + random(-20, 20),
+          effectColor[1] + random(-20, 20),
+          effectColor[2] + random(-20, 20),
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(3, 8) * (1 - expansionFactor * 0.5);
+
+        // Draw energy shape - use various shapes
+        if (random() > 0.6) {
+          // Sphere for energy node
+          sphere(particleSize);
+        } else {
+          // Stretched box for energy streak
+          push();
+          // Random rotation for variety
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          rotateZ(random(TWO_PI));
+
+          // Draw stretched box
+          box(particleSize * 0.5, particleSize * 0.5, particleSize * 3);
+          pop();
+        }
+
+        pop();
+      }
+
+      // Add central flash
+      fill(255, 255, 255, alpha * 0.7);
+      sphere(effect.size * 0.3 * (1 - expansionFactor));
+
+      pop();
+    } else if (effect.type === "speedTrail") {
+      // Speed trail effect - motion blur trail behind squad member
+      push();
+
+      // Follow the squad member if reference exists
+      if (effect.member && effect.offset) {
+        effect.x = effect.member.x;
+        effect.y = effect.member.y + effect.offset; // Trail behind
+        effect.z = effect.member.z;
+      }
+
+      // Get effect color (default to cyan if not specified)
+      const effectColor = effect.color || [0, 200, 255, 150];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 30);
+
+      // No stroke for trail
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw trail as a flattened ellipsoid
+      push();
+      // Scale to create a stretched trail
+      scale(1, 2, 0.5); // Stretched along Y axis (behind the member)
+      sphere(effect.size);
+      pop();
+
+      pop();
+    } else if (effect.type === "speedStreak") {
+      // Speed streak effect - motion blur streaks
+      push();
+
+      // Get effect color (default to cyan if not specified)
+      const effectColor = effect.color || [0, 200, 255, 150];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 20);
+
+      // No stroke for streak
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw streak as a stretched box
+      push();
+      // Rotate based on angle
+      if (effect.angle !== undefined) {
+        rotateZ(effect.angle);
+      }
+
+      // Scale to create a stretched streak
+      scale(0.2, 1, 0.2); // Stretched along Y axis
+      box(effect.size * 0.5, effect.size * 2, effect.size * 0.5);
+      pop();
+
+      pop();
+    } else if (effect.type === "accelerationBurst") {
+      // Acceleration burst effect - central explosion for the speed boost
+      push();
+
+      // Get effect color (default to cyan if not specified)
+      const effectColor = effect.color || [0, 200, 255];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 60);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 30;
+      const expansionFactor = 1 - (effect.life / 60); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with variation - more white at center, more cyan at edges
+        const centerFactor = 1 - (radius / (effect.size * expansionFactor));
+        fill(
+          effectColor[0] + centerFactor * 150, // More white at center
+          effectColor[1] + centerFactor * 50,
+          effectColor[2],
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(5, 15) * (1 - expansionFactor * 0.5);
+
+        // Draw energy shape - use various shapes
+        if (random() > 0.3) {
+          // Sphere for energy node
+          sphere(particleSize);
+        } else {
+          // Stretched box for energy streak
+          push();
+          // Random rotation for variety
+          rotateX(random(TWO_PI));
+          rotateY(random(TWO_PI));
+          rotateZ(random(TWO_PI));
+
+          // Draw stretched box
+          box(particleSize * 0.5, particleSize * 0.5, particleSize * 3);
+          pop();
+        }
+
+        pop();
+      }
+
+      // Add central bright flash
+      fill(255, 255, 255, alpha * 0.8);
+      sphere(effect.size * 0.4 * (1 - expansionFactor * 0.8));
+
+      pop();
+    } else if (effect.type === "targetingReticle") {
+      // Targeting reticle effect for atomic bomb
+      push();
+
+      // Get effect color (default to red if not specified)
+      const effectColor = effect.color || [255, 50, 50, 150];
+
+      // Semi-transparent reticle
+      const alpha = effectColor[3] * (effect.life / ATOMIC_BOMB_FALL_DURATION);
+
+      // Draw reticle on the ground
+      rotateX(HALF_PI); // Align with ground plane
+
+      // No fill for reticle
+      noFill();
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha);
+      strokeWeight(2);
+
+      // Draw pulsing reticle
+      const pulseRate = frameCount * (effect.pulseRate || 0.1);
+      const pulseSize = effect.size * (0.9 + 0.1 * sin(pulseRate));
+
+      // Draw outer circle
+      circle(0, 0, pulseSize * 2);
+
+      // Draw inner circle
+      circle(0, 0, pulseSize);
+
+      // Draw crosshairs
+      line(-pulseSize, 0, pulseSize, 0); // Horizontal line
+      line(0, -pulseSize, 0, pulseSize); // Vertical line
+
+      // Draw corner markers
+      const cornerSize = pulseSize * 0.3;
+
+      // Top-right corner
+      line(pulseSize - cornerSize, pulseSize, pulseSize, pulseSize);
+      line(pulseSize, pulseSize - cornerSize, pulseSize, pulseSize);
+
+      // Top-left corner
+      line(-pulseSize + cornerSize, pulseSize, -pulseSize, pulseSize);
+      line(-pulseSize, pulseSize - cornerSize, -pulseSize, pulseSize);
+
+      // Bottom-right corner
+      line(pulseSize - cornerSize, -pulseSize, pulseSize, -pulseSize);
+      line(pulseSize, -pulseSize + cornerSize, pulseSize, -pulseSize);
+
+      // Bottom-left corner
+      line(-pulseSize + cornerSize, -pulseSize, -pulseSize, -pulseSize);
+      line(-pulseSize, -pulseSize + cornerSize, -pulseSize, -pulseSize);
+
+      // Add warning text
+      push();
+      rotateX(-HALF_PI); // Rotate back to face camera
+      rotateY(PI); // Rotate to face forward
+
+      // Draw warning text
+      textAlign(CENTER, CENTER);
+      textSize(20);
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Pulsing warning text
+      const textPulse = 0.7 + 0.3 * sin(frameCount * 0.2);
+      scale(textPulse);
+
+      // Only show text if life is above certain threshold
+      if (effect.life > ATOMIC_BOMB_FALL_DURATION * 0.3) {
+        text("TARGET LOCKED", 0, -pulseSize * 1.2);
+      }
+      pop();
+
+      // Add occasional warning flashes
+      if (frameCount % 20 < 5 && effect.life > ATOMIC_BOMB_FALL_DURATION * 0.5) {
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+        circle(0, 0, pulseSize * 2.2);
+      }
+
+      pop();
+    } else if (effect.type === "radiationField") {
+      // Radiation field effect - persistent radiation area
+      push();
+
+      // Get effect color (default to green if not specified)
+      const effectColor = effect.color || [100, 255, 100, 100];
+
+      // Semi-transparent field
+      const alpha = effectColor[3] * (effect.life / 600); // Fade based on life
+
+      // Draw radiation field on the ground
+      rotateX(HALF_PI); // Align with ground plane
+
+      // Draw pulsing field
+      const pulseRate = frameCount * (effect.pulseRate || 0.03);
+      const pulseSize = effect.size * (0.95 + 0.05 * sin(pulseRate));
+
+      // Main radiation field
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.2);
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+      strokeWeight(1);
+      circle(0, 0, pulseSize * 2);
+
+      // Draw radiation symbol
+      push();
+      noFill();
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
+      strokeWeight(3);
+
+      // Center circle
+      circle(0, 0, pulseSize * 0.3);
+
+      // Radiation blades
+      for (let i = 0; i < 3; i++) {
+        push();
+        rotate(i * TWO_PI / 3);
+
+        // Draw blade
+        beginShape();
+        for (let angle = 0; angle <= PI/3; angle += 0.1) {
+          const r = pulseSize * 0.8;
+          const x = cos(angle) * r;
+          const y = sin(angle) * r;
+          vertex(x, y);
+        }
+        for (let angle = PI/3; angle >= 0; angle -= 0.1) {
+          const r = pulseSize * 0.6;
+          const x = cos(angle) * r;
+          const y = sin(angle) * r;
+          vertex(x, y);
+        }
+        endShape(CLOSE);
+        pop();
+      }
+      pop();
+
+      // Add radiation particles
+      noStroke();
+      for (let i = 0; i < 20; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(0, pulseSize * 0.9);
+        const x = cos(angle) * dist;
+        const y = sin(angle) * dist;
+
+        push();
+        translate(x, y, random(1, 10));
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * random(0.5, 1.0));
+
+        // Draw radiation particle
+        const particleSize = 3 + 2 * sin(frameCount * 0.1 + i);
+        sphere(particleSize);
+        pop();
+      }
+
+      // Add rising radiation particles
+      if (frameCount % 3 === 0) {
+        const angle = random(TWO_PI);
+        const dist = random(0, pulseSize * 0.8);
+        effects.push({
+          x: effect.x + cos(angle) * dist,
+          y: effect.y + sin(angle) * dist,
+          z: effect.z,
+          type: "radiationParticle",
+          size: random(3, 8),
+          life: random(30, 60),
+          color: [100, 255, 100, 150],
+          velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(1, 3) }
+        });
+      }
+
+      pop();
+    } else if (effect.type === "radiationBurst") {
+      // Radiation burst effect - small radiation explosion
+      push();
+
+      // Get effect color (default to green if not specified)
+      const effectColor = effect.color || [100, 255, 100];
+
+      // Fade based on life
+      const alpha = 200 * (effect.life / 30);
+
+      // No stroke for particles
+      noStroke();
+
+      // Draw expanding particles
+      const particleCount = 12;
+      const expansionFactor = 1 - (effect.life / 30); // Start at center, expand outward
+
+      for (let i = 0; i < particleCount; i++) {
+        push();
+        // Calculate particle position on a sphere
+        const angle1 = random(TWO_PI);
+        const angle2 = random(TWO_PI);
+        const radius = effect.size * expansionFactor;
+
+        const x = cos(angle1) * sin(angle2) * radius;
+        const y = sin(angle1) * sin(angle2) * radius;
+        const z = cos(angle2) * radius;
+
+        translate(x, y, z);
+
+        // Particle color with variation
+        fill(
+          effectColor[0] + random(-20, 20),
+          effectColor[1] + random(-20, 20),
+          effectColor[2] + random(-20, 20),
+          alpha * random(0.5, 1.0)
+        );
+
+        // Particle size varies and shrinks as it expands
+        const particleSize = random(2, 5) * (1 - expansionFactor * 0.5);
+
+        // Draw radiation particle
+        sphere(particleSize);
+
+        pop();
+      }
+
+      // Add central glow
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+      sphere(effect.size * 0.3 * (1 - expansionFactor));
+
+      pop();
+    } else if (effect.type === "radiationParticle") {
+      // Radiation particle effect - rising particles
+      push();
+
+      // Move particle based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+      }
+
+      // Get effect color (default to green if not specified)
+      const effectColor = effect.color || [100, 255, 100, 150];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 60);
+
+      // No stroke for particle
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw radiation particle
+      sphere(effect.size * (0.8 + 0.2 * sin(frameCount * 0.2)));
+
+      // Add trail effect
+      if (effect.life > 10) {
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
+        push();
+        // Draw trail in opposite direction of velocity
+        if (effect.velocity) {
+          translate(-effect.velocity.x * 2, -effect.velocity.y * 2, -effect.velocity.z * 2);
+          sphere(effect.size * 0.6);
+        }
+        pop();
+      }
+
+      pop();
+    } else if (effect.type === "atomicParticle") {
+      // Atomic particle effect - disintegration particles
+      push();
+
+      // Move particle based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+
+        // Slow down over time
+        effect.velocity.x *= 0.98;
+        effect.velocity.y *= 0.98;
+        effect.velocity.z *= 0.98;
+      }
+
+      // Get effect color (default to orange if not specified)
+      const effectColor = effect.color || [255, 150, 50, 200];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 120);
+
+      // No stroke for particle
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+
+      // Draw atomic particle
+      if (random() > 0.5) {
+        // Sphere for particle
+        sphere(effect.size * (effect.life / 120));
+      } else {
+        // Box for debris
+        push();
+        rotateX(frameCount * 0.05);
+        rotateY(frameCount * 0.05);
+        box(effect.size * (effect.life / 120));
+        pop();
+      }
+
+      // Add glow effect
+      if (effect.life > 30) {
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+        sphere(effect.size * 1.5 * (effect.life / 120));
+      }
+
+      pop();
+    } else if (effect.type === "debrisParticle") {
+      // Debris particle effect - floating debris
+      push();
+
+      // Move particle based on velocity
+      if (effect.velocity) {
+        effect.x += effect.velocity.x;
+        effect.y += effect.velocity.y;
+        effect.z += effect.velocity.z;
+
+        // Apply gravity - slowly fall
+        effect.velocity.z -= 0.01;
+      }
+
+      // Rotate debris
+      const rotationSpeed = effect.rotationSpeed || 0.02;
+      rotateX(frameCount * rotationSpeed);
+      rotateY(frameCount * rotationSpeed * 1.2);
+      rotateZ(frameCount * rotationSpeed * 0.8);
+
+      // Get effect color (default to gray if not specified)
+      const effectColor = effect.color || [100, 100, 100, 180];
+
+      // Fade based on life
+      const alpha = effectColor[3] * (effect.life / 500);
+
+      // Draw debris
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha);
+      stroke(effectColor[0] * 0.8, effectColor[1] * 0.8, effectColor[2] * 0.8, alpha * 0.8);
+      strokeWeight(0.5);
+
+      // Random debris shape
+      if (effect.shape === "box" || random() > 0.5) {
+        // Box for debris
+        box(effect.size * random(0.8, 1.2), effect.size * random(0.8, 1.2), effect.size * random(0.8, 1.2));
+      } else {
+        // Irregular tetrahedron for debris
+        beginShape();
+        vertex(effect.size * 0.5, -effect.size * 0.5, -effect.size * 0.5);
+        vertex(-effect.size * 0.5, effect.size * 0.5, -effect.size * 0.5);
+        vertex(-effect.size * 0.5, -effect.size * 0.5, effect.size * 0.5);
+        endShape(CLOSE);
+
+        beginShape();
+        vertex(effect.size * 0.5, -effect.size * 0.5, -effect.size * 0.5);
+        vertex(-effect.size * 0.5, effect.size * 0.5, -effect.size * 0.5);
+        vertex(effect.size * 0.5, effect.size * 0.5, effect.size * 0.5);
+        endShape(CLOSE);
+
+        beginShape();
+        vertex(effect.size * 0.5, -effect.size * 0.5, -effect.size * 0.5);
+        vertex(-effect.size * 0.5, -effect.size * 0.5, effect.size * 0.5);
+        vertex(effect.size * 0.5, effect.size * 0.5, effect.size * 0.5);
+        endShape(CLOSE);
+
+        beginShape();
+        vertex(-effect.size * 0.5, effect.size * 0.5, -effect.size * 0.5);
+        vertex(-effect.size * 0.5, -effect.size * 0.5, effect.size * 0.5);
+        vertex(effect.size * 0.5, effect.size * 0.5, effect.size * 0.5);
+        endShape(CLOSE);
+      }
+
+      pop();
     } else if (effect.type === "atomicFlash") {
       // Full screen bright flash effect
       push();
@@ -3473,19 +4673,143 @@ function activateSkill(skillNumber) {
       }
       break;
 
-    case 6: // Damage boost for 10 seconds with enhanced effect
-      let damageBoostBase = 2; // Double damage
-      let damageBoostAdditional = 0.2 * damageBoost; // 20% more per damage boost
+    case 6: // Infernal Rage - Dramatic damage boost with fire effects
+      let damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
+      let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
       let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
       let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + fireRateBoost * 60; // 30s in debug mode, 10s + 1s per fire rate in normal mode
 
+      // Calculate the center of the squad
+      let rageCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        rageCenter.x = totalX / squad.length;
+        rageCenter.y = totalY / squad.length;
+        rageCenter.z = totalZ / squad.length;
+      }
+
+      // Create initial explosion effect
+      effects.push({
+        x: rageCenter.x,
+        y: rageCenter.y,
+        z: rageCenter.z,
+        type: "rageExplosion",
+        size: 100,
+        life: 60,
+        color: [255, 50, 0],
+        forceRenderDetail: true
+      });
+
+      // Create shockwave
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: rageCenter.x,
+            y: rageCenter.y,
+            z: rageCenter.z,
+            type: "shockwave",
+            size: 150 * (1 + i * 0.5),
+            life: 45 - i * 5,
+            color: [255, 50, 0],
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 100);
+      }
+
       // Store original damage multiplier
       let originalDamageMultiplier = {};
+
+      // Apply effect to each squad member
       for (let member of squad) {
         originalDamageMultiplier[member.id] = member.damageBoost || 1;
         member.damageBoost = damageBoostTotalMultiplier;
-        createHitEffect(member.x, member.y, member.z, [255, 0, 0]);
+
+        // Create flame aura effect for each squad member
+        effects.push({
+          x: member.x,
+          y: member.y,
+          z: member.z,
+          type: "flameAura",
+          size: 30,
+          life: damageBoostDuration,
+          color: [255, 50, 0],
+          member: member, // Reference to follow the member
+          forceRenderDetail: true
+        });
+
+        // Create initial burst effect
+        effects.push({
+          x: member.x,
+          y: member.y,
+          z: member.z + 20,
+          type: "rageBurst",
+          size: 40,
+          life: 45,
+          color: [255, 50, 0]
+        });
+
+        // Add floating damage symbols
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            effects.push({
+              x: member.x + random(-20, 20),
+              y: member.y + random(-20, 20),
+              z: member.z + random(20, 50),
+              type: "damageSymbol",
+              size: random(10, 20),
+              life: random(60, 90),
+              color: [255, 50, 0, 200],
+              velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(1, 2) }
+            });
+          }, i * 100);
+        }
       }
+
+      // Add periodic flame bursts throughout the duration
+      const burstInterval = 60; // Every second
+      const totalBursts = Math.floor(damageBoostDuration / burstInterval);
+
+      for (let i = 1; i <= totalBursts; i++) {
+        setTimeout(() => {
+          // Only create effects if skill is still active
+          if (frameCount < skills.skill6.lastUsed + damageBoostDuration) {
+            for (let member of squad) {
+              // Create flame burst
+              if (random() > 0.3) { // 70% chance for each member
+                effects.push({
+                  x: member.x,
+                  y: member.y,
+                  z: member.z + 10,
+                  type: "flameBurst",
+                  size: random(15, 25),
+                  life: random(30, 45),
+                  color: [255, 50 + random(0, 50), 0]
+                });
+
+                // Enhanced bullet damage effect
+                member.bulletEffect = "fire";
+              }
+            }
+          }
+        }, i * burstInterval * (1000 / 60)); // Convert frames to ms
+      }
+
+      // Create a global fire effect (red tint to the scene)
+      effects.push({
+        type: "globalFire",
+        life: damageBoostDuration,
+        intensity: 0.3 + damageBoost * 0.02, // Stronger effect with damage boost
+        forceRenderDetail: true
+      });
+
+      // Add screen shake for impact
+      cameraShake = 8;
 
       // Reset after duration
       setTimeout(() => {
@@ -3495,75 +4819,264 @@ function activateSkill(skillNumber) {
           } else if (member) {
             member.damageBoost = 1;
           }
+
+          // Remove bullet effect
+          member.bulletEffect = null;
+
+          // Create final burst effect when skill ends
+          effects.push({
+            x: member.x,
+            y: member.y,
+            z: member.z + 20,
+            type: "flameBurst",
+            size: 30,
+            life: 30,
+            color: [255, 150, 0]
+          });
         }
       }, damageBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 7: // Speed boost for squad with enhanced effect
-      let baseSpeedBoost = 1.5; // 50% faster
-      let additionalSpeedBoost = 0.1 * fireRateBoost; // 10% more per fire rate boost
+    case 7: // Quantum Acceleration - Advanced speed boost with time dilation effects
+      let baseSpeedBoost = 1.8; // 80% faster (increased from 50%)
+      let additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost (increased from 10%)
       let totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
       let speedBoostDuration = 480 + fireRateBoost * 30; // 8s + 0.5s per fire rate
 
+      // Calculate the center of the squad
+      let accelCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        accelCenter.x = totalX / squad.length;
+        accelCenter.y = totalY / squad.length;
+        accelCenter.z = totalZ / squad.length;
+      }
+
+      // Create initial acceleration effect
+      effects.push({
+        x: accelCenter.x,
+        y: accelCenter.y,
+        z: accelCenter.z,
+        type: "accelerationBurst",
+        size: 120,
+        life: 60,
+        color: [0, 200, 255],
+        forceRenderDetail: true
+      });
+
+      // Create shockwave
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: accelCenter.x,
+            y: accelCenter.y,
+            z: accelCenter.z,
+            type: "shockwave",
+            size: 150 * (1 + i * 0.5),
+            life: 45 - i * 5,
+            color: [0, 200, 255],
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 100);
+      }
+
+      // Store old speed
       let oldSpeed = squadSpeed;
       squadSpeed *= totalSpeedMultiplier;
 
-      // Visual effect
+      // Apply effect to each squad member
       for (let member of squad) {
-        createHitEffect(member.x, member.y, member.z, [0, 255, 255]);
+        // Create speed aura effect for each squad member
+        effects.push({
+          x: member.x,
+          y: member.y,
+          z: member.z,
+          type: "speedAura",
+          size: 30,
+          life: speedBoostDuration,
+          color: [0, 200, 255],
+          member: member, // Reference to follow the member
+          forceRenderDetail: true
+        });
+
+        // Create initial burst effect
+        effects.push({
+          x: member.x,
+          y: member.y,
+          z: member.z + 20,
+          type: "speedBurst",
+          size: 40,
+          life: 45,
+          color: [0, 200, 255]
+        });
+
+        // Add motion blur trails
+        for (let i = 0; i < 3; i++) {
+          effects.push({
+            x: member.x,
+            y: member.y + 20 + i * 10, // Trail behind
+            z: member.z,
+            type: "speedTrail",
+            size: 25 - i * 5,
+            life: 30,
+            color: [0, 200, 255, 150 - i * 30],
+            member: member, // Reference to follow the member
+            offset: i * 10 // Offset behind the member
+          });
+        }
       }
+
+      // Add periodic speed bursts throughout the duration
+      const speedBurstInterval = 60; // Every second
+      const speedTotalBursts = Math.floor(speedBoostDuration / speedBurstInterval);
+
+      for (let i = 1; i <= speedTotalBursts; i++) {
+        setTimeout(() => {
+          // Only create effects if skill is still active
+          if (frameCount < skills.skill7.lastUsed + speedBoostDuration) {
+            for (let member of squad) {
+              // Create speed burst
+              if (random() > 0.5) { // 50% chance for each member
+                effects.push({
+                  x: member.x,
+                  y: member.y,
+                  z: member.z + 10,
+                  type: "speedBurst",
+                  size: random(15, 25),
+                  life: random(20, 30),
+                  color: [0, 200, 255]
+                });
+              }
+            }
+          }
+        }, i * speedBurstInterval * (1000 / 60)); // Convert frames to ms
+      }
+
+      // Create a global time dilation effect (cyan tint to the scene)
+      effects.push({
+        type: "globalTimeDilation",
+        life: speedBoostDuration,
+        intensity: 0.2 + fireRateBoost * 0.01, // Stronger effect with fire rate boost
+        forceRenderDetail: true
+      });
+
+      // Add screen shake for impact
+      cameraShake = 5;
 
       // Reset after duration
       setTimeout(() => {
         squadSpeed = oldSpeed;
+
+        // Create final burst effect when skill ends
+        for (let member of squad) {
+          effects.push({
+            x: member.x,
+            y: member.y,
+            z: member.z + 20,
+            type: "speedBurst",
+            size: 30,
+            life: 30,
+            color: [0, 200, 255]
+          });
+        }
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 8: // Atomic Bomb - devastating explosion that obliterates enemies
+    case 8: // Apocalyptic Devastation - Ultimate atomic bomb with enhanced effects
       // Get bomb drop point - farther ahead of the player for better visibility
       let bombCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
-        bombCenter = { 
-          x: squad[0].x, 
-          y: squad[0].y - 900, // Drop much farther ahead of the squad
-          z: squad[0].z 
+        bombCenter = {
+          x: squad[0].x,
+          y: squad[0].y - 1200, // Drop even farther ahead of the squad for better visibility
+          z: squad[0].z
         };
       }
-      
+
+      // Add warning siren effect
+      const sirenSound = {
+        type: "globalWarning",
+        life: ATOMIC_BOMB_FALL_DURATION,
+        intensity: 0.5,
+        forceRenderDetail: true
+      };
+      effects.push(sirenSound);
+
+      // Add screen shake for dramatic effect
+      cameraShake = 3; // Initial shake when launching
+
+      // Create targeting reticle effect
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: bombCenter.x,
+            y: bombCenter.y,
+            z: 0, // At ground level
+            type: "targetingReticle",
+            size: 200 - i * 30,
+            life: ATOMIC_BOMB_FALL_DURATION - i * 20,
+            color: [255, 50, 50, 150],
+            pulseRate: 0.1,
+            forceRenderDetail: true
+          });
+        }, i * 200);
+      }
+
       // Create initial bomb drop effect (small object falling from sky)
       const bombObj = {
         x: bombCenter.x,
         y: bombCenter.y,
-        z: 800, // Start higher in the sky for more dramatic effect
+        z: 1000, // Start even higher in the sky for more dramatic effect
         type: "atomicBomb",
-        size: 30, // Slightly larger bomb
+        size: 40, // Larger bomb
         life: ATOMIC_BOMB_FALL_DURATION, // Use consistent duration constant
         endPos: {...bombCenter, z: bombCenter.z}, // Where it will land
         trail: [], // Store trail points
         fallStartTime: frameCount, // When bomb started falling
         forceRenderDetail: true // Force detailed rendering regardless of distance
       };
-      
+
       effects.push(bombObj);
-      
+
+      // Add atmospheric distortion effect as bomb falls
+      setTimeout(() => {
+        effects.push({
+          type: "globalDistortion",
+          life: ATOMIC_BOMB_FALL_DURATION_MS / 2,
+          intensity: 0.3,
+          forceRenderDetail: true
+        });
+      }, ATOMIC_BOMB_FALL_DURATION_MS / 2);
+
       // Create atomic explosion after delay (when bomb hits ground)
       setTimeout(() => {
+        // Massive camera shake when bomb hits
+        cameraShake = 20;
+
         // Enhanced damage based on accumulated damage boost - extremely powerful
-        let atomicDamage = 2000 + damageBoost * 100; // Devastating damage that ensures total destruction
-        
+        let atomicDamage = 3000 + damageBoost * 150; // Even more devastating damage
+
         // Create massive atomic explosion
-        for (let i = 0; i < 5; i++) { // Multiple explosion layers
+        for (let i = 0; i < 7; i++) { // More explosion layers (increased from 5)
           setTimeout(() => {
             // Create expanding shockwave effect - enormous explosion sizes
-            const explosionSize = 400 + i * 200; // Truly massive explosion visuals
+            const explosionSize = 500 + i * 250; // Larger explosion visuals
             const explosionColors = [
               [255, 255, 220], // bright flash
               [255, 200, 50],  // orange fire
+              [255, 150, 0],   // deep orange
               [150, 75, 0],    // brown/orange
+              [100, 50, 0],    // dark brown
               [50, 50, 50],    // dark smoke
               [200, 200, 200]  // light smoke
             ];
-            
+
             // Create expanding explosion at bomb position
             effects.push({
               x: bombCenter.x,
@@ -3571,12 +5084,12 @@ function activateSkill(skillNumber) {
               z: bombCenter.z,
               type: "atomicExplosion",
               size: explosionSize,
-              life: 120 - i * 10, // Longer life for first explosion layers
+              life: 150 - i * 10, // Longer life for explosion layers
               color: explosionColors[i],
               layer: i,
               forceRenderDetail: true // Always render at full detail regardless of distance
             });
-            
+
             // Add bright flash during initial explosion
             if (i === 0) {
               // Create blinding white flash effect covering the screen temporarily
@@ -3585,13 +5098,27 @@ function activateSkill(skillNumber) {
                 y: bombCenter.y,
                 z: bombCenter.z,
                 type: "atomicFlash",
-                size: 5000, // Massive flash size
-                life: 40, // Longer flash duration
+                size: 6000, // Larger flash size
+                life: 50, // Longer flash duration
                 color: [255, 255, 255],
                 forceRenderDetail: true // Always render at full detail regardless of distance
               });
-              
+
               // Add secondary radiation flash
+              setTimeout(() => {
+                effects.push({
+                  x: bombCenter.x,
+                  y: bombCenter.y,
+                  z: bombCenter.z,
+                  type: "atomicFlash",
+                  size: 4000,
+                  life: 40,
+                  color: [255, 255, 200], // Slightly yellow tint
+                  forceRenderDetail: true // Always render at full detail regardless of distance
+                });
+              }, 300);
+
+              // Add tertiary radiation flash
               setTimeout(() => {
                 effects.push({
                   x: bombCenter.x,
@@ -3600,12 +5127,27 @@ function activateSkill(skillNumber) {
                   type: "atomicFlash",
                   size: 3000,
                   life: 30,
-                  color: [255, 255, 200], // Slightly yellow tint
+                  color: [255, 200, 150], // Orange tint
                   forceRenderDetail: true // Always render at full detail regardless of distance
                 });
-              }, 300);
+              }, 600);
             }
-            
+
+            // Create expanding ground shockwave
+            if (i < 4) {
+              effects.push({
+                x: bombCenter.x,
+                y: bombCenter.y,
+                z: 0, // At ground level
+                type: "shockwave",
+                size: explosionSize * 1.2,
+                life: 90 - i * 10,
+                color: [255, 150, 50],
+                layer: i,
+                forceRenderDetail: true
+              });
+            }
+
             // Apply damage to enemies with distance falloff
             for (let enemy of enemies) {
               // Calculate distance from explosion center
@@ -3613,31 +5155,142 @@ function activateSkill(skillNumber) {
               const dy = enemy.y - bombCenter.y;
               const dz = enemy.z - bombCenter.z;
               const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
-              
+
               // Apply damage with more gradual distance falloff for wider effect
-              // Enormous blast radius of 5000 units (covers entire bridge from any position)
-              const damageMultiplier = Math.max(0.7, 1 - (distance / 5000)); // Minimum 70% damage even at extreme range
+              // Enormous blast radius of 6000 units (covers entire bridge from any position)
+              const damageMultiplier = Math.max(0.8, 1 - (distance / 6000)); // Minimum 80% damage even at extreme range
               const damage = atomicDamage * damageMultiplier;
-              
+
               // Apply damage to enemy
               enemy.health -= damage;
-              
+
               // Create explosion effects at all enemy positions for dramatic effect
               if (i === 0) {
                 createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
-                
+
                 // Create additional effects for distant enemies to show shockwave reaching them
                 if (distance > 500) {
                   setTimeout(() => {
                     createExplosion(enemy.x, enemy.y, enemy.z, [255, 150, 50]);
                   }, distance * 0.1); // Delayed explosions based on distance
                 }
+
+                // Add enemy disintegration effect
+                setTimeout(() => {
+                  for (let j = 0; j < 10; j++) {
+                    effects.push({
+                      x: enemy.x + random(-20, 20),
+                      y: enemy.y + random(-20, 20),
+                      z: enemy.z + random(0, 40),
+                      type: "atomicParticle",
+                      size: random(5, 15),
+                      life: random(60, 120),
+                      color: [255, 150, 50, 200],
+                      velocity: {
+                        x: random(-2, 2),
+                        y: random(-2, 2),
+                        z: random(1, 3)
+                      }
+                    });
+                  }
+                }, distance * 0.1);
               }
             }
           }, i * 200); // Stagger explosion layers
         }
+
+        // Create persistent radiation field after explosion
+        setTimeout(() => {
+          effects.push({
+            x: bombCenter.x,
+            y: bombCenter.y,
+            z: 0, // At ground level
+            type: "radiationField",
+            size: 800,
+            life: 600, // 10 seconds
+            color: [100, 255, 100, 100], // Sickly green
+            pulseRate: 0.03,
+            forceRenderDetail: true
+          });
+
+          // Add atmospheric glow
+          effects.push({
+            type: "globalRadiation",
+            life: 600, // 10 seconds
+            intensity: 0.2 + damageBoost * 0.01,
+            forceRenderDetail: true
+          });
+
+          // Create floating debris
+          for (let i = 0; i < 30; i++) {
+            setTimeout(() => {
+              const angle = random(TWO_PI);
+              const dist = random(100, 700);
+              const x = bombCenter.x + cos(angle) * dist;
+              const y = bombCenter.y + sin(angle) * dist;
+
+              effects.push({
+                x: x,
+                y: y,
+                z: random(50, 200),
+                type: "debrisParticle",
+                size: random(10, 30),
+                life: random(300, 500),
+                color: [100, 100, 100, 180],
+                rotationSpeed: random(-0.05, 0.05),
+                velocity: {
+                  x: random(-0.5, 0.5),
+                  y: random(-0.5, 0.5),
+                  z: random(-0.2, 0.1)
+                },
+                forceRenderDetail: false
+              });
+            }, i * 50);
+          }
+
+          // Apply lingering damage over time to enemies in radiation field
+          const radiationInterval = setInterval(() => {
+            // Check if effect is still active
+            const radiationEffect = effects.find(e => e.type === "radiationField");
+            if (!radiationEffect) {
+              clearInterval(radiationInterval);
+              return;
+            }
+
+            // Apply radiation damage to enemies in field
+            for (let enemy of enemies) {
+              const dx = enemy.x - bombCenter.x;
+              const dy = enemy.y - bombCenter.y;
+              const distance = Math.sqrt(dx*dx + dy*dy);
+
+              if (distance < 800) { // Radiation field radius
+                // Apply radiation damage
+                const radiationDamage = 50 + damageBoost * 5;
+                enemy.health -= radiationDamage;
+
+                // Create radiation effect on enemy
+                if (random() > 0.7) {
+                  effects.push({
+                    x: enemy.x,
+                    y: enemy.y,
+                    z: enemy.z + 20,
+                    type: "radiationBurst",
+                    size: random(15, 25),
+                    life: random(20, 30),
+                    color: [100, 255, 100]
+                  });
+                }
+              }
+            }
+          }, 500); // Check every 0.5 seconds
+
+          // Clear interval after radiation field expires
+          setTimeout(() => {
+            clearInterval(radiationInterval);
+          }, 600 * (1000 / 60)); // Convert frames to ms
+        }, 1500); // Start radiation field 1.5 seconds after explosion
       }, ATOMIC_BOMB_FALL_DURATION_MS); // Delay matches the bomb fall duration
-      
+
       break;
   }
 
@@ -4481,13 +6134,13 @@ function getSkillName(skillNumber) {
     case 4:
       return "Freeze";
     case 5:
-      return "Heal";
+      return "Rejuvenation";
     case 6:
-      return "Damage+";
+      return "Infernal Rage";
     case 7:
-      return "Speed+";
+      return "Quantum Accel";
     case 8:
-      return "Atomic Bomb";
+      return "Apocalypse";
     default:
       return "";
   }
