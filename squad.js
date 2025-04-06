@@ -3766,7 +3766,6 @@ function createControlsContainer() {
   controlsContainer.style("padding", "10px 20px"); // Add more horizontal padding
   controlsContainer.style("box-sizing", "border-box");
   controlsContainer.style("z-index", "1500"); // Higher z-index
-  controlsContainer.style("background-color", "rgba(0, 0, 0, 0.2)"); // Slight background
 
   // Initially hide the container, but make it ready to be shown
   controlsContainer.style("visibility", "hidden");
