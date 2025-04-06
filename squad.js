@@ -1788,6 +1788,77 @@ function drawEffects() {
 
       pop();
     // Star blast field effect removed - using directional blasts instead
+    } else if (effect.type === "healingField") {
+      // Healing field effect - persistent healing area
+      push();
+
+      // Get effect color (default to green if not specified)
+      const effectColor = effect.color || [100, 255, 100, 150];
+
+      // Semi-transparent field
+      const alpha = 80 * (effect.life / 300); // Fade based on life
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
+      strokeWeight(1.5);
+
+      // Draw a pulsing field
+      const pulseRate = frameCount * (effect.pulseRate || 0.05);
+      const pulseSize = effect.size * (0.9 + 0.1 * sin(pulseRate));
+
+      // Draw a flat disc on the ground
+      rotateX(HALF_PI); // Align with ground plane
+      circle(0, 0, pulseSize * 2);
+
+      // Draw healing cross pattern
+      noFill();
+      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.9);
+      strokeWeight(2);
+
+      // Vertical line of cross
+      line(0, -pulseSize * 0.7, 0, pulseSize * 0.7);
+
+      // Horizontal line of cross
+      line(-pulseSize * 0.7, 0, pulseSize * 0.7, 0);
+
+      // Add particle effects - floating healing symbols
+      noStroke();
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * TWO_PI + frameCount * 0.01;
+        const radius = pulseSize * (0.4 + 0.3 * sin(frameCount * 0.05 + i));
+        const x = cos(angle) * radius;
+        const y = sin(angle) * radius;
+
+        push();
+        translate(x, y, random(5, 15) + 5 * sin(frameCount * 0.1 + i));
+        fill(effectColor[0], effectColor[1], effectColor[2], alpha * random(0.7, 1.0));
+
+        // Draw a small plus symbol (healing)
+        const plusSize = 8 + 3 * sin(frameCount * 0.1 + i);
+        rectMode(CENTER);
+        rect(0, 0, plusSize, plusSize/3); // Horizontal bar
+        rect(0, 0, plusSize/3, plusSize); // Vertical bar
+        pop();
+      }
+
+      // Add rising particles
+      for (let i = 0; i < 3; i++) {
+        if (random() > 0.7) {
+          const angle = random(TWO_PI);
+          const dist = random(0, pulseSize * 0.8);
+          effects.push({
+            x: effect.x + cos(angle) * dist,
+            y: effect.y + sin(angle) * dist,
+            z: effect.z,
+            type: "healParticle",
+            size: random(5, 10),
+            life: random(30, 60),
+            color: [100, 255, 150, 200],
+            velocity: { x: random(-0.5, 0.5), y: random(-0.5, 0.5), z: random(1, 2) }
+          });
+        }
+      }
+
+      pop();
     } else if (effect.type === "globalFrost") {
       // Global frost effect - adds a blue tint to the scene
       // This is handled in the draw function to apply a filter to the entire scene
@@ -3293,12 +3364,112 @@ function activateSkill(skillNumber) {
 
       break;
 
-    case 5: // Heal all squad members with enhanced healing
-      let healAmount = 50 + damageBoost * 5; // Base 50 + 5 per damage boost
+    case 5: // Rejuvenation Field - Advanced healing with regeneration over time
+      let initialHealAmount = 30 + damageBoost * 3; // Immediate healing
+      let regenAmount = 2 + Math.floor(damageBoost * 0.5); // Health regenerated per tick
+      let regenDuration = 300 + fireRateBoost * 30; // 5 seconds + 0.5s per fire rate boost
+      let regenInterval = 30; // Regenerate every 0.5 seconds
+      let healRadius = 150 + aoeBoost * 10; // Healing field radius
 
+      // Calculate the center of the squad
+      let healCenter = { x: 0, y: 0, z: 0 };
+      if (squad.length > 0) {
+        let totalX = 0, totalY = 0, totalZ = 0;
+        for (let member of squad) {
+          totalX += member.x;
+          totalY += member.y;
+          totalZ += member.z;
+        }
+        healCenter.x = totalX / squad.length;
+        healCenter.y = totalY / squad.length;
+        healCenter.z = totalZ / squad.length;
+      }
+
+      // Create healing field effect
+      effects.push({
+        x: healCenter.x,
+        y: healCenter.y,
+        z: healCenter.z,
+        type: "healingField",
+        size: healRadius,
+        life: regenDuration,
+        color: [100, 255, 100, 150],
+        pulseRate: 0.05,
+        forceRenderDetail: true
+      });
+
+      // Initial healing burst
       for (let member of squad) {
-        member.health = min(SQUAD_HEALTH, member.health + healAmount); // Use configurable SQUAD_HEALTH instead of hardcoded 100
-        createHitEffect(member.x, member.y, member.z, [0, 255, 0]);
+        member.health = min(SQUAD_HEALTH, member.health + initialHealAmount);
+
+        // Create healing effect on each squad member
+        effects.push({
+          x: member.x,
+          y: member.y,
+          z: member.z + 20,
+          type: "healBurst",
+          size: 30,
+          life: 45,
+          color: [100, 255, 150]
+        });
+      }
+
+      // Create healing particles
+      for (let i = 0; i < 20; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(50, healRadius);
+        effects.push({
+          x: healCenter.x + cos(angle) * dist,
+          y: healCenter.y + sin(angle) * dist,
+          z: random(20, 100),
+          type: "healParticle",
+          size: random(5, 15),
+          life: random(60, 120),
+          color: [100, 255, 150, 200],
+          velocity: { x: random(-1, 1), y: random(-1, 1), z: random(0.5, 2) }
+        });
+      }
+
+      // Setup regeneration over time
+      const totalTicks = Math.floor(regenDuration / regenInterval);
+      for (let i = 1; i <= totalTicks; i++) {
+        setTimeout(() => {
+          // Apply regeneration to all squad members
+          for (let member of squad) {
+            member.health = min(SQUAD_HEALTH, member.health + regenAmount);
+
+            // Small visual effect for each regen tick
+            if (random() > 0.7) { // Only show effect sometimes to avoid too many particles
+              effects.push({
+                x: member.x + random(-10, 10),
+                y: member.y + random(-10, 10),
+                z: member.z + random(10, 30),
+                type: "healParticle",
+                size: random(3, 8),
+                life: 30,
+                color: [100, 255, 150, 150],
+                velocity: { x: 0, y: 0, z: 1 }
+              });
+            }
+          }
+        }, i * regenInterval * (1000 / 60)); // Convert frames to ms
+      }
+
+      // Create a healing shockwave
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          effects.push({
+            x: healCenter.x,
+            y: healCenter.y,
+            z: healCenter.z,
+            type: "shockwave",
+            size: healRadius * (0.5 + i * 0.25),
+            life: 60 - i * 10,
+            color: [100, 255, 150],
+            layer: i,
+            forceRenderDetail: true
+          });
+        }, i * 150);
       }
       break;
 
