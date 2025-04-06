@@ -1640,6 +1640,12 @@ function updateSquad() {
 
   // Bridge boundaries are now handled in the moveSquad function
 
+  // Define boundary constraints for the squad
+  const leftBound = -BRIDGE_WIDTH / 2;
+  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+
   // Formation - arrange other squad members around the leader
   if (squad.length > 0) {
     const spacing = SQUAD_SIZE * 1.3; // Spacing between members
