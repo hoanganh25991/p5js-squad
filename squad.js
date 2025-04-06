@@ -1787,57 +1787,7 @@ function drawEffects() {
       circle(0, 0, effect.size * 2.2);
 
       pop();
-    } else if (effect.type === "starBlastField") {
-      // Star blast field effect - persistent area damage field
-      push();
-
-      // Get effect color (default to orange if not specified)
-      const effectColor = effect.color || [255, 100, 0, 80];
-
-      // Semi-transparent field
-      const alpha = 80 * (effect.life / 180); // Fade based on life
-      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
-      stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
-      strokeWeight(2);
-
-      // Draw a pulsing field
-      const pulseRate = frameCount * 0.05;
-      const pulseSize = effect.size * (0.9 + 0.1 * sin(pulseRate));
-
-      // Draw a flat disc on the ground
-      rotateX(HALF_PI); // Align with ground plane
-      circle(0, 0, pulseSize * 2);
-
-      // Draw energy lines radiating outward
-      noFill();
-      stroke(effectColor[0] + 50, effectColor[1] + 50, effectColor[2], alpha * 0.9);
-      strokeWeight(1.5);
-
-      // Draw 8 directional lines
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * TWO_PI;
-        const x = cos(angle) * pulseSize;
-        const y = sin(angle) * pulseSize;
-
-        line(0, 0, x, y);
-      }
-
-      // Add particle effects around the perimeter
-      noStroke();
-      for (let i = 0; i < 16; i++) {
-        const angle = (i / 16) * TWO_PI + frameCount * 0.01;
-        const x = cos(angle) * pulseSize * 0.9;
-        const y = sin(angle) * pulseSize * 0.9;
-
-        push();
-        translate(x, y, random(1, 5));
-        fill(effectColor[0], effectColor[1], effectColor[2], alpha * random(0.5, 1.0));
-        const particleSize = 5 + 3 * sin(frameCount * 0.1 + i);
-        circle(0, 0, particleSize);
-        pop();
-      }
-
-      pop();
+    // Star blast field effect removed - using directional blasts instead
     } else if (effect.type === "globalFrost") {
       // Global frost effect - adds a blue tint to the scene
       // This is handled in the draw function to apply a filter to the entire scene
@@ -2844,45 +2794,8 @@ function activateSkill(skillNumber) {
       // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
       const directions = [0, 1, 2, 3, 4, 5, 6, 7];
 
-      // Create visual shockwave effects for all 8 directions
-      for (let direction of directions) {
-        const centerAngle = direction * (Math.PI / 4); // Convert direction to radians
-        const angleStart = centerAngle - Math.PI/8; // 45 degrees to the left of center
-        const angleEnd = centerAngle + Math.PI/8; // 45 degrees to the right of center
-
-        // Create multiple expanding rings for each direction
-        for (let i = 0; i < 3; i++) {
-          setTimeout(() => {
-            effects.push({
-              x: squadCenter.x,
-              y: squadCenter.y,
-              z: squadCenter.z,
-              type: "directionalShockwave",
-              size: areaDamageRadius * (0.5 + i * 0.25), // Expanding size for each ring
-              life: 60 - i * 15, // Shorter life for later rings
-              color: [255, 100, 0], // Red/orange for damage
-              layer: i,
-              angleStart: angleStart,
-              angleEnd: angleEnd,
-              direction: direction,
-              forceRenderDetail: true
-            });
-          }, i * 100 + direction * 50); // Stagger the rings and directions for visual effect
-        }
-      }
-
-      // Create a persistent star blast field that follows the squad
-      effects.push({
-        x: squadCenter.x,
-        y: squadCenter.y,
-        z: squadCenter.z,
-        type: "starBlastField",
-        size: areaDamageRadius,
-        life: starBlastDuration,
-        color: [255, 100, 0, 80], // Red/orange with transparency
-        damageAmount: areaDamageAmount,
-        forceRenderDetail: true
-      });
+      // Initial star blast in all 8 directions
+      fireStarBlast(squadCenter, directions, areaDamageRadius, areaDamageAmount);
 
       // Create a central explosion effect
       effects.push({
@@ -2896,12 +2809,9 @@ function activateSkill(skillNumber) {
         forceRenderDetail: true
       });
 
-      // Initial damage application
-      applyStarBlastDamage(squadCenter, areaDamageRadius, areaDamageAmount);
-
-      // Schedule periodic damage application for the duration
-      const damageInterval = 30; // Apply damage every 0.5 seconds (30 frames)
-      const totalIntervals = Math.floor(starBlastDuration / damageInterval);
+      // Schedule periodic star blasts for the duration
+      const blastInterval = 45; // Fire star blast every 0.75 seconds (45 frames)
+      const totalIntervals = Math.floor(starBlastDuration / blastInterval);
 
       for (let i = 1; i <= totalIntervals; i++) {
         setTimeout(() => {
@@ -2921,37 +2831,30 @@ function activateSkill(skillNumber) {
               currentCenter.z = totalZ / squad.length;
             }
 
-            // Apply damage with reduced amount for subsequent pulses
-            const reducedDamage = areaDamageAmount * 0.4; // 40% of initial damage for subsequent pulses
-            applyStarBlastDamage(currentCenter, areaDamageRadius, reducedDamage);
+            // Fire another star blast with reduced damage
+            const reducedDamage = areaDamageAmount * 0.6; // 60% of initial damage for subsequent blasts
+            fireStarBlast(currentCenter, directions, areaDamageRadius, reducedDamage);
 
-            // Create a smaller pulse effect for each interval
-            for (let direction of directions) {
-              const centerAngle = direction * (Math.PI / 4);
-              effects.push({
-                x: currentCenter.x,
-                y: currentCenter.y,
-                z: currentCenter.z,
-                type: "directionalShockwave",
-                size: areaDamageRadius * 0.6,
-                life: 30,
-                color: [255, 100, 0],
-                layer: 0,
-                angleStart: centerAngle - Math.PI/8,
-                angleEnd: centerAngle + Math.PI/8,
-                direction: direction,
-                forceRenderDetail: true
-              });
-            }
+            // Create a smaller central explosion
+            effects.push({
+              x: currentCenter.x,
+              y: currentCenter.y,
+              z: currentCenter.z,
+              type: "explosion",
+              size: 30,
+              life: 20,
+              color: [255, 100, 0],
+              forceRenderDetail: true
+            });
           }
-        }, i * damageInterval * (1000 / 60)); // Convert frames to ms
+        }, i * blastInterval * (1000 / 60)); // Convert frames to ms
       }
 
       // Schedule deactivation after duration
       setTimeout(() => {
         skills.skill1.active = false;
 
-        // Final explosion effect when the skill ends
+        // Final star blast when the skill ends
         if (squad.length > 0) {
           let finalCenter = { x: 0, y: 0, z: 0 };
           let totalX = 0, totalY = 0, totalZ = 0;
@@ -2963,6 +2866,10 @@ function activateSkill(skillNumber) {
           finalCenter.x = totalX / squad.length;
           finalCenter.y = totalY / squad.length;
           finalCenter.z = totalZ / squad.length;
+
+          // Fire a final star blast with increased damage
+          const finalDamage = areaDamageAmount * 1.2; // 120% of initial damage for final blast
+          fireStarBlast(finalCenter, directions, areaDamageRadius * 1.2, finalDamage);
 
           // Create final explosion
           effects.push({
@@ -4561,7 +4468,7 @@ function applyEffects() {
     }
 
     // Special handling for effects that follow the squad
-    if ((effects[i].type === "shield" || effects[i].type === "areaBarrier" || effects[i].type === "starBlastField") && squad.length > 0) {
+    if ((effects[i].type === "shield" || effects[i].type === "areaBarrier") && squad.length > 0) {
       // Calculate the new center point of the squad
       let totalX = 0, totalY = 0, totalZ = 0;
       for (let member of squad) {
@@ -5197,32 +5104,69 @@ function drawIcePattern(x, y, size, angle, depth, alpha, color) {
   pop();
 }
 
-// Apply star blast damage to enemies within radius
-function applyStarBlastDamage(center, radius, damageAmount) {
-  let enemiesHit = 0;
+// Fire a star blast in all 8 directions
+function fireStarBlast(center, directions, radius, damageAmount) {
+  // Create visual shockwave effects for all 8 directions
+  for (let direction of directions) {
+    const centerAngle = direction * (Math.PI / 4); // Convert direction to radians
+    const angleStart = centerAngle - Math.PI/8; // 45 degrees to the left of center
+    const angleEnd = centerAngle + Math.PI/8; // 45 degrees to the right of center
+
+    // Create multiple expanding rings for each direction
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        effects.push({
+          x: center.x,
+          y: center.y,
+          z: center.z,
+          type: "directionalShockwave",
+          size: radius * (0.5 + i * 0.25), // Expanding size for each ring
+          life: 60 - i * 15, // Shorter life for later rings
+          color: [255, 100, 0], // Red/orange for damage
+          layer: i,
+          angleStart: angleStart,
+          angleEnd: angleEnd,
+          direction: direction,
+          forceRenderDetail: true
+        });
+      }, i * 100 + direction * 50); // Stagger the rings and directions for visual effect
+    }
+  }
+
+  // Apply damage to enemies in each direction
+  let totalEnemiesHit = 0;
   let enemiesHitByDirection = Array(8).fill(0); // Track hits in each direction
 
   for (let enemy of enemies) {
-    // Calculate distance from center
+    // Calculate distance and angle from center to enemy
     const dx = enemy.x - center.x;
     const dy = enemy.y - center.y;
     const dz = enemy.z - center.z;
     const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-    // Only process enemies within the damage radius
-    if (distance < radius) {
-      // Calculate angle to enemy (in radians)
-      const angleToEnemy = Math.atan2(dy, dx);
+    // Calculate angle to enemy (in radians)
+    const angleToEnemy = Math.atan2(dy, dx);
 
-      // Determine which direction the enemy is in
-      // Convert angle to 0-2PI range
-      const normalizedAngle = angleToEnemy < 0 ? angleToEnemy + 2 * Math.PI : angleToEnemy;
-      // Find the closest direction (0-7)
-      const directionIndex = Math.round(normalizedAngle / (Math.PI / 4)) % 8;
+    // Convert angle to 0-2PI range
+    const normalizedAngle = angleToEnemy < 0 ? angleToEnemy + 2 * Math.PI : angleToEnemy;
 
-      // More damage to closer enemies
-      const damageMultiplier = 1 - (distance / radius);
-      const damage = damageAmount * damageMultiplier;
+    // Find the closest direction (0-7)
+    const directionIndex = Math.round(normalizedAngle / (Math.PI / 4)) % 8;
+
+    // Calculate the angular difference between enemy and the closest direction
+    const directionAngle = directionIndex * (Math.PI / 4);
+    let angleDiff = Math.abs(normalizedAngle - directionAngle);
+    if (angleDiff > Math.PI) {
+      angleDiff = 2 * Math.PI - angleDiff; // Handle wrap-around
+    }
+
+    // Only hit enemies that are within the radius AND within the angular spread of a direction
+    // This creates 8 distinct directional blasts rather than a circular area effect
+    if (distance < radius && angleDiff < Math.PI/6) { // PI/6 = 30 degrees on each side
+      // More damage to closer enemies and those more directly in the path
+      const distanceMultiplier = 1 - (distance / radius);
+      const angleMultiplier = 1 - (angleDiff / (Math.PI/6));
+      const damage = damageAmount * distanceMultiplier * angleMultiplier;
 
       // Apply damage to enemy
       enemy.health -= damage;
@@ -5230,16 +5174,15 @@ function applyStarBlastDamage(center, radius, damageAmount) {
       // Create hit effect on enemy
       createHitEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0]);
 
-      // Push enemy away from the center
-      const pushForce = 15 * damageMultiplier; // Moderate push
-      const pushAngle = Math.atan2(dy, dx); // Push directly away from center
-      const pushX = Math.cos(pushAngle) * pushForce;
-      const pushY = Math.sin(pushAngle) * pushForce;
+      // Push enemy away from the center along the direction of the blast
+      const pushForce = 25 * distanceMultiplier; // Stronger push for directional effect
+      const pushX = Math.cos(directionAngle) * pushForce;
+      const pushY = Math.sin(directionAngle) * pushForce;
 
       enemy.x += pushX;
       enemy.y += pushY;
 
-      enemiesHit++;
+      totalEnemiesHit++;
       enemiesHitByDirection[directionIndex]++;
     }
   }
@@ -5250,13 +5193,18 @@ function applyStarBlastDamage(center, radius, damageAmount) {
       const directionAngle = i * (Math.PI / 4);
 
       // Add hit effects in the direction where enemies were hit
-      for (let j = 0; j < Math.min(enemiesHitByDirection[i], 2); j++) {
+      for (let j = 0; j < Math.min(enemiesHitByDirection[i], 3); j++) {
+        // Calculate a position along the direction ray
+        const distance = radius * (0.3 + j * 0.2); // Space out the hits along the ray
+        const hitX = center.x + Math.cos(directionAngle) * distance;
+        const hitY = center.y + Math.sin(directionAngle) * distance;
+
         effects.push({
-          x: center.x + Math.cos(directionAngle) * random(80, 150),
-          y: center.y + Math.sin(directionAngle) * random(80, 150),
+          x: hitX,
+          y: hitY,
           z: center.z + random(30, 70),
           type: "hit",
-          size: 15,
+          size: 15 + j * 5,
           life: 30,
           color: [255, 100, 0]
         });
@@ -5264,7 +5212,7 @@ function applyStarBlastDamage(center, radius, damageAmount) {
     }
   }
 
-  return enemiesHit;
+  return totalEnemiesHit;
 }
 
 // Create ice effect on a target
