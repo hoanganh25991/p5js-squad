@@ -167,7 +167,7 @@ let squadLeader = {
   y: 0, // Starting near the bottom of extended bridge
   z: 0,
   size: SQUAD_SIZE,
-  health: SQUAD_HEALTH * 10, // Use configurable health
+  health: SQUAD_HEALTH, // Use configurable health
   weapon: currentWeapon,
   id: Date.now(), // Unique ID for reference
 };
