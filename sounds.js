@@ -60,6 +60,13 @@ let soundSettings = {
   musicVolume: 0.3, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
+  combatVolume: {
+    shoot: 0.33, // Reduced shoot sound to 1/3 of original volume
+    hit: 1.0,
+    explosion: 1.0,
+    death: 1.0,
+    criticalHit: 1.0
+  },
   skillVolume: {
     skill1: 0.4, // Auto-fire skill - lower volume
     skill2: 0.8, // Scatter shot - normal volume
@@ -226,12 +233,17 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
     // Calculate pan based on x position relative to screen center
     const screenCenterX = width / 2;
     const pan = constrain((x - screenCenterX) / (screenCenterX), -1, 1) * 0.7;
-    
+
     // Calculate volume falloff based on distance from camera
     const distanceFromCamera = abs(y - cameraOffsetY) / height;
     const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
-    
-    playSound(sounds.combat[soundName], soundSettings.sfxVolume * volume * distanceVolume, 1.0, pan);
+
+    // Use specific combat volume if available, otherwise use default sfx volume
+    const combatVolumeMultiplier = soundSettings.combatVolume && soundSettings.combatVolume[soundName]
+      ? soundSettings.combatVolume[soundName]
+      : 1.0;
+
+    playSound(sounds.combat[soundName], soundSettings.sfxVolume * combatVolumeMultiplier * volume * distanceVolume, 1.0, pan);
   }
 }
 
