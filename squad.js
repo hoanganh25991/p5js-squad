@@ -156,10 +156,10 @@ let skills = {
     activeDuration: 360, // Freeze duration (6 seconds = 360 frames at 60fps)
     endTime: 0
   },
-  skill5: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill6: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill7: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
-  skill8: { cooldown: 600 * (1 + currentWave / 5), lastUsed: 0 },
+  skill5: { cooldown: 600, lastUsed: 0 },
+  skill6: { cooldown: 600, lastUsed: 0 },
+  skill7: { cooldown: 600, lastUsed: 0 },
+  skill8: { cooldown: 600, lastUsed: 0 },
 };
 
 let squadLeader = {

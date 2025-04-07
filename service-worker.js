@@ -4,9 +4,11 @@ self.addEventListener("install", function (event) {
       return cache.addAll([
         "index.html",
         "squad.js",
+        "sound.js",
         "assets/logo.png",
         "assets/logo-192x192.png",
         "assets/favicon.ico",
+        "sounds/*.mp3",
       ]);
     })
   );
