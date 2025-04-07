@@ -1760,6 +1760,8 @@ function drawEffects() {
 
         // Rotate 90 degrees around Y axis to change the orientation of the half-circle
         push();
+        // Translate up to raise the effect above the bridge
+        translate(0, 0, 10); // Raise the effect 100 units above the bridge (negative Y is up)
         rotateY(HALF_PI); // Rotate 90 degrees around Y axis
         rotateZ(HALF_PI); // Rotate 90 degrees around Z axis
 
@@ -1803,8 +1805,8 @@ function drawEffects() {
           noStroke();
           fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
 
-          // Number of particles based on size
-          const particleCount = Math.min(15, Math.ceil(effect.size / 25));
+          // Number of particles based on size - increased for better visibility
+          const particleCount = Math.min(25, Math.ceil(effect.size / 20));
 
           for (let i = 0; i < particleCount; i++) {
             push();
@@ -1815,12 +1817,41 @@ function drawEffects() {
             // Position particles around the arc
             translate(cos(angle) * radius, 0, sin(angle) * radius);
 
-            // Particle size varies
-            const particleSize = random(5, 15);
+            // Particle size varies - increased for better visibility
+            const particleSize = random(8, 20);
             sphere(particleSize);
             pop();
           }
         }
+
+        // Add a glowing effect to make it more visible
+        push();
+        noStroke();
+        // Use a brighter version of the effect color for the glow
+        const glowColor = [
+          Math.min(255, effectColor[0] + 80),
+          Math.min(255, effectColor[1] + 80),
+          Math.min(255, effectColor[2] + 80)
+        ];
+
+        // Draw a semi-transparent plane beneath the effect for better visibility
+        fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.4);
+        translate(0, 10, 0); // Position slightly below the main effect
+        rotateX(HALF_PI); // Rotate to be parallel with the ground
+
+        // Draw an elliptical glow that follows the arc shape
+        beginShape();
+        for (let angle = angleStart - 0.2; angle <= angleEnd + 0.2; angle += 0.1) {
+          const x = cos(angle) * (effect.size * 1.2);
+          const y = sin(angle) * (effect.size * 1.2);
+          vertex(x, y);
+        }
+        // Complete the shape by connecting back to center and first point
+        vertex(0, 0);
+        vertex(cos(angleStart - 0.2) * (effect.size * 1.2), sin(angleStart - 0.2) * (effect.size * 1.2));
+        endShape(CLOSE);
+        pop();
+
         pop(); // Close the rotation push
       } else {
         // Draw full circle for regular shockwave
