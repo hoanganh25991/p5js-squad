@@ -152,15 +152,39 @@ function preloadSounds() {
   }
 }
 
-// Initialize sound system
+// Flag to track if sound system has been initialized
+let soundSystemInitialized = false;
+
+// Initialize sound system - only call this after user interaction
 function initSounds() {
+  // If already initialized, don't do it again
+  if (soundSystemInitialized) return;
+
   try {
+    console.log("Initializing sound system after user interaction");
+
     // Check if p5.sound is available by testing if a sound object has the necessary methods
     const soundAvailable = sounds.music.main &&
                           typeof sounds.music.main.setVolume === 'function' &&
                           typeof sounds.music.main.play === 'function';
 
     if (soundAvailable) {
+      // Resume AudioContext if it exists
+      if (typeof getAudioContext === 'function') {
+        try {
+          const audioContext = getAudioContext();
+          if (audioContext && audioContext.state !== 'running') {
+            audioContext.resume().then(() => {
+              console.log("AudioContext resumed successfully");
+            }).catch(err => {
+              console.warn("Error resuming AudioContext:", err);
+            });
+          }
+        } catch (e) {
+          console.warn("Error accessing AudioContext:", e);
+        }
+      }
+
       // Set master volume if the function exists
       if (typeof masterVolume === 'function') {
         masterVolume(soundSettings.masterVolume);
@@ -173,15 +197,12 @@ function initSounds() {
         }
       });
 
-      // Loop ambient sounds
-      if (sounds.environment.ambient &&
-          sounds.environment.ambient.setVolume &&
-          sounds.environment.ambient.loop) {
-        sounds.environment.ambient.setVolume(0.3);
-        sounds.environment.ambient.loop();
-      }
-
+      // Don't automatically start ambient sounds - we'll do this when game starts
       console.log("Sound system initialized successfully");
+      soundSystemInitialized = true;
+
+      // Set muted to false now that we've initialized
+      soundSettings.muted = false;
     } else {
       console.log("Sound objects not properly loaded. Creating fallbacks...");
       // Create fallbacks for sound objects
@@ -263,8 +284,23 @@ function playSkillSound(skillNumber) {
 // Play background music with crossfade
 function playMusic(musicName, fadeTime = 2.0) {
   try {
-    // Check if sound is available and not muted
-    if (!sounds.music[musicName] || soundSettings.muted) return;
+    // Check if sound system is initialized
+    if (!soundSystemInitialized) {
+      // Just store the music name for later when sound is initialized
+      soundSettings.currentMusic = musicName;
+      console.log(`Sound system not initialized yet. Storing music name: ${musicName}`);
+      return;
+    }
+
+    // Always update the current music name even if muted
+    // This ensures we remember what should be playing when unmuted
+    if (!sounds.music[musicName]) return;
+
+    // Store the music name regardless of mute state
+    soundSettings.currentMusic = musicName;
+
+    // If muted, just store the music name but don't play
+    if (soundSettings.muted) return;
 
     // Check if the sound object has the necessary methods
     if (!sounds.music[musicName].isPlaying || !sounds.music[musicName].setVolume || !sounds.music[musicName].loop) {
@@ -273,7 +309,7 @@ function playMusic(musicName, fadeTime = 2.0) {
     }
 
     // If same music is already playing, do nothing
-    if (soundSettings.currentMusic === musicName && sounds.music[musicName].isPlaying()) {
+    if (sounds.music[musicName].isPlaying && sounds.music[musicName].isPlaying()) {
       return;
     }
 
@@ -281,7 +317,8 @@ function playMusic(musicName, fadeTime = 2.0) {
     if (soundSettings.currentMusic &&
         sounds.music[soundSettings.currentMusic] &&
         sounds.music[soundSettings.currentMusic].isPlaying &&
-        sounds.music[soundSettings.currentMusic].isPlaying()) {
+        sounds.music[soundSettings.currentMusic].isPlaying() &&
+        soundSettings.currentMusic !== musicName) {
 
       if (sounds.music[soundSettings.currentMusic].fade) {
         sounds.music[soundSettings.currentMusic].fade(0, fadeTime);
@@ -290,8 +327,7 @@ function playMusic(musicName, fadeTime = 2.0) {
       }
     }
 
-    // Set new music and play
-    soundSettings.currentMusic = musicName;
+    // Play the new music
     sounds.music[musicName].setVolume(0);
     sounds.music[musicName].loop();
 
@@ -342,8 +378,24 @@ function toggleMute() {
     // Check if p5.sound is available
     if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
       if (soundSettings.muted) {
+        // Set master volume to 0
         masterVolume(0);
+
+        // Pause all currently playing sounds
+        // This ensures sounds actually stop when muted
+        Object.values(sounds.music).forEach(sound => {
+          if (sound && sound.isPlaying && sound.isPlaying()) {
+            sound.pause();
+          }
+        });
+
+        Object.values(sounds.environment).forEach(sound => {
+          if (sound && sound.isPlaying && sound.isPlaying()) {
+            sound.pause();
+          }
+        });
       } else {
+        // Restore master volume
         masterVolume(soundSettings.masterVolume);
 
         // Resume background music if it was playing
@@ -352,6 +404,14 @@ function toggleMute() {
         } else {
           // If no music was playing, start the main theme
           playMusic('main', 0.5);
+        }
+
+        // Resume ambient sounds
+        if (sounds.environment.ambient &&
+            sounds.environment.ambient.loop &&
+            !sounds.environment.ambient.isPlaying()) {
+          sounds.environment.ambient.setVolume(0.3 * soundSettings.sfxVolume);
+          sounds.environment.ambient.loop();
         }
       }
     } else {
@@ -397,6 +457,15 @@ function setSFXVolume(volume) {
 
 // Play ambient sounds based on game state
 function updateAmbientSounds() {
+  // Only play ambient sounds if not muted
+  if (soundSettings.muted) {
+    // If muted, make sure ambient sounds are paused
+    if (sounds.environment.wind && sounds.environment.wind.isPlaying && sounds.environment.wind.isPlaying()) {
+      sounds.environment.wind.pause();
+    }
+    return;
+  }
+
   // Adjust wind sound based on camera height
   if (sounds.environment.wind) {
     const windVolume = map(cameraZoom, 300, 1000, 0.1, 0.4);

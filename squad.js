@@ -234,30 +234,12 @@ function setup() {
   createDirectionalPadElement(); // Add directional pad for touch/click movement
   createSkillBarElement();
 
-  // Initialize sound system
+  // Create sound toggle button but don't initialize sounds yet
+  // We'll initialize sounds only after user interaction
   try {
-    // Wait a short time to ensure p5.sound is fully loaded
-    setTimeout(function() {
-      try {
-        // First try to initialize sounds
-        initSounds();
-
-        // Add sound toggle button
-        createSoundToggleButton();
-
-        console.log("Sound system setup completed");
-      } catch (e) {
-        console.warn("Error in delayed sound initialization:", e);
-      }
-    }, 500);
-  } catch (e) {
-    console.warn("Error initializing sounds:", e);
-    // Still try to create the sound toggle button even if sound init fails
-    try {
-      createSoundToggleButton();
-    } catch (btnError) {
-      console.warn("Could not create sound toggle button:", btnError);
-    }
+    createSoundToggleButton();
+  } catch (btnError) {
+    console.warn("Could not create sound toggle button:", btnError);
   }
 
   // Purge any old references
@@ -275,17 +257,12 @@ function setup() {
         // Ignore if gc is not available
       }
     }
-
-    // Start main theme music when the page loads
-    try {
-      // Always try to play the main theme when the page first loads
-      // The sound will only be audible if not muted
-      playMusic('main');
-      console.log("Playing main theme music on page load");
-    } catch (e) {
-      console.warn("Error playing background music:", e);
-    }
   }, 1000);
+
+  // Set sound as initially muted until user interaction
+  if (typeof soundSettings !== 'undefined') {
+    soundSettings.muted = true;
+  }
 }
 
 // Memory warning overlay
@@ -312,11 +289,42 @@ function createSoundToggleButton() {
   soundToggleButton.style('visibility', 'visible'); // Ensure it's visible
   soundToggleButton.id('sound-toggle-button'); // Add an ID for easier reference
 
-  soundToggleButton.mousePressed(() => {
+  // Handle both mouse and touch events for the sound toggle button
+  soundToggleButton.mousePressed(toggleSoundState);
+  soundToggleButton.touchStarted(toggleSoundState);
+
+  // Function to handle sound toggle
+  function toggleSoundState() {
+    // Initialize sound system if this is the first interaction
+    if (typeof initSounds === 'function' && typeof soundSystemInitialized !== 'undefined' && !soundSystemInitialized) {
+      initSounds();
+
+      // Resume AudioContext if it exists
+      if (typeof getAudioContext === 'function') {
+        try {
+          const audioContext = getAudioContext();
+          if (audioContext && audioContext.state !== 'running') {
+            audioContext.resume().then(() => {
+              console.log("AudioContext resumed by user interaction with sound toggle");
+            });
+          }
+        } catch (e) {
+          console.warn("Error accessing AudioContext:", e);
+        }
+      }
+    }
+
     const isMuted = toggleMute();
     soundToggleButton.html(isMuted ? '🔇' : '🔊');
-    playUISound('click');
-  });
+
+    // Only play UI sound if we're unmuting
+    if (!isMuted) {
+      playUISound('click');
+    }
+
+    // Prevent default to avoid double triggering
+    return false;
+  }
 }
 
 // Function to update sound toggle button visibility
@@ -6109,14 +6117,39 @@ function startGame() {
       soundToggleButton.style('visibility', 'visible');
     }
 
-    // Continue playing main theme music when game starts
+    // Initialize sound system and play music when game starts
+    // This is the perfect time to initialize audio since it's after user interaction
     try {
-      if (!soundSettings.muted && (!soundSettings.currentMusic || soundSettings.currentMusic !== 'main')) {
-        playMusic('main');
-        console.log("Playing main theme music");
+      // Initialize the sound system if not already done
+      if (typeof initSounds === 'function') {
+        initSounds();
       }
+
+      // Resume AudioContext if it exists
+      if (typeof getAudioContext === 'function') {
+        try {
+          const audioContext = getAudioContext();
+          if (audioContext && audioContext.state !== 'running') {
+            audioContext.resume().then(() => {
+              console.log("AudioContext resumed successfully");
+              // Play music after AudioContext is resumed
+              playMusic('main');
+            });
+          } else {
+            // AudioContext already running, play music directly
+            playMusic('main');
+          }
+        } catch (e) {
+          console.warn("Error accessing AudioContext:", e);
+        }
+      } else {
+        // No AudioContext function available, try playing music directly
+        playMusic('main');
+      }
+
+      console.log("Sound system initialized and main theme music started");
     } catch (e) {
-      console.warn("Error playing main theme music:", e);
+      console.warn("Error initializing sound system or playing music:", e);
     }
 
     return false; // Prevent default behavior
