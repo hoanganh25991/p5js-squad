@@ -3659,33 +3659,25 @@ function updateSquad() {
   const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
 
   // Formation - arrange other squad members around the leader
-  if (squad.length > 0) {
+  if (squad.length > 1) {
     const spacing = SQUAD_SIZE * 1.3; // Spacing between members
+    const leaderX = mainMember.x;
+    const leaderY = mainMember.y;
 
-    // Position all members in grid formation
-    for (let i = 0; i < squad.length; i++) {
+    // Position all non-leader members in grid formation
+    // Start from index 1 to skip the leader
+    for (let i = 1; i < squad.length; i++) {
       // Calculate row and column for each member
       const row = Math.floor(i / MAX_SQUAD_MEMBERS_PER_ROW);
       const col = i % MAX_SQUAD_MEMBERS_PER_ROW;
 
-      // For the leader, we don't change position (controlled by arrow keys)
-      // For other members, we position them relative to the leader
-      if (i === 0) {
-        // The leader's position is already set by arrow key movement
-        // Don't override it here or movement will break
-      } else {
-        // Calculate offset from leader's actual position
-        const leaderX = mainMember.x;
-        const leaderY = mainMember.y;
+      // Position based on row and column but relative to leader's actual position
+      squad[i].x = leaderX + col * spacing;
+      squad[i].y = leaderY + row * spacing;
 
-        // Position based on row and column but relative to leader's actual position
-        squad[i].x = leaderX + col * spacing;
-        squad[i].y = leaderY + row * spacing;
-
-        // Constrain other members to stay on the bridge
-        squad[i].x = constrain(squad[i].x, leftBound, rightBound);
-        squad[i].y = constrain(squad[i].y, topBound, bottomBound);
-      }
+      // Constrain other members to stay on the bridge
+      squad[i].x = constrain(squad[i].x, leftBound, rightBound);
+      squad[i].y = constrain(squad[i].y, topBound, bottomBound);
     }
   }
 
