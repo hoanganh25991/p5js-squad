@@ -57,9 +57,19 @@ let sounds = {
 // Sound settings
 let soundSettings = {
   masterVolume: 0.7,
-  musicVolume: 0.5,
+  musicVolume: 0.3, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
+  skillVolume: {
+    skill1: 0.4, // Auto-fire skill - lower volume
+    skill2: 0.8, // Scatter shot - normal volume
+    skill3: 0.8, // Orbital strike - normal volume
+    skill4: 2.4, // Freeze - much higher volume (3x)
+    skill5: 0.8, // Normal volume for other skills
+    skill6: 0.8,
+    skill7: 0.8,
+    skill8: 0.8
+  },
   muted: true, // Sound off by default
   currentMusic: null,
 };
@@ -138,26 +148,37 @@ function preloadSounds() {
 // Initialize sound system
 function initSounds() {
   try {
-    // Check if p5.sound is available
-    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
-      // Set master volume using p5.sound
-      masterVolume(soundSettings.masterVolume);
+    // Check if p5.sound is available by testing if a sound object has the necessary methods
+    const soundAvailable = sounds.music.main &&
+                          typeof sounds.music.main.setVolume === 'function' &&
+                          typeof sounds.music.main.play === 'function';
 
-      // Set individual volumes
+    if (soundAvailable) {
+      // Set master volume if the function exists
+      if (typeof masterVolume === 'function') {
+        masterVolume(soundSettings.masterVolume);
+      }
+
+      // Set individual volumes for music
       Object.values(sounds.music).forEach(sound => {
-        if (sound && sound.setVolume) sound.setVolume(soundSettings.musicVolume);
+        if (sound && sound.setVolume) {
+          sound.setVolume(soundSettings.musicVolume);
+        }
       });
 
       // Loop ambient sounds
-      if (sounds.environment.ambient && sounds.environment.ambient.setVolume && sounds.environment.ambient.loop) {
+      if (sounds.environment.ambient &&
+          sounds.environment.ambient.setVolume &&
+          sounds.environment.ambient.loop) {
         sounds.environment.ambient.setVolume(0.3);
         sounds.environment.ambient.loop();
       }
 
       console.log("Sound system initialized successfully");
     } else {
-      console.warn("p5.sound library not fully loaded. Sound features may be limited.");
-      // Create fallback for sound settings when p5.sound isn't available
+      console.log("Sound objects not properly loaded. Creating fallbacks...");
+      // Create fallbacks for sound objects
+      handleSoundLoadError();
       soundSettings.muted = true;
     }
   } catch (e) {
@@ -218,7 +239,12 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
 function playSkillSound(skillNumber) {
   const skillName = `skill${skillNumber}`;
   if (sounds.skills[skillName]) {
-    playSound(sounds.skills[skillName], soundSettings.sfxVolume);
+    // Use specific skill volume if available, otherwise use default sfx volume
+    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillName]
+      ? soundSettings.skillVolume[skillName]
+      : soundSettings.sfxVolume;
+
+    playSound(sounds.skills[skillName], volume);
   }
 }
 
@@ -311,6 +337,9 @@ function toggleMute() {
         // Resume background music if it was playing
         if (soundSettings.currentMusic) {
           playMusic(soundSettings.currentMusic, 0.5);
+        } else {
+          // If no music was playing, start the main theme
+          playMusic('main', 0.5);
         }
       }
     } else {
@@ -354,13 +383,26 @@ function setSFXVolume(volume) {
   soundSettings.sfxVolume = constrain(volume, 0, 1);
 }
 
+// Play ambient sounds based on game state
+function updateAmbientSounds() {
+  // Adjust wind sound based on camera height
+  if (sounds.environment.wind) {
+    const windVolume = map(cameraZoom, 300, 1000, 0.1, 0.4);
+    sounds.environment.wind.setVolume(windVolume * soundSettings.sfxVolume);
+
+    if (!sounds.environment.wind.isPlaying()) {
+      sounds.environment.wind.loop();
+    }
+  }
+}
+
 // Play random hit sound with variation
 function playRandomHitSound(x, y, isCritical = false) {
   if (isCritical) {
     playCombatSound('criticalHit', x, y, 1.0);
   } else {
     playCombatSound('hit', x, y, random(0.8, 1.0));
-    
+
     // Randomize pitch slightly
     sounds.combat.hit.rate(random(0.9, 1.1));
   }
@@ -392,55 +434,28 @@ function updateAmbientSounds() {
 // Handle sound fallbacks if files don't load
 function handleSoundLoadError() {
   try {
-    // Check if p5.sound is available
-    if (typeof p5 === 'undefined' || !p5.prototype.hasOwnProperty('Oscillator')) {
-      console.warn("p5.sound library not available. Cannot create fallback sounds.");
-      return;
-    }
-
     // Create a dummy sound object with all required methods
     const createDummySound = () => {
-      // Try to create an oscillator if available
-      try {
-        const osc = new p5.Oscillator('sine');
-
-        // Add all required methods
-        return {
-          play: () => {},
-          stop: () => {},
-          loop: () => {},
-          isPlaying: () => false,
-          setVolume: () => {},
-          rate: () => {},
-          pan: () => {},
-          fade: () => {},
-          // Flag to identify dummy sounds
-          isDummy: true
-        };
-      } catch (e) {
-        console.warn("Failed to create oscillator:", e);
-
-        // Return a simple object with dummy methods
-        return {
-          play: () => {},
-          stop: () => {},
-          loop: () => {},
-          isPlaying: () => false,
-          setVolume: () => {},
-          rate: () => {},
-          pan: () => {},
-          fade: () => {},
-          // Flag to identify dummy sounds
-          isDummy: true
-        };
-      }
+      // Return a simple object with dummy methods
+      return {
+        play: () => {},
+        stop: () => {},
+        loop: () => {},
+        isPlaying: () => false,
+        setVolume: () => {},
+        rate: () => {},
+        pan: () => {},
+        fade: () => {},
+        // Flag to identify dummy sounds
+        isDummy: true
+      };
     };
 
     // Create placeholder sounds for any that failed to load
     Object.keys(sounds).forEach(category => {
       Object.keys(sounds[category]).forEach(soundName => {
         if (!sounds[category][soundName]) {
-          console.warn(`Creating fallback for sound: ${category}.${soundName}`);
+          console.log(`Creating fallback for sound: ${category}.${soundName}`);
           sounds[category][soundName] = createDummySound();
         }
       });

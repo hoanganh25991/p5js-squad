@@ -236,16 +236,20 @@ function setup() {
 
   // Initialize sound system
   try {
-    // First try to initialize sounds
-    initSounds();
+    // Wait a short time to ensure p5.sound is fully loaded
+    setTimeout(function() {
+      try {
+        // First try to initialize sounds
+        initSounds();
 
-    // Create fallbacks for any sounds that failed to load
-    handleSoundLoadError();
+        // Add sound toggle button
+        createSoundToggleButton();
 
-    // Add sound toggle button
-    createSoundToggleButton();
-
-    console.log("Sound system setup completed");
+        console.log("Sound system setup completed");
+      } catch (e) {
+        console.warn("Error in delayed sound initialization:", e);
+      }
+    }, 500);
   } catch (e) {
     console.warn("Error initializing sounds:", e);
     // Still try to create the sound toggle button even if sound init fails
@@ -272,9 +276,12 @@ function setup() {
       }
     }
 
-    // Start background music
+    // Start main theme music when the page loads
     try {
+      // Always try to play the main theme when the page first loads
+      // The sound will only be audible if not muted
       playMusic('main');
+      console.log("Playing main theme music on page load");
     } catch (e) {
       console.warn("Error playing background music:", e);
     }
@@ -615,6 +622,15 @@ function draw() {
 
   if (gameState == "playing") {
     updateGame();
+
+    // Update ambient sounds during gameplay
+    try {
+      if (!soundSettings.muted) {
+        updateAmbientSounds();
+      }
+    } catch (e) {
+      // Silently ignore sound errors during gameplay
+    }
   }
 
   // DOM
@@ -6091,6 +6107,16 @@ function startGame() {
     if (soundToggleButton) {
       soundToggleButton.style('display', 'block');
       soundToggleButton.style('visibility', 'visible');
+    }
+
+    // Continue playing main theme music when game starts
+    try {
+      if (!soundSettings.muted && (!soundSettings.currentMusic || soundSettings.currentMusic !== 'main')) {
+        playMusic('main');
+        console.log("Playing main theme music");
+      }
+    } catch (e) {
+      console.warn("Error playing main theme music:", e);
     }
 
     return false; // Prevent default behavior
