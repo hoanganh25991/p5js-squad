@@ -56,11 +56,11 @@ let sounds = {
 // Sound settings
 let soundSettings = {
   masterVolume: 0.5,
-  musicVolume: 0.1, // Reduced background music volume
+  musicVolume: 0.05, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
   combatVolume: {
-    shoot: 0.1, // Reduced shoot sound to 1/3 of original volume
+    shoot: 0.2, // Reduced shoot sound to 1/3 of original volume
     hit: 1.0,
     explosion: 1.0,
     death: 1.0,
