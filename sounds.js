@@ -361,12 +361,32 @@ function stopAllSounds() {
   Object.values(sounds.music).forEach(sound => {
     if (sound && sound.isPlaying()) sound.stop();
   });
-  
+
   // Stop all environment sounds
   Object.values(sounds.environment).forEach(sound => {
     if (sound && sound.isPlaying()) sound.stop();
   });
-  
+
+  // Stop all combat sounds
+  Object.values(sounds.combat).forEach(sound => {
+    if (sound && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all skill sounds
+  Object.values(sounds.skills).forEach(sound => {
+    if (sound && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all UI sounds
+  Object.values(sounds.ui).forEach(sound => {
+    if (sound && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all powerup sounds
+  Object.values(sounds.powerups).forEach(sound => {
+    if (sound && sound.isPlaying()) sound.stop();
+  });
+
   soundSettings.currentMusic = null;
 }
 

@@ -3728,13 +3728,45 @@ function updateSquad() {
 
   // Auto-firing with machine gun skill check
   if (frameCount - lastFireTime > squadFireRate) {
+    // Play a single shoot sound for the whole squad
+    if (squad.length > 0) {
+      // Calculate the center position of the squad for sound positioning
+      let centerX = 0, centerY = 0;
+      for (let member of squad) {
+        centerX += member.x;
+        centerY += member.y;
+      }
+      centerX /= squad.length;
+      centerY /= squad.length;
+
+      // Calculate volume based on squad size
+      // Volume scales up to 2x when squad is at full size (MAX_SQUAD_SIZE)
+      const volumeMultiplier = 1 + Math.min(1, squad.length / MAX_SQUAD_SIZE);
+
+      // Check if machine gun skill is active
+      const isMachineGunActive = skills.skill2.active;
+
+      // Play a single sound with appropriate volume
+      if (isMachineGunActive) {
+        // Machine gun sound - faster rate, slightly higher pitch
+        playCombatSound('shoot', centerX, centerY, volumeMultiplier * 0.7);
+        sounds.combat.shoot.rate(random(1.1, 1.3));
+      } else {
+        // Normal weapon sound
+        playCombatSound('shoot', centerX, centerY, volumeMultiplier * 0.9);
+        sounds.combat.shoot.rate(random(0.9, 1.1));
+      }
+    }
+
+    // Fire weapons for each squad member
     for (let member of squad) {
-      fireWeapon(member);
-      
+      // Create projectile without playing sound
+      fireWeapon(member, false);
+
       // If machine gun skill is active, create small muzzle flash effect
       if (skills.skill2.active) {
         createHitEffect(
-          member.x, 
+          member.x,
           member.y - 10, // Position in front of squad member
           member.z + member.size / 2,
           [255, 200, 0],
@@ -3753,19 +3785,22 @@ function updateSquad() {
   }
 }
 
-function fireWeapon(squadMember) {
+function fireWeapon(squadMember, playSound = true) {
   // Check if machine gun skill is active
   const isMachineGunActive = skills.skill2.active;
 
   // Play shooting sound with variation based on weapon and machine gun status
-  if (isMachineGunActive) {
-    // Machine gun sound - faster rate, slightly higher pitch
-    playCombatSound('shoot', squadMember.x, squadMember.y, 0.7);
-    sounds.combat.shoot.rate(random(1.1, 1.3));
-  } else {
-    // Normal weapon sound
-    playCombatSound('shoot', squadMember.x, squadMember.y, 0.9);
-    sounds.combat.shoot.rate(random(0.9, 1.1));
+  // Only if playSound is true (we'll use false when we play a single sound for the whole squad)
+  if (playSound) {
+    if (isMachineGunActive) {
+      // Machine gun sound - faster rate, slightly higher pitch
+      playCombatSound('shoot', squadMember.x, squadMember.y, 0.7);
+      sounds.combat.shoot.rate(random(1.1, 1.3));
+    } else {
+      // Normal weapon sound
+      playCombatSound('shoot', squadMember.x, squadMember.y, 0.9);
+      sounds.combat.shoot.rate(random(0.9, 1.1));
+    }
   }
 
   // Use projectile from object pool if available (object reuse)
