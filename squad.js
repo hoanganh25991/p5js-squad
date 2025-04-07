@@ -129,28 +129,28 @@ let currentWeapon = WEAPON_TYPES[0];
 // Skills cooldowns and durations in frames (60 frames = 1 second)
 let skills = {
   skill1: {
-    cooldown: 600 * (1 + currentWave / 5),
+    cooldown: 0,
     lastUsed: 0,
     active: false,
     activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
     endTime: 0
   },
   skill2: {
-    cooldown: 600 * (1 + currentWave / 5),
+    cooldown: 600,
     lastUsed: 0,
     active: false,
     activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
     endTime: 0
   },
   skill3: {
-    cooldown: 600 * (1 + currentWave / 5),
+    cooldown: 600,
     lastUsed: 0,
     active: false,
     activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
     endTime: 0
   },
   skill4: {
-    cooldown: 600 * (1 + currentWave / 5),
+    cooldown: 600,
     lastUsed: 0,
     active: false,
     activeDuration: 360, // Freeze duration (6 seconds = 360 frames at 60fps)
@@ -1758,6 +1758,11 @@ function drawEffects() {
         const angleStart = effect.angleStart || 0;
         const angleEnd = effect.angleEnd || PI;
 
+        // Rotate 90 degrees around Y axis to change the orientation of the half-circle
+        push();
+        rotateY(HALF_PI); // Rotate 90 degrees around Y axis
+        rotateZ(HALF_PI); // Rotate 90 degrees around Y axis
+
         // Draw main arc
         push();
         beginShape();
@@ -1769,8 +1774,8 @@ function drawEffects() {
         endShape();
 
         // Draw radius lines to complete the half-circle
-        line(0, 0, cos(angleStart) * effect.size, 0, sin(angleStart) * effect.size);
-        line(0, 0, cos(angleEnd) * effect.size, 0, sin(angleEnd) * effect.size);
+        line(0, 0, 0, cos(angleStart) * effect.size, 0, sin(angleStart) * effect.size);
+        line(0, 0, 0, cos(angleEnd) * effect.size, 0, sin(angleEnd) * effect.size);
         pop();
 
         // Add inner arc for more visual interest
@@ -1816,6 +1821,7 @@ function drawEffects() {
             pop();
           }
         }
+        pop(); // Close the rotation push
       } else {
         // Draw full circle for regular shockwave
         // Draw main ring
