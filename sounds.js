@@ -112,9 +112,6 @@ function preloadSounds() {
 
     // Background music
     sounds.music.main = safeLoadSound('sounds/music/main_theme.mp3');
-    sounds.music.battle = safeLoadSound('sounds/music/battle.mp3');
-    sounds.music.boss = safeLoadSound('sounds/music/boss_battle.mp3');
-    sounds.music.victory = safeLoadSound('sounds/music/victory.mp3');
 
     // UI sounds
     sounds.ui.click = safeLoadSound('sounds/ui/click.mp3');
