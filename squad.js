@@ -387,8 +387,7 @@ function draw() {
   // Check memory usage each frame
   checkMemoryUsage();
 
-  // Use a very dark blue instead of pure black for better visual depth
-  background(5, 8, 15);
+  background(0);
 
   // Check for global effects
   let globalFrostEffect = effects.find(e => e.type === "globalFrost");
@@ -643,6 +642,7 @@ function draw() {
   drawResumeContainer();
   drawGameOverContainer();
   drawSoundToggleButton(); // Update the sound toggle button visibility
+  updateDirectionalPad(); // Update the directional pad visibility and state
 
   // Periodically try to clear memory
   if (frameCount % 900 === 0) { // Every 15 seconds
@@ -693,6 +693,11 @@ function cleanupMemory() {
       effects.splice(0, effects.length - MAX_EFFECTS / 2);
     }
     
+    // // Reduce power-ups if excessive
+    // if (powerUps.length > MAX_POWER_UPS) {
+    //   powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
+    // }
+    
     // Only reduce enemies as a last resort (important for gameplay)
     if (totalObjects > MAX_OBJECTS && enemies.length > 50) {
       // Remove enemies that are farthest away from the player
@@ -742,36 +747,9 @@ function updateGame() {
   cleanupMemory();
 
   updateHUD();
-
-
 }
 
 function drawGame() {
-  // Set up the camera position to ensure proper view of the game
-  // This ensures the sky is visible outside the main lane
-  camera(
-    cameraOffsetX,
-    cameraOffsetY,
-    cameraZoom,
-    cameraOffsetX,
-    cameraOffsetY,
-    0,
-    0, 1, 0
-  );
-
-  // Add ambient lighting for the entire scene
-  ambientLight(40, 40, 50); // Subtle blue-tinted ambient light
-
-  // Add a directional light for the scene
-  directionalLight(200, 200, 220, 0, 1, -1);
-
-  // Add a secondary light to illuminate enemies better
-  pointLight(150, 150, 200, cameraOffsetX, cameraOffsetY - 500, cameraZoom - 200);
-
-  // Draw the background first (behind everything else)
-  drawBackground();
-
-  // Draw the bridge and game elements
   drawMainLane();
 
   drawPowerUpLane();
@@ -787,411 +765,13 @@ function drawGame() {
   drawPowerUps();
 }
 
-// Draw a space-themed background around the bridge
-function drawBackground() {
-  push();
-
-  // Use a very far negative z-value to ensure the background is behind everything
-  // No need to disable depth testing which can cause rendering issues
-
-  // Set the camera position to ensure proper perspective
-  // This ensures the sky is visible outside the main lane
-  // We don't need to translate by cameraOffsetX/Y here since we're using the camera() function
-
-  // Enable blending for better visual effects
-  blendMode(BLEND);
-
-  // Draw a distant starfield
-  drawStarfield();
-
-  // Draw distant planets
-  drawPlanets();
-
-  // Draw a ground plane below the bridge
-  drawGround();
-
-  // Reset blend mode
-  blendMode(BLEND);
-
-  pop();
-}
-
-// Draw a starfield in the background
-function drawStarfield() {
-  push();
-
-  // Create a fixed starfield that doesn't change every frame
-  // Use frameCount to ensure we're not regenerating stars every frame
-  randomSeed(1234); // Use a fixed seed for consistent star pattern
-
-  // Move far away from the camera but not so far that it's clipped
-  // This ensures the starfield is visible but doesn't interfere with gameplay
-  translate(0, 0, -2000);
-
-  // Draw the main space background (dark blue with gradient)
-  noStroke();
-
-  // Create a more interesting gradient background
-  push();
-  rotateX(PI/2); // Rotate to be perpendicular to view
-
-  // Use a larger plane to ensure it covers the entire view
-  // This ensures the sky is visible from all camera angles
-  fill(5, 10, 30); // Dark blue base
-  plane(15000, 15000);
-
-  // Add a subtle nebula effect
-  push();
-  translate(0, 0, 1);
-  fill(30, 20, 50, 30); // Purple nebula, very transparent
-  plane(12000, 12000);
-  pop();
-
-  // Add another nebula layer
-  push();
-  translate(0, 0, 2);
-  fill(20, 40, 60, 20); // Blue nebula, very transparent
-  plane(10000, 10000);
-  pop();
-
-  pop();
-
-  // Draw stars at fixed positions
-  for (let i = 0; i < 200; i++) {
-    const x = random(-4000, 4000);
-    const y = random(-4000, 4000);
-    const z = random(-500, -100);
-    const brightness = random(150, 255);
-    const size = random(1, 4);
-
-    push();
-    translate(x, y, z);
-    fill(brightness, brightness, brightness);
-    noStroke();
-
-    // Use simple shapes for stars to improve performance
-    if (i % 3 === 0) {
-      // Twinkle effect for some stars based on frameCount
-      const twinkle = sin(frameCount * 0.05 + i) * 0.5 + 0.5;
-      fill(brightness, brightness, brightness, 150 + 100 * twinkle);
-    }
-
-    // Use point or small box for better performance
-    if (i % 5 === 0) {
-      // Larger, brighter stars
-      sphere(size * 1.5);
-    } else {
-      // Smaller stars
-      box(size);
-    }
-
-    pop();
-  }
-
-  // Reset the random seed
-  randomSeed();
-
-  pop();
-}
-
-// Draw distant planets
-function drawPlanets() {
-  push();
-
-  // Use a fixed rotation based on time for slow planet movement
-  const planetRotation = frameCount * 0.0001;
-
-  // Draw a large planet in the distance
-  push();
-  translate(-1500, -2000, -1500);
-  rotateY(planetRotation); // Slow rotation
-  noStroke();
-
-  // Planet body
-  fill(150, 100, 180); // Purple planet
-  sphere(400);
-
-  // Planet ring
-  push();
-  rotateX(PI/3);
-  rotateZ(planetRotation * 0.5); // Different rotation speed for the ring
-  fill(200, 180, 220, 150);
-  torus(600, 20, 24, 16); // Reduced detail for better performance
-  pop();
-  pop();
-
-  // Draw a second planet
-  push();
-  translate(2000, -1000, -1200);
-  rotateY(-planetRotation * 1.5); // Different rotation direction and speed
-  noStroke();
-
-  // Planet body
-  fill(80, 120, 200); // Blue planet
-  sphere(250);
-
-  // Add some atmosphere
-  push();
-  fill(120, 160, 240, 50);
-  sphere(270);
-  pop();
-  pop();
-
-  // Draw a distant moon
-  push();
-  translate(0, -3000, -1000);
-  rotateY(planetRotation * 2); // Faster rotation for the moon
-  noStroke();
-
-  // Moon body
-  fill(220, 220, 200);
-  sphere(150);
-
-  // Add some craters
-  push();
-  fill(200, 200, 180);
-  translate(0, 0, 120);
-  sphere(30);
-  pop();
-
-  push();
-  fill(190, 190, 170);
-  translate(80, 40, 90);
-  sphere(20);
-  pop();
-  pop();
-
-  pop();
-}
-
-// Draw a ground plane below the bridge
-function drawGround() {
-  push();
-
-  // Position the ground below the bridge
-  translate(0, 0, -200);
-
-  // Draw a large ground plane
-  noStroke();
-
-  // Create a grid pattern on the ground
-  push();
-  rotateX(PI/2); // Rotate to be horizontal
-
-  // Main ground - use a darker color for better contrast
-  fill(20, 25, 40); // Dark blue-gray
-  plane(8000, 8000);
-
-  // Use a more efficient way to draw grid lines
-  // Instead of drawing individual lines, use a texture-like approach
-
-  // Draw a few larger grid sections with different colors
-  const sectionSize = 1000;
-  const sections = 4;
-
-  for (let i = -sections; i <= sections; i++) {
-    for (let j = -sections; j <= sections; j++) {
-      // Skip the center section where the bridge is
-      if (i === 0 && j === 0) continue;
-
-      push();
-      translate(i * sectionSize, j * sectionSize, 0);
-
-      // Alternate colors for a checkerboard effect
-      if ((i + j) % 2 === 0) {
-        fill(25, 30, 45);
-      } else {
-        fill(20, 25, 35);
-      }
-
-      // Draw section
-      plane(sectionSize * 0.95, sectionSize * 0.95);
-      pop();
-    }
-  }
-
-  // Draw major grid lines
-  stroke(40, 60, 100, 150);
-  strokeWeight(3);
-
-  // Draw fewer, more prominent grid lines
-  const gridSize = 500;
-  const gridExtent = 3000;
-
-  for (let x = -gridExtent; x <= gridExtent; x += gridSize) {
-    line(x, -gridExtent, x, gridExtent);
-  }
-
-  for (let y = -gridExtent; y <= gridExtent; y += gridSize) {
-    line(-gridExtent, y, gridExtent, y);
-  }
-
-  // Add a subtle glow effect to the grid
-  push();
-  translate(0, 0, -1);
-  noStroke();
-  fill(40, 60, 100, 20);
-  plane(gridExtent * 2, gridExtent * 2);
-  pop();
-
-  pop();
-
-  pop();
-}
-
 function drawMainLane() {
   // Draw the bridge (main lane) - extending from bottom to top of screen
   push();
   translate(0, 0, 0);
-
-  // Use semi-transparent fill to allow seeing through the bridge slightly
-  // This helps with visibility of enemies and the sky beyond
-  fill(...BRIDGE_COLOR, 230); // Added alpha value for slight transparency
-
-  // Make the bridge thinner in the z-dimension so it doesn't block the view
-  // Increased length to ensure it spans from bottom to top of screen
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 5); // Reduced thickness from 10 to 5
-
-  // Add subtle edge highlights to better define the bridge boundaries
-  push();
-  translate(-BRIDGE_WIDTH/2, 0, 3);
-  stroke(200, 200, 220, 150);
-  strokeWeight(2);
-  line(0, -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2, 0, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2);
+  fill(...BRIDGE_COLOR);
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased bridge length to cover full screen
   pop();
-
-  push();
-  translate(BRIDGE_WIDTH/2, 0, 3);
-  stroke(200, 200, 220, 150);
-  strokeWeight(2);
-  line(0, -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2, 0, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2);
-  pop();
-
-  pop();
-
-  // Draw the defensive wall at the bottom of the bridge
-  drawDefensiveWall();
-}
-
-// Draw the defensive wall at the end of the bridge
-function drawDefensiveWall() {
-  push();
-
-  // Position the wall at the bottom of the bridge
-  const wallY = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 50; // Position wall near the bottom
-  translate(0, wallY, 0);
-
-  // Wall dimensions
-  const wallWidth = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
-  const wallHeight = 150; // Height of the wall
-  const wallThickness = 30; // Thickness of the wall
-  const gateWidth = 120; // Width of the gate in the middle
-
-  // Wall material
-  const wallColor = [80, 80, 90]; // Dark gray with slight blue tint
-
-  // Draw the left section of the wall
-  push();
-  translate(-wallWidth/4 - gateWidth/4, 0, wallHeight/2);
-  fill(...wallColor);
-  box(wallWidth/2 - gateWidth/2, wallThickness, wallHeight);
-  pop();
-
-  // Draw the right section of the wall
-  push();
-  translate(wallWidth/4 + gateWidth/4, 0, wallHeight/2);
-  fill(...wallColor);
-  box(wallWidth/2 - gateWidth/2, wallThickness, wallHeight);
-  pop();
-
-  // Draw the gate (closed)
-  push();
-  translate(0, 0, wallHeight/2);
-
-  // Gate material
-  fill(100, 80, 60); // Brown wooden gate
-
-  // Draw the gate doors (two parts)
-  push();
-  translate(-gateWidth/4, 0, 0);
-  box(gateWidth/2, wallThickness + 5, wallHeight * 0.8);
-  pop();
-
-  push();
-  translate(gateWidth/4, 0, 0);
-  box(gateWidth/2, wallThickness + 5, wallHeight * 0.8);
-  pop();
-
-  // Add gate details - metal reinforcements
-  const metalColor = [150, 150, 160];
-
-  // Horizontal metal bars
-  for (let i = -1; i <= 1; i++) {
-    push();
-    translate(0, 0, i * wallHeight * 0.25);
-    fill(...metalColor);
-    box(gateWidth + 10, wallThickness + 10, 10);
-    pop();
-  }
-
-  // Vertical metal reinforcements
-  for (let i = -1; i <= 1; i += 2) {
-    push();
-    translate(i * gateWidth/4, 0, 0);
-    fill(...metalColor);
-    box(10, wallThickness + 10, wallHeight * 0.8);
-    pop();
-  }
-
-  pop(); // End gate
-
-  // Add wall details - battlements on top
-  const battlementCount = 10;
-  const battlementWidth = wallWidth / battlementCount;
-
-  for (let i = -battlementCount/2; i < battlementCount/2; i++) {
-    // Skip battlements where the gate is
-    if (i * battlementWidth > -gateWidth/2 && i * battlementWidth < gateWidth/2) {
-      continue;
-    }
-
-    push();
-    translate(i * battlementWidth, 0, wallHeight + 15);
-    fill(...wallColor);
-    box(battlementWidth * 0.8, wallThickness, 30);
-    pop();
-  }
-
-  // Add torches on the wall for lighting
-  for (let i = -1; i <= 1; i += 2) {
-    push();
-    translate(i * (wallWidth/4 + gateWidth/4), -wallThickness/2, wallHeight * 0.7);
-
-    // Torch base
-    fill(60, 40, 20);
-    cylinder(5, 20);
-
-    // Flame effect
-    if (frameCount % 5 === 0) {
-      // Add a flickering flame effect
-      push();
-      translate(0, 0, 15);
-      fill(255, 150, 50, 200);
-      sphere(10 + random(-2, 2));
-      pop();
-
-      // Add a smaller, brighter inner flame
-      push();
-      translate(0, 0, 15);
-      fill(255, 220, 150, 180);
-      sphere(5 + random(-1, 1));
-      pop();
-    }
-
-    pop();
-  }
-
-  pop(); // End wall
 }
 
 function drawPowerUpLane() {
@@ -4081,8 +3661,7 @@ function moveSquad(deltaX, deltaY) {
   const leftBound = -BRIDGE_WIDTH / 2;
   const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
   const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-  // Set the bottom bound to be just before the defensive wall
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 100; // Leave space for the wall
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
 
   mainMember.x = constrain(mainMember.x, leftBound, rightBound);
   mainMember.y = constrain(mainMember.y, topBound, bottomBound);
@@ -4117,8 +3696,7 @@ function updateSquad() {
   const leftBound = -BRIDGE_WIDTH / 2;
   const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
   const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-  // Set the bottom bound to be just before the defensive wall
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 - 100; // Leave space for the wall
+  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
 
   // Formation - arrange other squad members around the leader
   if (squad.length > 1) {
@@ -6608,18 +6186,18 @@ function startGame() {
             audioContext.resume().then(() => {
               console.log("AudioContext resumed successfully");
               // Play music after AudioContext is resumed
-              playMusic('main', 0.5);
+              playMusic('main');
             });
           } else {
             // AudioContext already running, play music directly
-            playMusic('main', 0.5);
+            playMusic('main');
           }
         } catch (e) {
           console.warn("Error accessing AudioContext:", e);
         }
       } else {
         // No AudioContext function available, try playing music directly
-        playMusic('main', 0.5);
+        playMusic('main');
       }
 
       console.log("Sound system initialized and main theme music started");
@@ -7065,7 +6643,6 @@ function updateHUD() {
     updateStatusBoard();
     updateTechnicalBoard();
     updateSkillBar();
-    updateDirectionalPad();
   }
 }
 
