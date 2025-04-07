@@ -6929,7 +6929,7 @@ function createSkillBarElement() {
 
   // Adjust sizes based on screen size
   const skillBarHeight = isMobile ? 180 : 220;
-  const skillButtonSize = isMobile ? 40 : 80;
+  const skillButtonSize = isMobile ? 50 : 80;
   const skillFontSize = isMobile ? "1.8rem" : "2.2rem";
   const skillNameFontSize = isMobile ? "0.7rem" : "0.8rem";
   const skillMargin = isMobile ? "0 2px" : "0 5px";
@@ -6942,7 +6942,7 @@ function createSkillBarElement() {
   skillBar.style("color", "white");
   skillBar.style("padding", isMobile ? "5px" : "10px");
   skillBar.style("border-radius", "5px");
-  skillBar.style("flex", "1"); // Allow it to grow to fill available space
+  // skillBar.style("flex", "1"); // Allow it to grow to fill available space
   skillBar.style("height", skillBarHeight + "px");
   skillBar.style("display", "flex");
   skillBar.style("flex-direction", "column");
@@ -6952,7 +6952,8 @@ function createSkillBarElement() {
   skillBar.style("margin-left", isMobile ? "5px" : "10px");
   skillBar.style("margin-right", isMobile ? "5px" : "10px");
   skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)");
-  skillBar.style("max-width", "calc(100% - " + (isMobile ? "190px" : "240px") + ")"); // Ensure it doesn't overlap with d-pad
+  // skillBar.style("max-width", "calc(100% - " + (isMobile ? "190px" : "240px") + ")"); // Ensure it doesn't overlap with d-pad
+  skillBar.style("max-width", "500px"); // Ensure it doesn't overlap with d-pad
 
   // Add skill bar to the controls container
   controlsContainer.child(skillBar);
