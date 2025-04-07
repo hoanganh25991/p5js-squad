@@ -19,14 +19,14 @@ let isDragging = false;
 let prevMouseX, prevMouseY;
 
 // Game dimensions
-const BRIDGE_LENGTH = 1000;
+const BRIDGE_LENGTH = 5500 * 1;
 const BRIDGE_WIDTH = 400 * 2;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
-const CAMERA_OFFSET_Y = 0;
+const CAMERA_OFFSET_Y = 150;
 const CAMERA_OFFSET_Z = 800;
 
 // Debug mode for testing
@@ -35,13 +35,14 @@ const DEBUG_MODE = false; // Set to true for easier testing, false for normal ga
 // Configurable game parameters
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
-const BRIDGE_LENGTH_MULTIPLIER = 6; // Make bridge take full screen height
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
+
+
 const ENEMY_FIGHT_DISTANCE_THRESHOLD =
-  (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 20;
+  (BRIDGE_LENGTH * 1) / 20;
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -770,7 +771,7 @@ function drawMainLane() {
   push();
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased bridge length to cover full screen
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH * 1, 10); // Increased bridge length to cover full screen
   pop();
 }
 
@@ -783,15 +784,15 @@ function drawPowerUpLane() {
   fill(...POWER_UP_LANE_COLOR);
   
   // Draw the base power-up lane
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10);
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * 1, 10);
   
   // Add lane markers/decorations for better visual guidance
   const laneMarkers = 20; // Number of lane markers
-  const stepSize = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / laneMarkers;
+  const stepSize = (BRIDGE_LENGTH * 1) / laneMarkers;
   
   // Draw lane markers
   for (let i = 0; i < laneMarkers; i++) {
-    const yPos = -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2 + i * stepSize + stepSize/2;
+    const yPos = -BRIDGE_LENGTH * 1/2 + i * stepSize + stepSize/2;
     push();
     translate(0, yPos, 5.1); // Position slightly above the lane
     fill(180, 220, 255, 150); // Lighter blue with transparency
@@ -803,7 +804,7 @@ function drawPowerUpLane() {
   push();
   translate(-POWER_UP_LANE_WIDTH/2, 0, 5.1);
   fill(200, 230, 255, 200); // Bright edge color
-  box(2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 1);
+  box(2, BRIDGE_LENGTH * 1, 1);
   pop();
   
   pop();
@@ -3496,7 +3497,7 @@ function drawPowerUps() {
   push();
   translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, -1); // Position just behind the power-up lane
   fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 8); // Slightly narrower than the lane
+  box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * 1, 8); // Slightly narrower than the lane
   pop();
   
   // Draw power-ups with proper depth testing
@@ -3660,8 +3661,8 @@ function moveSquad(deltaX, deltaY) {
   // Apply constraints immediately to prevent going out of bounds
   const leftBound = -BRIDGE_WIDTH / 2;
   const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
-  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+  const topBound = (-BRIDGE_LENGTH * 1) / 2;
+  const bottomBound = (BRIDGE_LENGTH * 1) / 2;
 
   mainMember.x = constrain(mainMember.x, leftBound, rightBound);
   mainMember.y = constrain(mainMember.y, topBound, bottomBound);
@@ -3695,8 +3696,8 @@ function updateSquad() {
   // Define boundary constraints for the squad
   const leftBound = -BRIDGE_WIDTH / 2;
   const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
-  const topBound = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2;
+  const topBound = (-BRIDGE_LENGTH * 1) / 2;
+  const bottomBound = (BRIDGE_LENGTH * 1) / 2;
 
   // Formation - arrange other squad members around the leader
   if (squad.length > 1) {
@@ -3910,7 +3911,7 @@ function updateProjectiles() {
     proj.y -= proj.speed; // Move upward (toward enemies)
 
     // Remove projectiles that go off-screen (adjusted for longer bridge)
-    if (proj.y < (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2) {
+    if (proj.y < (-BRIDGE_LENGTH * 1) / 2) {
       // Add to object pool for reuse instead of garbage collection
       if (projectilePool.length < 50) { // Limit pool size
         projectilePool.push(proj);
@@ -3956,7 +3957,7 @@ function spawnEnemyRow() {
 
     enemies.push({
       x: x,
-      y: (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100, // Near the top of extended bridge
+      y: (-BRIDGE_LENGTH * 1) / 2 + 100, // Near the top of extended bridge
       z: 0,
       size: STANDARD_ENEMY_SIZE,
       type: "standard", // Rows are always standard enemies
@@ -4015,7 +4016,7 @@ function spawnSingleEnemy() {
 
   enemies.push({
     x: x,
-    y: (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100, // Near the top of extended bridge
+    y: (-BRIDGE_LENGTH * 1) / 2 + 100, // Near the top of extended bridge
     z: 0,
     size: size,
     type: type,
@@ -4134,7 +4135,7 @@ function spawnPowerUps() {
       const x = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2; // Center of power-up lane
   
       // Start position at the far end of the bridge (where enemies spawn)
-      let y = (-BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + 100; // Start at the very beginning of bridge
+      let y = (-BRIDGE_LENGTH * 1) / 2 + 100; // Start at the very beginning of bridge
   
       // Use object from pool if available to reduce memory allocations
       powerUp = {
@@ -4161,7 +4162,7 @@ function spawnPowerUps() {
 
 function updatePowerUps() {
   // Move power-ups down the lane
-  const bottomBound = (BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER) / 2 + POWER_UP_SIZE;
+  const bottomBound = (BRIDGE_LENGTH * 1) / 2 + POWER_UP_SIZE;
   
   for (let i = powerUps.length - 1; i >= 0; i--) {
     let powerUp = powerUps[i];
