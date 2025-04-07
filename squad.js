@@ -643,7 +643,6 @@ function draw() {
   drawResumeContainer();
   drawGameOverContainer();
   drawSoundToggleButton(); // Update the sound toggle button visibility
-  updateDirectionalPad(); // Update the directional pad visibility and state
 
   // Periodically try to clear memory
   if (frameCount % 900 === 0) { // Every 15 seconds
@@ -694,11 +693,6 @@ function cleanupMemory() {
       effects.splice(0, effects.length - MAX_EFFECTS / 2);
     }
     
-    // // Reduce power-ups if excessive
-    // if (powerUps.length > MAX_POWER_UPS) {
-    //   powerUps.splice(0, powerUps.length - MAX_POWER_UPS);
-    // }
-    
     // Only reduce enemies as a last resort (important for gameplay)
     if (totalObjects > MAX_OBJECTS && enemies.length > 50) {
       // Remove enemies that are farthest away from the player
@@ -748,6 +742,8 @@ function updateGame() {
   cleanupMemory();
 
   updateHUD();
+
+
 }
 
 function drawGame() {
@@ -7003,6 +6999,7 @@ function updateHUD() {
     updateStatusBoard();
     updateTechnicalBoard();
     updateSkillBar();
+    updateDirectionalPad();
   }
 }
 
