@@ -698,7 +698,7 @@ function draw() {
 // Memory leak tracking and prevention
 let lastMemoryCleanup = 0;
 const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
-const MAX_OBJECTS = 500; // Maximum total number of game objects
+const MAX_OBJECTS = 1_000; // Maximum total number of game objects
 
 // Memory cleanup helper function
 function cleanupMemory() {
