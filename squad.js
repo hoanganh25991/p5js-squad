@@ -10,6 +10,14 @@ let startTime = 0;
 let totalEnemiesKilled = 0; // Total enemies killed across all waves
 let waveEnemiesKilled = 0; // Enemies killed in the current wave
 
+// Performance settings
+let isMobileDevice = false;
+let performanceMode = "auto"; // auto, low, medium, high
+let currentPerformanceLevel = "high"; // Will be set based on device detection
+let fpsHistory = [];
+let lastPerformanceCheck = 0;
+let performanceCheckInterval = 300; // Check every 5 seconds (300 frames at 60fps)
+
 // Font
 let gameFont;
 
@@ -72,8 +80,8 @@ const WEAPON_COLORS = {
 };
 
 // Squad properties
-let SQUAD_SIZE = 30;
-let MAX_SQUAD_SIZE = 9; // Maximum number of squad members
+const SQUAD_SIZE = 30;
+const MAX_SQUAD_SIZE = 9; // Maximum number of squad members
 let squad = [];
 let squadSpeed = 10;
 let squadFireRate = 30; // frames between shots (faster firing rate)
@@ -207,8 +215,83 @@ function preload() {
 let lastMemoryWarning = 0;
 let memoryWarningShown = false;
 
+// Detect if the device is mobile
+function detectMobileDevice() {
+  // Check if the device has touch capability
+  const hasTouchScreen = (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    navigator.msMaxTouchPoints > 0
+  );
+
+  // Check user agent for mobile devices
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(userAgent);
+
+  // Check screen size (typical mobile width is less than 768px)
+  const hasSmallScreen = window.innerWidth < 768;
+
+  // Consider it a mobile device if it has a touch screen and either has a mobile user agent or small screen
+  return hasTouchScreen && (isMobile || hasSmallScreen);
+}
+
+// Set performance level based on device and FPS
+function setPerformanceLevel() {
+  if (performanceMode !== "auto") {
+    currentPerformanceLevel = performanceMode;
+    return;
+  }
+
+  // If we're on a mobile device, start with medium performance
+  if (isMobileDevice) {
+    currentPerformanceLevel = "medium";
+
+    // If we have FPS history and it's consistently low, drop to low performance
+    if (fpsHistory.length >= 10) {
+      const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+      if (avgFPS < 30) {
+        currentPerformanceLevel = "low";
+      } else if (avgFPS > 55) {
+        currentPerformanceLevel = "medium"; // Stay at medium even with good FPS on mobile
+      }
+    }
+  } else {
+    // On desktop, start with high performance
+    currentPerformanceLevel = "high";
+
+    // If we have FPS history and it's consistently low, adjust accordingly
+    if (fpsHistory.length >= 10) {
+      const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+      if (avgFPS < 30) {
+        currentPerformanceLevel = "medium";
+      } else if (avgFPS < 20) {
+        currentPerformanceLevel = "low";
+      }
+    }
+  }
+
+  console.log("Performance level set to:", currentPerformanceLevel);
+}
+
+// Get multipliers for effect counts based on performance level
+function getEffectMultiplier() {
+  switch (currentPerformanceLevel) {
+    case "low": return 0.3;  // 30% of normal effects
+    case "medium": return 0.6;  // 60% of normal effects
+    case "high": return 1.0;  // 100% of normal effects
+    default: return 0.6;  // Default to medium
+  }
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
+
+  // Detect if we're on a mobile device
+  isMobileDevice = detectMobileDevice();
+  console.log("Mobile device detected:", isMobileDevice);
+
+  // Set initial performance level
+  setPerformanceLevel();
 
   // Set the font for all text
   textFont(gameFont);
@@ -217,12 +300,14 @@ function setup() {
   squad.push(squadLeader);
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
-  // perspective(PI / 3.5, width / height, 0.1, 15000);
   perspective(PI / 4, width / height, 0.1, 5000);
 
-  // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
-  // This can improve performance in some cases
-  setAttributes("antialias", true);
+  // Configure WebGL settings based on performance level
+  if (currentPerformanceLevel === "low") {
+    setAttributes("antialias", false);
+  } else {
+    setAttributes("antialias", true);
+  }
 
   // Disable texture mipmapping to save memory
   textureMode(NORMAL);
@@ -230,8 +315,12 @@ function setup() {
   // Set lower precision to improve performance
   setAttributes("perPixelLighting", false);
 
+  // Disable depth sorting for better performance
+  if (isMobileDevice || currentPerformanceLevel === "low") {
+    setAttributes("depth", false);
+  }
+
   // Auto-start the game (no need to press enter)
-  // resetGame();
   gameStartTime = frameCount;
 
   createUiUsingDomElements();
@@ -257,6 +346,9 @@ function setup() {
   if (typeof soundSettings !== "undefined") {
     soundSettings.muted = true;
   }
+
+  // Create performance settings UI
+  createPerformanceSettingsUI();
 }
 
 function createUiUsingDomElements() {
@@ -410,9 +502,115 @@ function checkMemoryUsage() {
   }
 }
 
+// Create UI for performance settings
+function createPerformanceSettingsUI() {
+  // Create a container for performance settings
+  const perfContainer = createDiv("");
+  perfContainer.id("performance-settings");
+  perfContainer.position(width - 180, 70); // Position below sound toggle
+  perfContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
+  perfContainer.style("color", "white");
+  perfContainer.style("padding", "10px");
+  perfContainer.style("border-radius", "5px");
+  perfContainer.style("font-family", "monospace");
+  perfContainer.style("font-size", "12px");
+  perfContainer.style("z-index", "2000");
+  perfContainer.style("display", "none"); // Hidden by default
+
+  // Add a title
+  const title = createDiv("Performance");
+  title.style("font-weight", "bold");
+  title.style("margin-bottom", "5px");
+  perfContainer.child(title);
+
+  // Create radio buttons for performance modes
+  const modes = ["auto", "low", "medium", "high"];
+
+  for (let mode of modes) {
+    const label = createDiv("");
+    label.style("display", "flex");
+    label.style("align-items", "center");
+    label.style("margin", "3px 0");
+
+    const radio = createRadio();
+    radio.attribute("type", "radio");
+    radio.attribute("name", "perfMode");
+    radio.attribute("value", mode);
+    radio.style("margin-right", "5px");
+    if (mode === performanceMode) {
+      radio.attribute("checked", true);
+    }
+
+    radio.changed(() => {
+      performanceMode = mode;
+      setPerformanceLevel();
+      console.log("Performance mode changed to:", mode);
+    });
+
+    label.child(radio);
+    label.html(label.html() + mode.charAt(0).toUpperCase() + mode.slice(1));
+
+    perfContainer.child(label);
+  }
+
+  // Add current FPS display
+  const fpsDisplay = createDiv("FPS: --");
+  fpsDisplay.id("fps-display");
+  perfContainer.child(fpsDisplay);
+
+  // Add toggle button for settings
+  const toggleBtn = createButton("⚙️");
+  toggleBtn.position(width - 70, 20); // Position to the left of sound toggle
+  toggleBtn.style("background-color", "rgba(0, 0, 0, 0.7)");
+  toggleBtn.style("color", "white");
+  toggleBtn.style("border", "none");
+  toggleBtn.style("border-radius", "50%");
+  toggleBtn.style("width", "40px");
+  toggleBtn.style("height", "40px");
+  toggleBtn.style("font-size", "20px");
+  toggleBtn.style("cursor", "pointer");
+  toggleBtn.style("z-index", "2000");
+  toggleBtn.style("position", "fixed");
+
+  toggleBtn.mousePressed(() => {
+    const isVisible = perfContainer.style("display") !== "none";
+    perfContainer.style("display", isVisible ? "none" : "block");
+  });
+}
+
+// Update FPS display and track history
+function updatePerformanceMetrics() {
+  // Calculate current FPS
+  const currentFPS = frameRate();
+
+  // Update FPS history
+  fpsHistory.push(currentFPS);
+  if (fpsHistory.length > 60) { // Keep last 60 frames (1 second at 60fps)
+    fpsHistory.shift();
+  }
+
+  // Update FPS display if it exists
+  const fpsDisplay = select("#fps-display");
+  if (fpsDisplay) {
+    fpsDisplay.html(`FPS: ${Math.round(currentFPS)}`);
+  }
+
+  // Check if we need to adjust performance level
+  if (frameCount - lastPerformanceCheck > performanceCheckInterval) {
+    setPerformanceLevel();
+    lastPerformanceCheck = frameCount;
+  }
+}
+
 function draw() {
   // Check memory usage each frame
   checkMemoryUsage();
+
+  // Update performance metrics
+  updatePerformanceMetrics();
+
+  // Limit effects based on performance level
+  limitEffects();
 
   background(0);
 
@@ -699,6 +897,51 @@ function draw() {
 let lastMemoryCleanup = 0;
 const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
 const MAX_OBJECTS = 1_000; // Maximum total number of game objects
+const MAX_PROJECTILES = 300; // Maximum projectiles
+const MAX_EFFECTS = 500; // Maximum visual effects
+
+// Function to limit effects based on performance level
+function limitEffects() {
+  // Get maximum effects based on performance level
+  const maxEffects = isMobileDevice ?
+    (currentPerformanceLevel === "low" ? 100 :
+     currentPerformanceLevel === "medium" ? 200 : 300) :
+    (currentPerformanceLevel === "low" ? 200 :
+     currentPerformanceLevel === "medium" ? 350 : MAX_EFFECTS);
+
+  // If we have too many effects, remove the oldest ones
+  if (effects.length > maxEffects) {
+    // Sort effects by priority (keep important ones)
+    const priorityEffects = effects.filter(e =>
+      e.forceRenderDetail ||
+      e.type === "atomicBomb" ||
+      e.type === "atomicExplosion" ||
+      e.type === "atomicFlash" ||
+      e.type === "shockwave" ||
+      e.type === "areaBarrier" ||
+      e.type === "globalFrost"
+    );
+
+    const normalEffects = effects.filter(e =>
+      !e.forceRenderDetail &&
+      e.type !== "atomicBomb" &&
+      e.type !== "atomicExplosion" &&
+      e.type !== "atomicFlash" &&
+      e.type !== "shockwave" &&
+      e.type !== "areaBarrier" &&
+      e.type !== "globalFrost"
+    );
+
+    // Keep all priority effects and as many normal effects as we can
+    const normalEffectsToKeep = Math.max(0, maxEffects - priorityEffects.length);
+
+    // Keep the newest normal effects (they're more relevant)
+    const newNormalEffects = normalEffects.slice(-normalEffectsToKeep);
+
+    // Update the effects array
+    effects = [...priorityEffects, ...newNormalEffects];
+  }
+}
 
 // Memory cleanup helper function
 function cleanupMemory() {
@@ -968,8 +1211,15 @@ function drawSquad() {
   // Draw squad members
   for (let i = 0; i < squad.length; i++) {
     const member = squad[i];
+
+    // Check if the squad member is in the power-up lane
+    const isInPowerUpLane = member.x > BRIDGE_WIDTH / 2;
+
+    // Adjust z-position to be higher when in power-up lane
+    const zOffset = isInPowerUpLane ? 60 : 40;
+
     push();
-    translate(member.x, member.y, member.z + 40);
+    translate(member.x, member.y, member.z + zOffset);
 
     // Rotate the member to stand upright
     rotateX(-HALF_PI); // Rotate 90 degrees to make the box stand upright
@@ -1348,14 +1598,55 @@ function drawProjectiles() {
 }
 
 function drawEffects() {
+  // Get performance-based multipliers
+  const effectMultiplier = getEffectMultiplier();
+
+  // Determine if we should use high-detail effects
+  const useHighDetail = currentPerformanceLevel === "high";
+  const useMediumDetail = currentPerformanceLevel === "medium";
+  const useLowDetail = currentPerformanceLevel === "low";
+
+  // Limit the number of effects to render based on performance level
+  const maxEffectsToRender = isMobileDevice ?
+    (useLowDetail ? 50 : useMediumDetail ? 100 : 150) :
+    (useLowDetail ? 100 : useMediumDetail ? 200 : 300);
+
+  // Sort effects by priority (certain effect types are more important)
+  const priorityEffects = effects.filter(e =>
+    e.forceRenderDetail ||
+    e.type === "atomicBomb" ||
+    e.type === "atomicExplosion" ||
+    e.type === "atomicFlash" ||
+    e.type === "shockwave" ||
+    e.type === "areaBarrier" ||
+    e.type === "globalFrost"
+  );
+
+  const normalEffects = effects.filter(e =>
+    !e.forceRenderDetail &&
+    e.type !== "atomicBomb" &&
+    e.type !== "atomicExplosion" &&
+    e.type !== "atomicFlash" &&
+    e.type !== "shockwave" &&
+    e.type !== "areaBarrier" &&
+    e.type !== "globalFrost"
+  );
+
+  // Combine effects, prioritizing important ones
+  const effectsToRender = [
+    ...priorityEffects,
+    ...normalEffects.slice(0, Math.max(0, maxEffectsToRender - priorityEffects.length))
+  ];
+
   // Draw visual effects - optimized with distance culling
-  for (let effect of effects) {
+  for (let effect of effectsToRender) {
     // Skip rendering effects too far from the player (distance culling)
     // Find closest squad member to use as reference
     if (squad.length > 0) {
       const mainMember = squad[0];
       const dx = effect.x - mainMember.x;
       const dy = effect.y - mainMember.y;
+      const distSquared = dx * dx + dy * dy;
 
       // Skip distance culling for effects that should always render in detail
       const forceDetailedRendering =
@@ -1364,10 +1655,21 @@ function drawEffects() {
         effect.type === "atomicExplosion" ||
         effect.type === "atomicFlash" ||
         effect.type === "shockwave" ||
-        effect.type === "areaBarrier";
+        effect.type === "areaBarrier" ||
+        effect.type === "globalFrost";
+
+      // On mobile/low performance, use more aggressive culling
+      const cullingDistanceSquared = isMobileDevice ?
+        (useLowDetail ? 300*300 : 400*400) :
+        500*500;
 
       // Fast distance check - if effect is far away AND not forced to render in detail, skip detailed rendering
-      if (!forceDetailedRendering && dx * dx + dy * dy > 500 * 500) {
+      if (!forceDetailedRendering && distSquared > cullingDistanceSquared) {
+        // On low performance, skip some distant effects entirely
+        if (useLowDetail && random() > 0.5 && !forceDetailedRendering) {
+          continue;
+        }
+
         // Draw simplified version for distant effects
         push();
         translate(effect.x, effect.y, effect.z);
@@ -1385,10 +1687,21 @@ function drawEffects() {
     // Default color if effect.color is undefined
     const effectColor = effect.color || [255, 255, 255];
 
-    // Apply LOD (Level of Detail) based on effect life
-    // Less particles as effect fades away
-    const detailLevel = effect.life > EFFECT_DURATION / 2 ? 1.0 : 0.5;
-    const particleCount = Math.ceil(detailLevel * 10);
+    // Apply LOD (Level of Detail) based on effect life and performance level
+    // Less particles as effect fades away and on lower performance settings
+    const lifeFactor = effect.life > EFFECT_DURATION / 2 ? 1.0 : 0.5;
+
+    // Scale particle count based on performance level
+    let performanceFactor = 1.0;
+    if (isMobileDevice) {
+      performanceFactor = useLowDetail ? 0.3 : useMediumDetail ? 0.6 : 0.8;
+    } else {
+      performanceFactor = useLowDetail ? 0.5 : useMediumDetail ? 0.8 : 1.0;
+    }
+
+    // Calculate final particle count
+    const baseParticleCount = 10;
+    const particleCount = Math.ceil(lifeFactor * performanceFactor * baseParticleCount);
 
     if (effect.type === "explosion") {
       // Explosion effect
@@ -1415,7 +1728,7 @@ function drawEffects() {
       // Hit effect - simplified
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
       // Reduce particle count
-      const hitParticles = Math.min(8, Math.ceil(detailLevel * 8));
+      const hitParticles = Math.min(8, Math.ceil(lifeFactor * performanceFactor * 8));
       for (let i = 0; i < hitParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(-10, 10));
@@ -1423,7 +1736,7 @@ function drawEffects() {
         pop();
       }
       // Skip secondary particles when low detail
-      if (detailLevel > 0.7) {
+      if (lifeFactor * performanceFactor > 0.7) {
         for (let i = 0; i < 2; i++) {
           push();
           translate(random(-15, 15), random(-15, 15), random(-15, 15));
@@ -1435,7 +1748,7 @@ function drawEffects() {
       // Fire effect - simplified
       fill(255, 100 + random(155), 0, 255 * (effect.life / EFFECT_DURATION));
       // Reduce particle count
-      const fireParticles = Math.ceil(detailLevel * 5);
+      const fireParticles = Math.ceil(lifeFactor * performanceFactor * 5);
       for (let i = 0; i < fireParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(0, 20));
@@ -1443,7 +1756,7 @@ function drawEffects() {
         pop();
       }
       // Fewer secondary particles
-      if (detailLevel > 0.6) {
+      if (lifeFactor * performanceFactor > 0.6) {
         for (let i = 0; i < 2; i++) {
           push();
           translate(random(-10, 10), random(-10, 10), random(0, 20));
@@ -1455,7 +1768,7 @@ function drawEffects() {
       // Enhanced Ice effect - simplified
       fill(200, 200, 255, 255 * (effect.life / EFFECT_DURATION));
       // Reduce particle count
-      const iceParticles = Math.ceil(detailLevel * 10);
+      const iceParticles = Math.ceil(lifeFactor * performanceFactor * 10);
       for (let i = 0; i < iceParticles; i++) {
         push();
         translate(random(-15, 15), random(-15, 15), random(-15, 15));
@@ -1463,7 +1776,7 @@ function drawEffects() {
         pop();
       }
       // Skip secondary particles when low detail
-      if (detailLevel > 0.7) {
+      if (lifeFactor * performanceFactor > 0.7) {
         for (let i = 0; i < 3; i++) {
           push();
           translate(random(-20, 20), random(-20, 20), random(-20, 20));
@@ -1476,7 +1789,7 @@ function drawEffects() {
       stroke(255, 255, 0, 255 * (effect.life / EFFECT_DURATION));
       strokeWeight(3);
       // Reduce lightning bolts
-      const thunderLines = Math.ceil(detailLevel * 3);
+      const thunderLines = Math.ceil(lifeFactor * performanceFactor * 3);
       for (let i = 0; i < thunderLines; i++) {
         push();
         translate(0, -50, 0); // Start from above
@@ -1485,7 +1798,7 @@ function drawEffects() {
           y = 0,
           z = 0;
         // Simplified lightning path
-        const points = Math.max(5, Math.ceil(detailLevel * 10));
+        const points = Math.max(5, Math.ceil(lifeFactor * performanceFactor * 10));
         for (let j = 0; j < points; j++) {
           vertex(x, y, z);
           x += random(-10, 10);
@@ -1500,7 +1813,7 @@ function drawEffects() {
       rotateZ(frameCount * 0.1);
       fill(150, 0, 255, 200 * (effect.life / EFFECT_DURATION));
       // Reduce torus count
-      const torusCount = Math.ceil(detailLevel * 5);
+      const torusCount = Math.ceil(lifeFactor * performanceFactor * 5);
       for (let i = 0; i < torusCount; i++) {
         push();
         rotateX(frameCount * 0.05);
@@ -1512,7 +1825,7 @@ function drawEffects() {
       // Plasma effect - simplified
       fill(255, 0, 255, 200 * (effect.life / EFFECT_DURATION));
       // Reduce particle count
-      const plasmaParticles = Math.ceil(detailLevel * 4);
+      const plasmaParticles = Math.ceil(lifeFactor * performanceFactor * 4);
       for (let i = 0; i < plasmaParticles; i++) {
         push();
         translate(random(-20, 20), random(-20, 20), random(0, 10));
@@ -4385,7 +4698,7 @@ function getWeaponDamage(weapon) {
 }
 
 // Maximum number of projectiles to maintain performance
-const MAX_PROJECTILES = 200;
+// const MAX_PROJECTILES = 200;
 let projectilePool = [];
 
 function updateProjectiles() {
@@ -4510,8 +4823,8 @@ function spawnSingleEnemy() {
   // Scale health with wave number for increasing difficulty but keep it easier
   health = Math.floor(health * (1 + currentWave * 0.05 * 10));
 
-  // Enemies mostly spawn in the main lane, occasionally in power-up lane
-  const spawnInPowerUpLane = random() < 0.1; // Less likely to spawn in power-up lane
+  // Only special enemies (elites and bosses) can spawn in power-up lane
+  const spawnInPowerUpLane = type !== "standard" && random() < 0.1; // Only elite/boss enemies in power-up lane
   const x = spawnInPowerUpLane
     ? random(BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH)
     : random(-BRIDGE_WIDTH / 2, BRIDGE_WIDTH / 2);
@@ -5343,10 +5656,22 @@ function activateSkill(skillNumber) {
       }
 
       // 3. Create ice crystal formations across the entire bridge
-      const crystalCount = 40 + aoeBoost * 2; // Many more crystals
+      // Adjust crystal count based on performance level
+      let crystalCount = 40 + aoeBoost * 2; // Base crystal count
 
-      // Create a grid of ice crystals
-      const gridSize = 5; // 5x5 grid
+      // Reduce crystal count on mobile or low performance
+      if (isMobileDevice) {
+        crystalCount = currentPerformanceLevel === "low" ? 15 :
+                      currentPerformanceLevel === "medium" ? 25 : 30;
+      } else {
+        crystalCount = currentPerformanceLevel === "low" ? 20 :
+                      currentPerformanceLevel === "medium" ? 30 : 40 + aoeBoost * 2;
+      }
+
+      // Create a grid of ice crystals - adjust grid size based on performance
+      const gridSize = isMobileDevice ?
+                      (currentPerformanceLevel === "low" ? 3 : 4) :
+                      (currentPerformanceLevel === "low" ? 4 : 5); // Smaller grid on mobile/low performance
       const gridSpacing = 300; // 300 units apart
 
       for (let gridX = -gridSize / 2; gridX <= gridSize / 2; gridX++) {
@@ -5357,8 +5682,12 @@ function activateSkill(skillNumber) {
 
           // Stagger the crystal formation for dramatic effect
           setTimeout(() => {
-            // Create a cluster of crystals at each grid point
-            for (let j = 0; j < 3; j++) {
+            // Create a cluster of crystals at each grid point - fewer on mobile/low performance
+            const clusterSize = isMobileDevice ?
+                              (currentPerformanceLevel === "low" ? 1 : 2) :
+                              (currentPerformanceLevel === "low" ? 2 : 3);
+
+            for (let j = 0; j < clusterSize; j++) {
               const clusterX = x + random(-30, 30);
               const clusterY = y + random(-30, 30);
 
@@ -5371,7 +5700,7 @@ function activateSkill(skillNumber) {
                 life: freezeDuration - random(0, 60),
                 color: [200, 240, 255, 200],
                 growthTime: random(10, 30), // Frames to reach full size
-                forceRenderDetail: true,
+                forceRenderDetail: currentPerformanceLevel === "high", // Only force render on high performance
               });
             }
           }, (Math.abs(gridX) + Math.abs(gridY)) * 100); // Stagger based on distance from center
@@ -5419,8 +5748,14 @@ function activateSkill(skillNumber) {
           // Create ice effect on enemy
           createIceEffect(enemy.x, enemy.y, enemy.z);
 
-          // Add ice crystals around the enemy that follow it
-          for (let j = 0; j < 5; j++) {
+          // Add ice crystals around the enemy that follow it - fewer on mobile/low performance
+          const enemyCrystalCount = isMobileDevice ?
+                                  (currentPerformanceLevel === "low" ? 1 :
+                                   currentPerformanceLevel === "medium" ? 2 : 3) :
+                                  (currentPerformanceLevel === "low" ? 2 :
+                                   currentPerformanceLevel === "medium" ? 3 : 5);
+
+          for (let j = 0; j < enemyCrystalCount; j++) {
             const offsetX = random(-20, 20);
             const offsetY = random(-20, 20);
             const offsetZ = random(0, 30);
@@ -6501,9 +6836,9 @@ let lastTechUpdateTime = 0;
 const TECH_UPDATE_INTERVAL = 15; // Update tech stats less frequently (every 15 frames)
 
 function createTechnicalBoardElements() {
-  if (!DEBUG_MODE) {
-    return;
-  }
+  // if (!DEBUG_MODE) {
+  //   return;
+  // }
   // Create technical board element
   techBoard = createDiv("");
   techBoard.id("tech-board");
@@ -6519,7 +6854,7 @@ function createTechnicalBoardElements() {
 }
 
 // FPS smoothing for more stable display
-let fpsHistory = [];
+// fpsHistory is already declared at the top of the file
 const FPS_HISTORY_LENGTH = 10;
 
 // Track actual memory usage over time
@@ -6528,9 +6863,9 @@ const MAX_MEMORY_SAMPLES = 5;
 let peakMemoryUsage = 0;
 
 function updateTechnicalBoard() {
-  if (!DEBUG_MODE) {
-    return;
-  }
+  // if (!DEBUG_MODE) {
+  //   return;
+  // }
 
   // Only update DOM elements every few frames for better performance
   if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
@@ -7619,7 +7954,7 @@ function resetGame() {
       y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Position extremely far from the wall to be clearly visible at the bottom of the screen
       z: 0,
       size: SQUAD_SIZE,
-      health: 100,
+      health: SQUAD_HEALTH,
       weapon: "blaster",
     },
   ];
@@ -7812,7 +8147,7 @@ function getEnemyMaxHealth(enemyType) {
 }
 
 // Visual effects functions with object pooling optimization
-let MAX_EFFECTS = 100; // Maximum number of simultaneous effects
+// const MAX_EFFECTS = 200; // Maximum number of simultaneous effects
 
 // Create the effect or reuse an existing one from the pool
 function createEffect(type, x, y, z, color, size) {
