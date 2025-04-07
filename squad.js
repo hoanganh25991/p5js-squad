@@ -6924,22 +6924,35 @@ function createGameOverElement() {
 }
 
 function createSkillBarElement() {
+  // Determine if we're on a mobile device
+  const isMobile = windowWidth < 768;
+
+  // Adjust sizes based on screen size
+  const skillBarHeight = isMobile ? 180 : 220;
+  const skillButtonSize = isMobile ? 40 : 80;
+  const skillFontSize = isMobile ? "1.8rem" : "2.2rem";
+  const skillNameFontSize = isMobile ? "0.7rem" : "0.8rem";
+  const skillMargin = isMobile ? "0 2px" : "0 5px";
+  const rowSpacing = isMobile ? "10px" : "20px";
+
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
   skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
   skillBar.style("color", "white");
-  skillBar.style("padding", "10px");
+  skillBar.style("padding", isMobile ? "5px" : "10px");
   skillBar.style("border-radius", "5px");
-  skillBar.style("flex", "0 0 auto"); // Don't grow, don't shrink, auto basis
-  skillBar.style("height", "220px"); // Match height with d-pad
+  skillBar.style("flex", "1"); // Allow it to grow to fill available space
+  skillBar.style("height", skillBarHeight + "px");
   skillBar.style("display", "flex");
-  skillBar.style("flex-direction", "column"); // Stack rows vertically
-  skillBar.style("justify-content", "center"); // Center vertically
+  skillBar.style("flex-direction", "column");
+  skillBar.style("justify-content", "center");
   skillBar.style("font-family", "monospace");
   skillBar.style("box-sizing", "border-box");
-  skillBar.style("margin-left", "10px"); // Add margin on left side
-  skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)"); // Add border for visibility
+  skillBar.style("margin-left", isMobile ? "5px" : "10px");
+  skillBar.style("margin-right", isMobile ? "5px" : "10px");
+  skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)");
+  skillBar.style("max-width", "calc(100% - " + (isMobile ? "190px" : "240px") + ")"); // Ensure it doesn't overlap with d-pad
 
   // Add skill bar to the controls container
   controlsContainer.child(skillBar);
@@ -6948,11 +6961,13 @@ function createSkillBarElement() {
   const topRow = createDiv("");
   topRow.style("display", "flex");
   topRow.style("justify-content", "space-around");
-  topRow.style("margin-bottom", "20px");
+  topRow.style("margin-bottom", rowSpacing);
+  topRow.style("width", "100%");
 
   const bottomRow = createDiv("");
   bottomRow.style("display", "flex");
   bottomRow.style("justify-content", "space-around");
+  bottomRow.style("width", "100%");
 
   // Add rows to skill bar
   skillBar.child(topRow);
@@ -6963,26 +6978,29 @@ function createSkillBarElement() {
     const skillDiv = createDiv("");
     skillDiv.id(`skill${i}`);
     skillDiv.style("text-align", "center");
-    skillDiv.style("margin", "0 5px"); // More margin between buttons
+    skillDiv.style("margin", skillMargin);
     skillDiv.style("position", "relative");
-    skillDiv.style("height", "80px"); // Slightly shorter for two rows
-    skillDiv.style("width", "80px"); // Wider for better touch targets
+    skillDiv.style("height", skillButtonSize + "px");
+    skillDiv.style("width", skillButtonSize + "px");
     skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
-    skillDiv.style("border-radius", "10px"); // Maintain radius
-    skillDiv.style("cursor", "pointer"); // Add pointer cursor to indicate clickability
-    skillDiv.style("transition", "transform 0.1s, background-color 0.2s"); // Add transition for visual feedback
-    skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)"); // Add shadow for depth
-    skillDiv.style("user-select", "none"); // Prevent text selection
-    skillDiv.style("-webkit-tap-highlight-color", "transparent"); // Remove tap highlight on mobile
+    skillDiv.style("border-radius", "10px");
+    skillDiv.style("cursor", "pointer");
+    skillDiv.style("transition", "transform 0.1s, background-color 0.2s");
+    skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+    skillDiv.style("user-select", "none");
+    skillDiv.style("-webkit-tap-highlight-color", "transparent");
+    skillDiv.style("flex", "1"); // Allow buttons to grow to fill available space
+    skillDiv.style("min-width", skillButtonSize + "px"); // Set minimum width
+    skillDiv.style("max-width", (skillButtonSize * 1.2) + "px"); // Set maximum width
 
     skillDiv.html(`
-      <div id="skillName${i}" style="font-size: 0.8rem; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
+      <div id="skillName${i}" style="font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
       i
     )}</div>
-      <div id="skillKey${i}" style="font-size: 2.2rem; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      <div id="skillKey${i}" style="font-size: ${skillFontSize}; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
       i
     )}</div>
-      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: 80px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
+      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: ${skillButtonSize}px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
       <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0; border-radius: 10px;"></div>
     `);
 
@@ -7294,6 +7312,161 @@ function updateSkillBar() {
       console.error(`Needle or overlay element for skill #${i} not found`);
     }
   }
+}
+
+
+// Create directional pad for touch/click movement
+function createDirectionalPadElement() {
+  // Determine if we're on a mobile device
+  const isMobile = windowWidth < 768;
+
+  // Adjust sizes based on screen size
+  const dPadSize = isMobile ? 160 : 220;
+  const buttonSize = isMobile ? 50 : 60;
+  const fontSize = isMobile ? 24 : 28;
+  const centerOffset = dPadSize / 2 - buttonSize / 2;
+  const edgeOffset = isMobile ? 15 : 20;
+
+  // Create main d-pad container
+  dPad = createDiv("");
+  dPad.id("d-pad-container");
+  dPad.style("width", dPadSize + "px");
+  dPad.style("height", dPadSize + "px");
+  dPad.style("position", "relative");
+  dPad.style("background-color", "rgba(30, 30, 30, 0.8)");
+  dPad.style("border-radius", (dPadSize/2) + "px");
+  dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
+  dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)");
+  dPad.style("z-index", "1600");
+  dPad.style("box-shadow", "0 0 15px rgba(0, 0, 0, 0.5)");
+  dPad.style("margin-left", isMobile ? "5px" : "10px"); // Add margin on the left
+
+  // Add d-pad to the controls container
+  controlsContainer.child(dPad);
+
+  dPad.style("display", "block");
+  dPad.style("pointer-events", "auto");
+
+  // Create up button
+  upButton = createDiv("▲");
+  upButton.id("up-button");
+  upButton.style("position", "absolute");
+  upButton.style("top", edgeOffset + "px");
+  upButton.style("left", centerOffset + "px");
+  upButton.style("width", buttonSize + "px");
+  upButton.style("height", buttonSize + "px");
+  upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  upButton.style("color", "white");
+  upButton.style("font-size", fontSize + "px");
+  upButton.style("display", "flex");
+  upButton.style("align-items", "center");
+  upButton.style("justify-content", "center");
+  upButton.style("border-radius", "15px");
+  upButton.style("cursor", "pointer");
+  upButton.style("user-select", "none");
+  upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  upButton.style("transition", "transform 0.1s, background-color 0.2s");
+  upButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create down button
+  downButton = createDiv("▼");
+  downButton.id("down-button");
+  downButton.style("position", "absolute");
+  downButton.style("bottom", edgeOffset + "px");
+  downButton.style("left", centerOffset + "px");
+  downButton.style("width", buttonSize + "px");
+  downButton.style("height", buttonSize + "px");
+  downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  downButton.style("color", "white");
+  downButton.style("font-size", fontSize + "px");
+  downButton.style("display", "flex");
+  downButton.style("align-items", "center");
+  downButton.style("justify-content", "center");
+  downButton.style("border-radius", "15px");
+  downButton.style("cursor", "pointer");
+  downButton.style("user-select", "none");
+  downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  downButton.style("transition", "transform 0.1s, background-color 0.2s");
+  downButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create left button
+  leftButton = createDiv("◀");
+  leftButton.id("left-button");
+  leftButton.style("position", "absolute");
+  leftButton.style("top", centerOffset + "px");
+  leftButton.style("left", edgeOffset + "px");
+  leftButton.style("width", buttonSize + "px");
+  leftButton.style("height", buttonSize + "px");
+  leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  leftButton.style("color", "white");
+  leftButton.style("font-size", fontSize + "px");
+  leftButton.style("display", "flex");
+  leftButton.style("align-items", "center");
+  leftButton.style("justify-content", "center");
+  leftButton.style("border-radius", "15px");
+  leftButton.style("cursor", "pointer");
+  leftButton.style("user-select", "none");
+  leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  leftButton.style("transition", "transform 0.1s, background-color 0.2s");
+  leftButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create right button
+  rightButton = createDiv("▶");
+  rightButton.id("right-button");
+  rightButton.style("position", "absolute");
+  rightButton.style("top", centerOffset + "px");
+  rightButton.style("right", edgeOffset + "px");
+  rightButton.style("width", buttonSize + "px");
+  rightButton.style("height", buttonSize + "px");
+  rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  rightButton.style("color", "white");
+  rightButton.style("font-size", fontSize + "px");
+  rightButton.style("display", "flex");
+  rightButton.style("align-items", "center");
+  rightButton.style("justify-content", "center");
+  rightButton.style("border-radius", "15px");
+  rightButton.style("cursor", "pointer");
+  rightButton.style("user-select", "none");
+  rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  rightButton.style("transition", "transform 0.1s, background-color 0.2s");
+  rightButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Create center button (optional - can be used for special actions)
+  const centerButton = createDiv("•");
+  centerButton.id("center-button");
+  centerButton.style("position", "absolute");
+  centerButton.style("top", centerOffset + "px");
+  centerButton.style("left", centerOffset + "px");
+  centerButton.style("width", buttonSize + "px");
+  centerButton.style("height", buttonSize + "px");
+  centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
+  centerButton.style("color", "white");
+  centerButton.style("font-size", (fontSize + 4) + "px");
+  centerButton.style("display", "flex");
+  centerButton.style("align-items", "center");
+  centerButton.style("justify-content", "center");
+  centerButton.style("border-radius", "15px");
+  centerButton.style("cursor", "pointer");
+  centerButton.style("user-select", "none");
+  centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+  centerButton.style("transition", "transform 0.1s, background-color 0.2s");
+  centerButton.style("-webkit-tap-highlight-color", "transparent");
+
+  // Add buttons to the d-pad
+  dPad.child(upButton);
+  dPad.child(downButton);
+  dPad.child(leftButton);
+  dPad.child(rightButton);
+  dPad.child(centerButton);
+
+  // Add event handlers for buttons
+  setupDirectionalButton(upButton, "up");
+  setupDirectionalButton(downButton, "down");
+  setupDirectionalButton(leftButton, "left");
+  setupDirectionalButton(rightButton, "right");
+
+  // Initially hide the d-pad
+  dPad.style("visibility", "hidden");
 }
 
 // Update the content of DOM HUD elements - with optimized drawing
@@ -7714,8 +7887,37 @@ function createPlasmaEffect(x, y, z) {
 
 // Window resize handling
 function windowResized() {
+  // Resize the canvas
   resizeCanvas(windowWidth, windowHeight);
+
+  // Update perspective for the new aspect ratio
+  perspective(PI / 4, width / height, 0.1, 5000);
+
+  // Remove existing UI elements to prevent duplicates
+  if (controlsContainer) controlsContainer.remove();
+  if (skillBar) skillBar.remove();
+  if (dPad) dPad.remove();
+  if (statusBoard) statusBoard.remove();
+  if (techBoard) techBoard.remove();
+  if (menuContainer) menuContainer.remove();
+  if (pauseContainer) pauseContainer.remove();
+  if (resumeContainer) resumeContainer.remove();
+  if (gameOverContainer) gameOverContainer.remove();
+  if (soundToggleButton) soundToggleButton.remove();
+
+  // Recreate all UI elements with the new window dimensions
   createUiUsingDomElements();
+
+  // If the game is playing, make sure controls are visible
+  if (gameState === "playing") {
+    controlsContainer.style("visibility", "visible");
+    controlsContainer.style("opacity", "1");
+    skillBar.style("visibility", "visible");
+    dPad.style("visibility", "visible");
+  }
+
+  // Log resize event for debugging
+  console.log("Window resized to: " + windowWidth + "x" + windowHeight);
 }
 
 // Directional pad variables
@@ -7736,167 +7938,32 @@ function createControlsContainer() {
   // Create main container
   controlsContainer = createDiv("");
   controlsContainer.id("controls-container");
-  controlsContainer.position(0, height - 250); // Position at bottom of screen with more space for larger d-pad
+
+  // Adjust height based on screen size - smaller for mobile
+  const isMobile = windowWidth < 768;
+  const containerHeight = isMobile ? 200 : 250;
+
+  controlsContainer.position(0, height - containerHeight); // Position at bottom of screen
   controlsContainer.style("width", "100%");
-  controlsContainer.style("height", "250px"); // Much taller for much bigger d-pad
+  controlsContainer.style("height", containerHeight + "px");
   controlsContainer.style("margin", "0 auto"); // Center horizontally
   controlsContainer.style("display", "flex");
   controlsContainer.style("flex-direction", "row");
   controlsContainer.style("align-items", "center");
   controlsContainer.style("justify-content", "space-between"); // Space between d-pad and skill bar
-  controlsContainer.style("padding", "10px 20px"); // Add more horizontal padding
+  controlsContainer.style("padding", isMobile ? "5px 0px" : "10px 20px"); // Less padding on mobile
   controlsContainer.style("box-sizing", "border-box");
   controlsContainer.style("z-index", "1500"); // Higher z-index
+
+  // Make sure it's fixed at the bottom of the screen for mobile
+  controlsContainer.style("position", "fixed");
+  controlsContainer.style("bottom", "0");
+  controlsContainer.style("left", "0");
 
   // Initially hide the container, but make it ready to be shown
   controlsContainer.style("visibility", "hidden");
   controlsContainer.style("opacity", "0");
   controlsContainer.style("transition", "opacity 0.3s ease-in-out");
-}
-
-// Create directional pad for touch/click movement
-function createDirectionalPadElement() {
-  // Create main d-pad container
-  dPad = createDiv("");
-  dPad.id("d-pad-container");
-  dPad.style("width", "240px"); // Much bigger d-pad
-  dPad.style("height", "240px"); // Much bigger d-pad
-  dPad.style("position", "relative"); // Use relative positioning within flex container
-  dPad.style("background-color", "rgba(30, 30, 30, 0.8)"); // More visible background
-  dPad.style("border-radius", "120px"); // Half of width/height
-  dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
-  dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)"); // More visible border
-  dPad.style("z-index", "1600"); // Higher z-index than the container
-  dPad.style("box-shadow", "0 0 15px rgba(0, 0, 0, 0.5)"); // Add shadow for better visibility
-
-  // Add d-pad to the controls container
-  controlsContainer.child(dPad);
-
-  // Log to console for debugging
-  console.log("D-pad created and added to controls container");
-  dPad.style("display", "block"); // Ensure it's displayed
-  dPad.style("pointer-events", "auto"); // Ensure it receives mouse/touch events
-
-  // Create up button
-  upButton = createDiv("▲");
-  upButton.id("up-button");
-  upButton.style("position", "absolute");
-  upButton.style("top", "20px");
-  upButton.style("left", "95px");
-  upButton.style("width", "60px");
-  upButton.style("height", "60px");
-  upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
-  upButton.style("color", "white");
-  upButton.style("font-size", "28px");
-  upButton.style("display", "flex");
-  upButton.style("align-items", "center");
-  upButton.style("justify-content", "center");
-  upButton.style("border-radius", "15px");
-  upButton.style("cursor", "pointer");
-  upButton.style("user-select", "none");
-  upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-  upButton.style("transition", "transform 0.1s, background-color 0.2s");
-  upButton.style("-webkit-tap-highlight-color", "transparent");
-
-  // Create down button
-  downButton = createDiv("▼");
-  downButton.id("down-button");
-  downButton.style("position", "absolute");
-  downButton.style("bottom", "20px");
-  downButton.style("left", "95px");
-  downButton.style("width", "60px");
-  downButton.style("height", "60px");
-  downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
-  downButton.style("color", "white");
-  downButton.style("font-size", "28px");
-  downButton.style("display", "flex");
-  downButton.style("align-items", "center");
-  downButton.style("justify-content", "center");
-  downButton.style("border-radius", "15px");
-  downButton.style("cursor", "pointer");
-  downButton.style("user-select", "none");
-  downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-  downButton.style("transition", "transform 0.1s, background-color 0.2s");
-  downButton.style("-webkit-tap-highlight-color", "transparent");
-
-  // Create left button
-  leftButton = createDiv("◀");
-  leftButton.id("left-button");
-  leftButton.style("position", "absolute");
-  leftButton.style("top", "95px");
-  leftButton.style("left", "20px");
-  leftButton.style("width", "60px");
-  leftButton.style("height", "60px");
-  leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
-  leftButton.style("color", "white");
-  leftButton.style("font-size", "28px");
-  leftButton.style("display", "flex");
-  leftButton.style("align-items", "center");
-  leftButton.style("justify-content", "center");
-  leftButton.style("border-radius", "15px");
-  leftButton.style("cursor", "pointer");
-  leftButton.style("user-select", "none");
-  leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-  leftButton.style("transition", "transform 0.1s, background-color 0.2s");
-  leftButton.style("-webkit-tap-highlight-color", "transparent");
-
-  // Create right button
-  rightButton = createDiv("▶");
-  rightButton.id("right-button");
-  rightButton.style("position", "absolute");
-  rightButton.style("top", "95px");
-  rightButton.style("right", "20px");
-  rightButton.style("width", "60px");
-  rightButton.style("height", "60px");
-  rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
-  rightButton.style("color", "white");
-  rightButton.style("font-size", "28px");
-  rightButton.style("display", "flex");
-  rightButton.style("align-items", "center");
-  rightButton.style("justify-content", "center");
-  rightButton.style("border-radius", "15px");
-  rightButton.style("cursor", "pointer");
-  rightButton.style("user-select", "none");
-  rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-  rightButton.style("transition", "transform 0.1s, background-color 0.2s");
-  rightButton.style("-webkit-tap-highlight-color", "transparent");
-
-  // Create center button (optional - can be used for special actions)
-  const centerButton = createDiv("•");
-  centerButton.id("center-button");
-  centerButton.style("position", "absolute");
-  centerButton.style("top", "95px");
-  centerButton.style("left", "95px");
-  centerButton.style("width", "60px");
-  centerButton.style("height", "60px");
-  centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
-  centerButton.style("color", "white");
-  centerButton.style("font-size", "32px");
-  centerButton.style("display", "flex");
-  centerButton.style("align-items", "center");
-  centerButton.style("justify-content", "center");
-  centerButton.style("border-radius", "15px");
-  centerButton.style("cursor", "pointer");
-  centerButton.style("user-select", "none");
-  centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-  centerButton.style("transition", "transform 0.1s, background-color 0.2s");
-  centerButton.style("-webkit-tap-highlight-color", "transparent");
-
-  // Add buttons to the d-pad
-  dPad.child(upButton);
-  dPad.child(downButton);
-  dPad.child(leftButton);
-  dPad.child(rightButton);
-  dPad.child(centerButton);
-
-  // Add event handlers for buttons
-  setupDirectionalButton(upButton, "up");
-  setupDirectionalButton(downButton, "down");
-  setupDirectionalButton(leftButton, "left");
-  setupDirectionalButton(rightButton, "right");
-
-  // Initially hide the d-pad
-  dPad.style("visibility", "hidden");
 }
 
 // Helper function to set up event handlers for directional buttons

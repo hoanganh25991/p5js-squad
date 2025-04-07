@@ -60,11 +60,11 @@ let soundSettings = {
   sfxVolume: 0.8,
   uiVolume: 0.6,
   combatVolume: {
-    shoot: 0.2, // Reduced shoot sound to 1/3 of original volume
-    hit: 1.0,
+    shoot: 0.1, // Reduced shoot sound to 1/3 of original volume
+    hit: 0.5,
     explosion: 1.0,
     death: 1.0,
-    criticalHit: 1.0
+    criticalHit: 0.5
   },
   skillVolume: {
     skill1: 0.4, // Auto-fire skill - lower volume
