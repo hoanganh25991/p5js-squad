@@ -236,12 +236,24 @@ function setup() {
 
   // Initialize sound system
   try {
+    // First try to initialize sounds
     initSounds();
+
+    // Create fallbacks for any sounds that failed to load
+    handleSoundLoadError();
 
     // Add sound toggle button
     createSoundToggleButton();
+
+    console.log("Sound system setup completed");
   } catch (e) {
     console.warn("Error initializing sounds:", e);
+    // Still try to create the sound toggle button even if sound init fails
+    try {
+      createSoundToggleButton();
+    } catch (btnError) {
+      console.warn("Could not create sound toggle button:", btnError);
+    }
   }
 
   // Purge any old references
@@ -276,9 +288,10 @@ let memoryWarningOverlay = null;
 let soundToggleButton = null;
 
 function createSoundToggleButton() {
-  soundToggleButton = createButton('🔊');
-  soundToggleButton.position(width - 60, 20);
-  soundToggleButton.style('background-color', 'rgba(0, 0, 0, 0.5)');
+  // Create button with initial state based on current mute setting
+  soundToggleButton = createButton(soundSettings.muted ? '🔇' : '🔊');
+  soundToggleButton.position(width - 120, 20); // Position it to the left of the pause button
+  soundToggleButton.style('background-color', 'rgba(0, 0, 0, 0.7)');
   soundToggleButton.style('color', 'white');
   soundToggleButton.style('border', 'none');
   soundToggleButton.style('border-radius', '50%');
@@ -286,13 +299,29 @@ function createSoundToggleButton() {
   soundToggleButton.style('height', '40px');
   soundToggleButton.style('font-size', '20px');
   soundToggleButton.style('cursor', 'pointer');
-  soundToggleButton.style('z-index', '1000');
+  soundToggleButton.style('z-index', '2000'); // Higher z-index to ensure visibility
+  soundToggleButton.style('position', 'fixed'); // Use fixed positioning to stay in place
+  soundToggleButton.style('display', 'block'); // Ensure it's displayed
+  soundToggleButton.style('visibility', 'visible'); // Ensure it's visible
+  soundToggleButton.id('sound-toggle-button'); // Add an ID for easier reference
 
   soundToggleButton.mousePressed(() => {
     const isMuted = toggleMute();
     soundToggleButton.html(isMuted ? '🔇' : '🔊');
     playUISound('click');
   });
+}
+
+// Function to update sound toggle button visibility
+function drawSoundToggleButton() {
+  if (soundToggleButton) {
+    // Always show the sound toggle button regardless of game state
+    soundToggleButton.style('display', 'block');
+    soundToggleButton.style('visibility', 'visible');
+
+    // Reposition in case of window resize
+    soundToggleButton.position(width - 120, 20);
+  }
 }
 
 function checkMemoryUsage() {
@@ -593,6 +622,7 @@ function draw() {
   drawPauseContainer();
   drawResumeContainer();
   drawGameOverContainer();
+  drawSoundToggleButton(); // Update the sound toggle button visibility
   updateDirectionalPad(); // Update the directional pad visibility and state
 
   // Periodically try to clear memory
@@ -6055,6 +6085,12 @@ function startGame() {
     memoryWarningShown = false;
     if (memoryWarningOverlay) {
       memoryWarningOverlay.style("display", "none");
+    }
+
+    // Make sure sound toggle button is visible
+    if (soundToggleButton) {
+      soundToggleButton.style('display', 'block');
+      soundToggleButton.style('visibility', 'visible');
     }
 
     return false; // Prevent default behavior

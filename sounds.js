@@ -60,80 +60,136 @@ let soundSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.8,
   uiVolume: 0.6,
-  muted: false,
+  muted: true, // Sound off by default
   currentMusic: null,
 };
 
 // Preload all sounds
 function preloadSounds() {
-  // Background music
-  sounds.music.main = loadSound('sounds/music/main_theme.mp3');
-  sounds.music.battle = loadSound('sounds/music/battle.mp3');
-  sounds.music.boss = loadSound('sounds/music/boss_battle.mp3');
-  sounds.music.victory = loadSound('sounds/music/victory.mp3');
-  
-  // UI sounds
-  sounds.ui.click = loadSound('sounds/ui/click.mp3');
-  sounds.ui.hover = loadSound('sounds/ui/hover.mp3');
-  sounds.ui.upgrade = loadSound('sounds/ui/upgrade.mp3');
-  sounds.ui.error = loadSound('sounds/ui/error.mp3');
-  sounds.ui.levelUp = loadSound('sounds/ui/level_up.mp3');
-  
-  // Combat sounds
-  sounds.combat.shoot = loadSound('sounds/combat/shoot.mp3');
-  sounds.combat.hit = loadSound('sounds/combat/hit.mp3');
-  sounds.combat.explosion = loadSound('sounds/combat/explosion.mp3');
-  sounds.combat.death = loadSound('sounds/combat/death.mp3');
-  sounds.combat.criticalHit = loadSound('sounds/combat/critical_hit.mp3');
-  
-  // Skill sounds
-  sounds.skills.skill1 = loadSound('sounds/skills/rapid_fire.mp3');
-  sounds.skills.skill2 = loadSound('sounds/skills/scatter_shot.mp3');
-  sounds.skills.skill3 = loadSound('sounds/skills/orbital_strike.mp3');
-  sounds.skills.skill4 = loadSound('sounds/skills/cryo_freeze.mp3');
-  sounds.skills.skill5 = loadSound('sounds/skills/rejuvenation.mp3');
-  sounds.skills.skill6 = loadSound('sounds/skills/infernal_rage.mp3');
-  sounds.skills.skill7 = loadSound('sounds/skills/quantum_acceleration.mp3');
-  sounds.skills.skill8 = loadSound('sounds/skills/apocalypse.mp3');
-  
-  // Environment sounds
-  sounds.environment.wind = loadSound('sounds/environment/wind.mp3');
-  sounds.environment.ambient = loadSound('sounds/environment/ambient.mp3');
-  
-  // Power-up sounds
-  sounds.powerups.collect = loadSound('sounds/powerups/collect.mp3');
-  sounds.powerups.spawn = loadSound('sounds/powerups/spawn.mp3');
+  try {
+    // Check if p5.sound is available
+    if (typeof p5 === 'undefined' || !p5.prototype.hasOwnProperty('loadSound')) {
+      console.warn("p5.sound library not available. Sound loading skipped.");
+      return;
+    }
+
+    // Helper function to safely load sounds
+    const safeLoadSound = (path) => {
+      try {
+        return loadSound(path,
+          // Success callback
+          () => {},
+          // Error callback
+          (err) => {
+            console.warn(`Failed to load sound: ${path}`, err);
+            return null;
+          }
+        );
+      } catch (e) {
+        console.warn(`Error loading sound: ${path}`, e);
+        return null;
+      }
+    };
+
+    // Background music
+    sounds.music.main = safeLoadSound('sounds/music/main_theme.mp3');
+    sounds.music.battle = safeLoadSound('sounds/music/battle.mp3');
+    sounds.music.boss = safeLoadSound('sounds/music/boss_battle.mp3');
+    sounds.music.victory = safeLoadSound('sounds/music/victory.mp3');
+
+    // UI sounds
+    sounds.ui.click = safeLoadSound('sounds/ui/click.mp3');
+    sounds.ui.hover = safeLoadSound('sounds/ui/hover.mp3');
+    sounds.ui.upgrade = safeLoadSound('sounds/ui/upgrade.mp3');
+    sounds.ui.error = safeLoadSound('sounds/ui/error.mp3');
+    sounds.ui.levelUp = safeLoadSound('sounds/ui/level_up.mp3');
+
+    // Combat sounds
+    sounds.combat.shoot = safeLoadSound('sounds/combat/shoot.mp3');
+    sounds.combat.hit = safeLoadSound('sounds/combat/hit.mp3');
+    sounds.combat.explosion = safeLoadSound('sounds/combat/explosion.mp3');
+    sounds.combat.death = safeLoadSound('sounds/combat/death.mp3');
+    sounds.combat.criticalHit = safeLoadSound('sounds/combat/critical_hit.mp3');
+
+    // Skill sounds
+    sounds.skills.skill1 = safeLoadSound('sounds/skills/rapid_fire.mp3');
+    sounds.skills.skill2 = safeLoadSound('sounds/skills/scatter_shot.mp3');
+    sounds.skills.skill3 = safeLoadSound('sounds/skills/orbital_strike.mp3');
+    sounds.skills.skill4 = safeLoadSound('sounds/skills/cryo_freeze.mp3');
+    sounds.skills.skill5 = safeLoadSound('sounds/skills/rejuvenation.mp3');
+    sounds.skills.skill6 = safeLoadSound('sounds/skills/infernal_rage.mp3');
+    sounds.skills.skill7 = safeLoadSound('sounds/skills/quantum_acceleration.mp3');
+    sounds.skills.skill8 = safeLoadSound('sounds/skills/apocalypse.mp3');
+
+    // Environment sounds
+    sounds.environment.wind = safeLoadSound('sounds/environment/wind.mp3');
+    sounds.environment.ambient = safeLoadSound('sounds/environment/ambient.mp3');
+
+    // Power-up sounds
+    sounds.powerups.collect = safeLoadSound('sounds/powerups/collect.mp3');
+    sounds.powerups.spawn = safeLoadSound('sounds/powerups/spawn.mp3');
+
+    console.log("Sound preloading completed");
+  } catch (e) {
+    console.error("Error in preloadSounds:", e);
+  }
 }
 
 // Initialize sound system
 function initSounds() {
-  // Set master volume
-  masterVolume(soundSettings.masterVolume);
-  
-  // Set individual volumes
-  Object.values(sounds.music).forEach(sound => {
-    if (sound) sound.setVolume(soundSettings.musicVolume);
-  });
-  
-  // Loop ambient sounds
-  if (sounds.environment.ambient) {
-    sounds.environment.ambient.setVolume(0.3);
-    sounds.environment.ambient.loop();
+  try {
+    // Check if p5.sound is available
+    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
+      // Set master volume using p5.sound
+      masterVolume(soundSettings.masterVolume);
+
+      // Set individual volumes
+      Object.values(sounds.music).forEach(sound => {
+        if (sound && sound.setVolume) sound.setVolume(soundSettings.musicVolume);
+      });
+
+      // Loop ambient sounds
+      if (sounds.environment.ambient && sounds.environment.ambient.setVolume && sounds.environment.ambient.loop) {
+        sounds.environment.ambient.setVolume(0.3);
+        sounds.environment.ambient.loop();
+      }
+
+      console.log("Sound system initialized successfully");
+    } else {
+      console.warn("p5.sound library not fully loaded. Sound features may be limited.");
+      // Create fallback for sound settings when p5.sound isn't available
+      soundSettings.muted = true;
+    }
+  } catch (e) {
+    console.error("Error initializing sound system:", e);
+    // Set muted to true as a fallback
+    soundSettings.muted = true;
   }
 }
 
 // Play a sound with specified volume and optional rate/pan
 function playSound(sound, volume = 1.0, rate = 1.0, pan = 0) {
-  if (!sound || soundSettings.muted) return;
-  
-  // Calculate final volume based on master volume
-  const finalVolume = volume * soundSettings.masterVolume;
-  
-  // Play the sound with specified parameters
-  sound.rate(rate);
-  sound.pan(pan);
-  sound.setVolume(finalVolume);
-  sound.play();
+  try {
+    // Check if sound is available and not muted
+    if (!sound || soundSettings.muted) return;
+
+    // Check if the sound object has the necessary methods
+    if (!sound.play || !sound.setVolume) {
+      console.warn("Sound object is missing required methods. Skipping playback.");
+      return;
+    }
+
+    // Calculate final volume based on master volume
+    const finalVolume = volume * soundSettings.masterVolume;
+
+    // Play the sound with specified parameters
+    if (sound.rate) sound.rate(rate);
+    if (sound.pan) sound.pan(pan);
+    sound.setVolume(finalVolume);
+    sound.play();
+  } catch (e) {
+    console.warn("Error playing sound:", e);
+  }
 }
 
 // Play UI sound
@@ -168,25 +224,61 @@ function playSkillSound(skillNumber) {
 
 // Play background music with crossfade
 function playMusic(musicName, fadeTime = 2.0) {
-  if (!sounds.music[musicName] || soundSettings.muted) return;
-  
-  // If same music is already playing, do nothing
-  if (soundSettings.currentMusic === musicName && sounds.music[musicName].isPlaying()) {
-    return;
+  try {
+    // Check if sound is available and not muted
+    if (!sounds.music[musicName] || soundSettings.muted) return;
+
+    // Check if the sound object has the necessary methods
+    if (!sounds.music[musicName].isPlaying || !sounds.music[musicName].setVolume || !sounds.music[musicName].loop) {
+      console.warn(`Music ${musicName} is missing required methods. Skipping playback.`);
+      return;
+    }
+
+    // If same music is already playing, do nothing
+    if (soundSettings.currentMusic === musicName && sounds.music[musicName].isPlaying()) {
+      return;
+    }
+
+    // Fade out current music if playing
+    if (soundSettings.currentMusic &&
+        sounds.music[soundSettings.currentMusic] &&
+        sounds.music[soundSettings.currentMusic].isPlaying &&
+        sounds.music[soundSettings.currentMusic].isPlaying()) {
+
+      if (sounds.music[soundSettings.currentMusic].fade) {
+        sounds.music[soundSettings.currentMusic].fade(0, fadeTime);
+      } else {
+        sounds.music[soundSettings.currentMusic].setVolume(0);
+      }
+    }
+
+    // Set new music and play
+    soundSettings.currentMusic = musicName;
+    sounds.music[musicName].setVolume(0);
+    sounds.music[musicName].loop();
+
+    // Fade in new music
+    if (sounds.music[musicName].fade) {
+      sounds.music[musicName].setVolume(soundSettings.musicVolume, fadeTime);
+    } else {
+      // Manually implement fade if the fade method is not available
+      let startTime = millis();
+      let fadeInterval = setInterval(() => {
+        let elapsed = (millis() - startTime) / 1000;
+        let progress = elapsed / fadeTime;
+        if (progress >= 1) {
+          sounds.music[musicName].setVolume(soundSettings.musicVolume);
+          clearInterval(fadeInterval);
+        } else {
+          sounds.music[musicName].setVolume(soundSettings.musicVolume * progress);
+        }
+      }, 50);
+    }
+
+    console.log(`Now playing: ${musicName}`);
+  } catch (e) {
+    console.error(`Error playing music ${musicName}:`, e);
   }
-  
-  // Fade out current music if playing
-  if (soundSettings.currentMusic && sounds.music[soundSettings.currentMusic].isPlaying()) {
-    sounds.music[soundSettings.currentMusic].fade(0, fadeTime);
-  }
-  
-  // Set new music and play
-  soundSettings.currentMusic = musicName;
-  sounds.music[musicName].setVolume(0);
-  sounds.music[musicName].loop();
-  
-  // Fade in new music
-  sounds.music[musicName].setVolume(soundSettings.musicVolume, fadeTime);
 }
 
 // Stop all sounds
@@ -207,25 +299,44 @@ function stopAllSounds() {
 // Toggle mute all sounds
 function toggleMute() {
   soundSettings.muted = !soundSettings.muted;
-  
-  if (soundSettings.muted) {
-    masterVolume(0);
-  } else {
-    masterVolume(soundSettings.masterVolume);
-    
-    // Resume background music if it was playing
-    if (soundSettings.currentMusic) {
-      playMusic(soundSettings.currentMusic, 0.5);
+
+  try {
+    // Check if p5.sound is available
+    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
+      if (soundSettings.muted) {
+        masterVolume(0);
+      } else {
+        masterVolume(soundSettings.masterVolume);
+
+        // Resume background music if it was playing
+        if (soundSettings.currentMusic) {
+          playMusic(soundSettings.currentMusic, 0.5);
+        }
+      }
+    } else {
+      console.warn("p5.sound library not fully loaded. Mute state changed but volume control unavailable.");
     }
+  } catch (e) {
+    console.error("Error toggling mute:", e);
   }
-  
+
   return soundSettings.muted;
 }
 
 // Set master volume
 function setMasterVolume(volume) {
   soundSettings.masterVolume = constrain(volume, 0, 1);
-  masterVolume(soundSettings.masterVolume);
+
+  try {
+    // Check if p5.sound is available
+    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
+      masterVolume(soundSettings.masterVolume);
+    } else {
+      console.warn("p5.sound library not fully loaded. Volume change requested but unavailable.");
+    }
+  } catch (e) {
+    console.error("Error setting master volume:", e);
+  }
 }
 
 // Set music volume
@@ -280,13 +391,63 @@ function updateAmbientSounds() {
 
 // Handle sound fallbacks if files don't load
 function handleSoundLoadError() {
-  // Create placeholder sounds for any that failed to load
-  Object.keys(sounds).forEach(category => {
-    Object.keys(sounds[category]).forEach(soundName => {
-      if (!sounds[category][soundName]) {
-        console.warn(`Failed to load sound: ${category}.${soundName}`);
-        sounds[category][soundName] = new p5.Oscillator('sine');
+  try {
+    // Check if p5.sound is available
+    if (typeof p5 === 'undefined' || !p5.prototype.hasOwnProperty('Oscillator')) {
+      console.warn("p5.sound library not available. Cannot create fallback sounds.");
+      return;
+    }
+
+    // Create a dummy sound object with all required methods
+    const createDummySound = () => {
+      // Try to create an oscillator if available
+      try {
+        const osc = new p5.Oscillator('sine');
+
+        // Add all required methods
+        return {
+          play: () => {},
+          stop: () => {},
+          loop: () => {},
+          isPlaying: () => false,
+          setVolume: () => {},
+          rate: () => {},
+          pan: () => {},
+          fade: () => {},
+          // Flag to identify dummy sounds
+          isDummy: true
+        };
+      } catch (e) {
+        console.warn("Failed to create oscillator:", e);
+
+        // Return a simple object with dummy methods
+        return {
+          play: () => {},
+          stop: () => {},
+          loop: () => {},
+          isPlaying: () => false,
+          setVolume: () => {},
+          rate: () => {},
+          pan: () => {},
+          fade: () => {},
+          // Flag to identify dummy sounds
+          isDummy: true
+        };
       }
+    };
+
+    // Create placeholder sounds for any that failed to load
+    Object.keys(sounds).forEach(category => {
+      Object.keys(sounds[category]).forEach(soundName => {
+        if (!sounds[category][soundName]) {
+          console.warn(`Creating fallback for sound: ${category}.${soundName}`);
+          sounds[category][soundName] = createDummySound();
+        }
+      });
     });
-  });
+
+    console.log("Sound fallbacks created successfully");
+  } catch (e) {
+    console.error("Error creating sound fallbacks:", e);
+  }
 }
