@@ -6008,12 +6008,14 @@ function createMenuElement() {
   // Create menu container element
   menuContainer = createDiv("");
   menuContainer.id("menu-container");
-  menuContainer.position(width / 2 - 175, height / 2 - 180); // Center the menu, slightly larger
+  menuContainer.position(width / 2 - 175, height / 2 - 220); // Center the menu, slightly larger
   menuContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
   menuContainer.style("color", "white");
   menuContainer.style("padding", "20px");
   menuContainer.style("border-radius", "10px");
   menuContainer.style("width", "350px");
+  menuContainer.style("height", "440px");
+  menuContainer.style("box-sizing", "border-box");
   menuContainer.style("font-family", "monospace");
   menuContainer.style("text-align", "center");
   menuContainer.style("z-index", "1000");
@@ -6040,7 +6042,7 @@ function createMenuElement() {
 
   menuContainer.html(`
     <h2 style="margin: 0 0 20px 0;">SQUAD SURVIVAL</h2>
-    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER or Tap Below</p>
+    <p style="font-size: 24px; margin: 0 0 20px 0;">Press ENTER or</p>
   `);
 
   // Add the start button to the menu
