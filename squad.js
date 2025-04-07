@@ -129,7 +129,7 @@ let currentWeapon = WEAPON_TYPES[0];
 // Skills cooldowns and durations in frames (60 frames = 1 second)
 let skills = {
   skill1: {
-    cooldown: 0,
+    cooldown: 300,
     lastUsed: 0,
     active: false,
     activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
