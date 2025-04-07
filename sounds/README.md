@@ -46,7 +46,7 @@ Until final sound assets are created, you can use placeholder sounds from these 
 | sounds/combat/critical_hit.mp3    | [Critical Hit](https://pixabay.com/sound-effects/sword-hit-7160/)           |
 | sounds/skills/rapid_fire.mp3      | [Rapid Fire](https://pixabay.com/sound-effects/machine-gun-sound-effects-139068/) |
 | sounds/skills/scatter_shot.mp3    | [Scatter Shot](https://pixabay.com/sound-effects/shotgun-firing-3-14483/)   |
-| sounds/skills/orbital_strike.mp3  | [Orbital Strike](https://pixabay.com/sound-effects/energy-blast-6181/)      |
+| sounds/skills/heavy_strike.mp3  | [Orbital Strike](https://pixabay.com/sound-effects/energy-blast-6181/)      |
 | sounds/skills/cryo_freeze.mp3     | [Cryo Freeze](https://pixabay.com/sound-effects/ice-cracking-6086/)         |
 | sounds/skills/rejuvenation.mp3    | [Rejuvenation](https://pixabay.com/sound-effects/heal-36672/)               |
 | sounds/skills/infernal_rage.mp3   | [Infernal Rage](https://pixabay.com/sound-effects/fire-magic-6947/)         |

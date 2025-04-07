@@ -24,7 +24,7 @@ self.addEventListener("install", function (event) {
         "sounds/combat/critical_hit.mp3",
         "sounds/skills/rapid_fire.mp3",
         "sounds/skills/scatter_shot.mp3",
-        "sounds/skills/orbital_strike.mp3",
+        "sounds/skills/heavy_strike.mp3",
         "sounds/skills/cryo_freeze.mp3",
         "sounds/skills/rejuvenation.mp3",
         "sounds/skills/infernal_rage.mp3",

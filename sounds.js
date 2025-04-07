@@ -131,7 +131,7 @@ function preloadSounds() {
     // Skill sounds
     sounds.skills.skill1 = safeLoadSound('sounds/skills/rapid_fire.mp3');
     sounds.skills.skill2 = safeLoadSound('sounds/skills/scatter_shot.mp3');
-    sounds.skills.skill3 = safeLoadSound('sounds/skills/orbital_strike.mp3');
+    sounds.skills.skill3 = safeLoadSound('sounds/skills/heavy_strike.mp3');
     sounds.skills.skill4 = safeLoadSound('sounds/skills/cryo_freeze.mp3');
     sounds.skills.skill5 = safeLoadSound('sounds/skills/rejuvenation.mp3');
     sounds.skills.skill6 = safeLoadSound('sounds/skills/infernal_rage.mp3');
