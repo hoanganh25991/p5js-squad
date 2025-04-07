@@ -1753,7 +1753,7 @@ function drawEffects() {
       strokeWeight(5);
 
       // Expanding ring
-      rotateX(HALF_PI); // Align with ground plane
+      // rotateX(HALF_PI); // Align with ground plane
 
       if (effect.type === "directionalShockwave") {
         // Draw half-circle arc for directional shockwave
@@ -1865,53 +1865,63 @@ function drawEffects() {
       // Get effect color (default to blue if not specified)
       const effectColor = effect.color || [0, 200, 255];
 
-      // Semi-transparent dome
+      // Semi-transparent flat shield
       const alpha = 100 * (effect.life / 300); // Fade based on life
       fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.3);
       stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.7);
       strokeWeight(2);
 
-      // Draw dome shape
-      rotateX(HALF_PI); // Align with ground plane
+      // Draw flat shield on the ground instead of a dome
+      // No rotation needed - keep it flat on the bridge floor
 
-      // Draw hemisphere (half sphere)
+      // Draw flat circle
       push();
-      translate(0, 0, -effect.size/2); // Move down so hemisphere sits on ground
-      sphere(effect.size);
+      translate(0, 0, 1); // Slightly above ground to avoid z-fighting
+      circle(0, 0, effect.size * 2); // Flat circle on the ground
       pop();
 
-      // Add energy field lines
+      // Add energy field lines - flat on the ground
       stroke(effectColor[0] + 100, effectColor[1] + 20, effectColor[2], alpha * 0.8);
       strokeWeight(1);
 
-      // Draw field lines
+      // Draw field lines as a flat pattern
       const lineCount = 12;
       for (let i = 0; i < lineCount; i++) {
         const angle = (i / lineCount) * TWO_PI;
-        const x = cos(angle) * effect.size;
-        const z = sin(angle) * effect.size;
 
         push();
-        // Draw line from ground up in a curve
-        beginShape();
-        for (let j = 0; j <= 10; j++) {
-          const t = j / 10;
-          const curveHeight = sin(t * PI) * effect.size;
-          const curveRadius = effect.size * (1 - t * 0.3);
-          const curveX = cos(angle) * curveRadius;
-          const curveZ = sin(angle) * curveRadius;
-          vertex(curveX, -curveHeight, curveZ);
-        }
-        endShape();
+        // Draw straight lines from center to edge
+        line(0, 0, cos(angle) * effect.size, sin(angle) * effect.size);
         pop();
+      }
+
+      // Add concentric circles for visual interest
+      for (let i = 1; i <= 3; i++) {
+        const ringSize = effect.size * (i / 3);
+        noFill();
+        stroke(effectColor[0], effectColor[1], effectColor[2], alpha * (0.8 - i * 0.2));
+        circle(0, 0, ringSize * 2);
       }
 
       // Pulsing effect
       const pulseSize = effect.size * (1 + 0.05 * sin(frameCount * 0.1));
       noFill();
       stroke(effectColor[0], effectColor[1], effectColor[2], alpha * 0.5);
-      rotateX(HALF_PI); // Align with ground plane
       circle(0, 0, pulseSize * 2);
+
+      // Add some particle effects on the shield perimeter
+      noStroke();
+      fill(effectColor[0], effectColor[1], effectColor[2], alpha * 0.8);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * TWO_PI + frameCount * 0.02;
+        const x = cos(angle) * effect.size;
+        const y = sin(angle) * effect.size;
+
+        push();
+        translate(x, y, 2 + 3 * sin(frameCount * 0.1 + i)); // Slightly above ground
+        sphere(3 + sin(frameCount * 0.1 + i)); // Small pulsing particles
+        pop();
+      }
 
       pop();
     } else if (effect.type === "iceCrystal") {
