@@ -1192,7 +1192,7 @@ function drawPowerUpLane() {
   for (let i = 0; i < laneMarkers; i++) {
     const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
     push();
-    translate(0, yPos, 5.1); // Position slightly above the lane
+    translate(0, yPos, 5); // Position slightly above the lane
     fill(180, 220, 255, 150); // Lighter blue with transparency
     box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
     pop();
@@ -1200,7 +1200,7 @@ function drawPowerUpLane() {
 
   // Draw a more visible edge between main bridge and power-up lane for clarity
   push();
-  translate(-POWER_UP_LANE_WIDTH / 2, 0, 5.1);
+  translate(-POWER_UP_LANE_WIDTH / 2, 0, 5);
   fill(200, 230, 255, 200); // Bright edge color
   box(2, BRIDGE_LENGTH, 1);
   pop();
