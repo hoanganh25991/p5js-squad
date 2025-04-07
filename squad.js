@@ -80,8 +80,8 @@ const WEAPON_COLORS = {
 };
 
 // Squad properties
-const SQUAD_SIZE = 30;
-const MAX_SQUAD_SIZE = 9; // Maximum number of squad members
+const HUMAN_SIZE = 30;
+const SQUAD_SIZE = 9; // Maximum number of squad members
 let squad = [];
 let squadSpeed = 10;
 let squadFireRate = 30; // frames between shots (faster firing rate)
@@ -189,7 +189,7 @@ let squadLeader = {
   // y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   y: SQUAD_Y, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   z: 0,
-  size: SQUAD_SIZE,
+  size: HUMAN_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
   weapon: currentWeapon,
   id: Date.now(), // Unique ID for reference
@@ -1181,7 +1181,7 @@ function drawPowerUpLane() {
   fill(...POWER_UP_LANE_COLOR);
 
   // Draw the base power-up lane
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 10);
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
 
   // Add lane markers/decorations for better visual guidance
   const laneMarkers = 30; // Further increased number of lane markers for the even longer bridge
@@ -4417,10 +4417,10 @@ function moveSquad(deltaX, deltaY) {
     // If the squad is approaching the wall, prevent movement past it
     if (
       mainMember.y + deltaY >=
-      wallPosition - SQUAD_SIZE - WALL_THICKNESS / 2
+      wallPosition - HUMAN_SIZE - WALL_THICKNESS / 2
     ) {
       // Only allow movement up to the wall boundary
-      mainMember.y = wallPosition - SQUAD_SIZE - WALL_THICKNESS / 2;
+      mainMember.y = wallPosition - HUMAN_SIZE - WALL_THICKNESS / 2;
 
       // Add visual feedback when hitting the wall
       if (frameCount % 5 === 0) {
@@ -4455,7 +4455,7 @@ function moveSquad(deltaX, deltaY) {
 
   // Apply constraints immediately to prevent going out of bounds
   const leftBound = -BRIDGE_WIDTH / 2;
-  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - HUMAN_SIZE;
   const topBound = (-BRIDGE_LENGTH * 1) / 2;
   const bottomBound = (BRIDGE_LENGTH * 1) / 2;
 
@@ -4490,13 +4490,13 @@ function updateSquad() {
 
   // Define boundary constraints for the squad
   const leftBound = -BRIDGE_WIDTH / 2;
-  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+  const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - HUMAN_SIZE;
   const topBound = (-BRIDGE_LENGTH * 1) / 2;
-  const bottomBound = (BRIDGE_LENGTH * 1) / 2;
+  const bottomBound = (BRIDGE_LENGTH * 1) / 2 ;
 
   // Formation - arrange other squad members around the leader
   if (squad.length > 1) {
-    const spacing = SQUAD_SIZE * 1.3; // Spacing between members
+    const spacing = HUMAN_SIZE * 1.3; // Spacing between members
     const leaderX = mainMember.x;
     const leaderY = mainMember.y;
 
@@ -4533,7 +4533,7 @@ function updateSquad() {
 
       // Calculate volume based on squad size
       // Volume scales up to 2x when squad is at full size (MAX_SQUAD_SIZE)
-      const volumeMultiplier = 1 + Math.min(1, squad.length / MAX_SQUAD_SIZE);
+      const volumeMultiplier = 1 + Math.min(1, squad.length / SQUAD_SIZE);
 
       // Check if machine gun skill is active
       const isMachineGunActive = skills.skill2.active;
@@ -5145,7 +5145,7 @@ function checkCollisions() {
         // Apply power-up effect
         if (powerUp.type === "mirror") {
           // Add a new squad member
-          if (squad.length < MAX_SQUAD_SIZE) {
+          if (squad.length < SQUAD_SIZE) {
             // Configurable max squad size
             // Calculate position for new squad member
             // Arrange in horizontal rows first (up to MAX_SQUAD_MEMBERS_PER_ROW per row)
@@ -5162,13 +5162,13 @@ function checkCollisions() {
             // Calculate position (centered within usable width)
             const startX = -usableWidth / 2 + spacing / 2;
             const newX = startX + squadCol * spacing;
-            const newY = BRIDGE_LENGTH / 2 - 100 - squadRow * SQUAD_SIZE * 1.2; // Slight spacing between rows
+            const newY = BRIDGE_LENGTH / 2 - 100 - squadRow * HUMAN_SIZE * 1.2; // Slight spacing between rows
 
             squad.push({
               x: newX,
               y: newY,
               z: 0,
-              size: SQUAD_SIZE,
+              size: HUMAN_SIZE,
               health: SQUAD_HEALTH, // Use configurable health
               weapon: currentWeapon,
               id: Date.now() + squad.length, // Unique ID for reference
@@ -6825,7 +6825,7 @@ function updateStatusBoard() {
     <div>Wave: ${currentWave}</div>
     <div>Score: ${score}</div>
     <div>Weapon: ${currentWeapon}</div>
-    <div>Squad: ${squad.length}/${MAX_SQUAD_SIZE}</div>
+    <div>Squad: ${squad.length}/${SQUAD_SIZE}</div>
     <div>Total Kills: ${totalEnemiesKilled}</div>
     <div>Wave Kills: ${waveEnemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
     <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
@@ -7953,7 +7953,7 @@ function resetGame() {
       x: 0,
       y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Position extremely far from the wall to be clearly visible at the bottom of the screen
       z: 0,
-      size: SQUAD_SIZE,
+      size: HUMAN_SIZE,
       health: SQUAD_HEALTH,
       weapon: "blaster",
     },
