@@ -762,8 +762,8 @@ function draw() {
   updatePerformanceMetrics();
   limitEffects();
 
-  // Clear background
-  background(0);
+  // Draw sky and environment instead of just a black background
+  drawSkyAndMountains();
 
   // Check for global effects
   let globalFrostEffect = effects.find((e) => e.type === "globalFrost");
@@ -1191,6 +1191,106 @@ function updateGame() {
   updateHUD();
 }
 
+// Draw the sky, mountains, and environment
+function drawSkyAndMountains() {
+  push();
+
+  // Reset the camera transformations to draw the sky as a background
+  // This ensures the sky is always behind everything else
+  resetMatrix();
+
+  // Create a gradient sky from dark blue to light blue
+  // We'll use a series of rectangles with different colors
+  const skyColors = [
+    [20, 30, 80],    // Dark blue (night sky at top)
+    [40, 60, 120],   // Medium blue
+    [70, 130, 180],  // Steel blue
+    [135, 206, 235], // Sky blue (day sky at horizon)
+  ];
+
+  noStroke();
+
+  // Draw the sky gradient
+  for (let i = 0; i < skyColors.length; i++) {
+    const y1 = map(i, 0, skyColors.length, 0, height);
+    const y2 = map(i + 1, 0, skyColors.length, 0, height);
+
+    fill(skyColors[i]);
+    rect(0, y1, width, y2 - y1);
+  }
+
+  // Add stars in the night sky (top portion)
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    fill(255, 255, 255, 200);
+    for (let i = 0; i < 100; i++) {
+      const starSize = random(1, 3);
+      const x = random(width);
+      const y = random(height/3); // Only in top third of sky
+
+      // Make stars twinkle
+      if (frameCount % 30 === 0 && random() > 0.7) {
+        ellipse(x, y, starSize * 2, starSize * 2);
+      } else {
+        ellipse(x, y, starSize, starSize);
+      }
+    }
+  }
+
+  // Add clouds if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    fill(255, 255, 255, 150);
+
+    // Use noise for cloud positions
+    for (let i = 0; i < 10; i++) {
+      const cloudX = (noise(i * 0.5, frameCount * 0.001) * width * 1.5) - width * 0.25;
+      const cloudY = height * 0.3 + i * 20;
+      const cloudWidth = noise(i * 0.3) * 200 + 100;
+      const cloudHeight = 40 + noise(i) * 30;
+
+      // Draw cloud as a series of ellipses
+      for (let j = 0; j < 5; j++) {
+        const offsetX = (j - 2) * cloudWidth/6;
+        const offsetY = sin(j * 0.5) * 10;
+        ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
+      }
+    }
+  }
+
+  // Draw distant mountains
+  fill(50, 70, 90); // Dark blue-gray for distant mountains
+  beginShape();
+  vertex(0, height * 0.65);
+
+  // Create a mountain range using noise
+  for (let x = 0; x < width; x += 20) {
+    const mountainHeight = noise(x * 0.005, frameCount * 0.0005) * height * 0.2;
+    vertex(x, height * 0.65 - mountainHeight);
+  }
+
+  vertex(width, height * 0.65);
+  endShape(CLOSE);
+
+  // Draw closer mountains
+  fill(70, 90, 110); // Lighter blue-gray for closer mountains
+  beginShape();
+  vertex(0, height * 0.7);
+
+  // Create a second mountain range
+  for (let x = 0; x < width; x += 15) {
+    const mountainHeight = noise(x * 0.01 + 100, frameCount * 0.0003) * height * 0.15;
+    vertex(x, height * 0.7 - mountainHeight);
+  }
+
+  vertex(width, height * 0.7);
+  endShape(CLOSE);
+
+  // Draw ground/horizon
+  fill(100, 120, 140); // Grayish blue for the ground
+  rect(0, height * 0.7, width, height * 0.3);
+
+  pop();
+}
+
 function drawGame() {
   drawPowerUpLane();
 
@@ -1211,8 +1311,87 @@ function drawMainLane() {
   // Draw the bridge (main lane) - extending from bottom to top of screen
   push();
   translate(0, 0, 0);
+
+  // Main bridge structure
   fill(...BRIDGE_COLOR);
   box(BRIDGE_WIDTH, BRIDGE_LENGTH, 10); // Using the updated bridge length to cover full screen
+
+  // Add bridge details if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Add bridge railings
+    push();
+    fill(120, 120, 120); // Slightly darker than bridge
+
+    // Left railing
+    translate(-BRIDGE_WIDTH/2 + 10, 0, 15);
+    box(5, BRIDGE_LENGTH, 20);
+    pop();
+
+    // Right railing
+    push();
+    fill(120, 120, 120);
+    translate(BRIDGE_WIDTH/2 - 10, 0, 15);
+    box(5, BRIDGE_LENGTH, 20);
+    pop();
+
+    // Add bridge supports/pillars
+    const pillarCount = 8;
+    const pillarSpacing = BRIDGE_LENGTH / pillarCount;
+
+    for (let i = 0; i < pillarCount; i++) {
+      const yPos = -BRIDGE_LENGTH/2 + i * pillarSpacing + pillarSpacing/2;
+
+      // Skip pillars too close to the wall
+      if (Math.abs(yPos - WALL_Y) < 100) continue;
+
+      // Left pillar
+      push();
+      fill(100, 100, 100);
+      translate(-BRIDGE_WIDTH/2 + 20, yPos, -100);
+      box(20, 20, 200);
+      pop();
+
+      // Right pillar
+      push();
+      fill(100, 100, 100);
+      translate(BRIDGE_WIDTH/2 - 20, yPos, -100);
+      box(20, 20, 200);
+      pop();
+
+      // Cross support
+      push();
+      fill(110, 110, 110);
+      translate(0, yPos, -50);
+      box(BRIDGE_WIDTH - 40, 10, 5);
+      pop();
+    }
+
+    // Add lane markings
+    stroke(255, 255, 255, 150);
+    strokeWeight(2);
+
+    // Center line
+    push();
+    translate(0, 0, 6);
+    line(0, -BRIDGE_LENGTH/2, 0, BRIDGE_LENGTH/2);
+    pop();
+
+    // Dashed lines
+    const dashCount = 30;
+    const dashLength = 20;
+    const dashSpacing = BRIDGE_LENGTH / dashCount;
+
+    for (let i = 0; i < dashCount; i++) {
+      const yPos = -BRIDGE_LENGTH/2 + i * dashSpacing + dashSpacing/2;
+
+      push();
+      translate(0, yPos, 6);
+      line(-BRIDGE_WIDTH/4, -dashLength/2, -BRIDGE_WIDTH/4, dashLength/2);
+      line(BRIDGE_WIDTH/4, -dashLength/2, BRIDGE_WIDTH/4, dashLength/2);
+      pop();
+    }
+  }
+
   pop();
 
   // Draw the wall and gate at the start of the bridge
@@ -1221,11 +1400,18 @@ function drawMainLane() {
 
 function drawWallAndGate() {
   // Position at the bottom of the bridge (start)
-  // const wallY = BRIDGE_LENGTH / 2 - WALL_THICKNESS / 2;
   const wallY = WALL_Y;
 
   push();
-  // Wall color - stone gray
+
+  // Add wall foundation/base
+  push();
+  translate(0, wallY, -WALL_HEIGHT/4);
+  fill(80, 80, 80); // Darker gray for foundation
+  box(BRIDGE_WIDTH + 60, WALL_THICKNESS + 20, WALL_HEIGHT/2);
+  pop();
+
+  // Wall color - stone gray with texture effect
   fill(100, 100, 100);
 
   // Left section of wall
@@ -1235,7 +1421,41 @@ function drawWallAndGate() {
     wallY,
     WALL_HEIGHT / 2
   );
+
+  // Main wall section
   box((BRIDGE_WIDTH - GATE_WIDTH) / 2, WALL_THICKNESS, WALL_HEIGHT);
+
+  // Add stone texture details if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Add stone texture by drawing small boxes on the wall surface
+    push();
+    translate(0, WALL_THICKNESS/2 + 1, 0);
+
+    const stoneRows = 8;
+    const stoneCols = 10;
+    const stoneWidth = ((BRIDGE_WIDTH - GATE_WIDTH) / 2) / stoneCols;
+    const stoneHeight = WALL_HEIGHT / stoneRows;
+
+    for (let row = 0; row < stoneRows; row++) {
+      for (let col = 0; col < stoneCols; col++) {
+        // Alternate stone pattern for each row
+        const offsetX = row % 2 === 0 ? 0 : stoneWidth/2;
+        const x = -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
+        const y = -WALL_HEIGHT/2 + row * stoneHeight + stoneHeight/2;
+
+        // Random stone color variation
+        const colorVar = random(-10, 10);
+        fill(100 + colorVar, 100 + colorVar, 100 + colorVar);
+
+        // Draw stone block with slight random size variation
+        push();
+        translate(x, 0, y);
+        box(stoneWidth * 0.9, 2, stoneHeight * 0.9);
+        pop();
+      }
+    }
+    pop();
+  }
   pop();
 
   // Right section of wall
@@ -1245,12 +1465,55 @@ function drawWallAndGate() {
     wallY,
     WALL_HEIGHT / 2
   );
+
+  // Main wall section
   box((BRIDGE_WIDTH - GATE_WIDTH) / 2, WALL_THICKNESS, WALL_HEIGHT);
+
+  // Add stone texture details if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Add stone texture by drawing small boxes on the wall surface
+    push();
+    translate(0, WALL_THICKNESS/2 + 1, 0);
+
+    const stoneRows = 8;
+    const stoneCols = 10;
+    const stoneWidth = ((BRIDGE_WIDTH - GATE_WIDTH) / 2) / stoneCols;
+    const stoneHeight = WALL_HEIGHT / stoneRows;
+
+    for (let row = 0; row < stoneRows; row++) {
+      for (let col = 0; col < stoneCols; col++) {
+        // Alternate stone pattern for each row
+        const offsetX = row % 2 === 0 ? 0 : stoneWidth/2;
+        const x = -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
+        const y = -WALL_HEIGHT/2 + row * stoneHeight + stoneHeight/2;
+
+        // Random stone color variation
+        const colorVar = random(-10, 10);
+        fill(100 + colorVar, 100 + colorVar, 100 + colorVar);
+
+        // Draw stone block with slight random size variation
+        push();
+        translate(x, 0, y);
+        box(stoneWidth * 0.9, 2, stoneHeight * 0.9);
+        pop();
+      }
+    }
+    pop();
+  }
   pop();
 
   // Gate (closed)
   push();
   translate(0, wallY, GATE_HEIGHT / 2);
+
+  // Gate frame
+  push();
+  fill(80, 60, 30); // Darker wood for frame
+  translate(0, 0, 0);
+  box(GATE_WIDTH + 10, WALL_THICKNESS + 8, GATE_HEIGHT + 10);
+  pop();
+
+  // Main gate
   fill(120, 80, 40); // Brown wooden gate
   box(GATE_WIDTH, WALL_THICKNESS + 5, GATE_HEIGHT);
 
@@ -1269,6 +1532,38 @@ function drawWallAndGate() {
     const barX = -GATE_WIDTH / 2 + i * (GATE_WIDTH / 4);
     line(barX, 0, -GATE_HEIGHT / 2, barX, 0, GATE_HEIGHT / 2);
   }
+
+  // Add metal reinforcements
+  fill(50, 50, 50);
+  noStroke();
+
+  // Corner reinforcements
+  push();
+  translate(-GATE_WIDTH/2 + 10, 0, -GATE_HEIGHT/2 + 10);
+  box(20, WALL_THICKNESS + 6, 20);
+  pop();
+
+  push();
+  translate(GATE_WIDTH/2 - 10, 0, -GATE_HEIGHT/2 + 10);
+  box(20, WALL_THICKNESS + 6, 20);
+  pop();
+
+  push();
+  translate(-GATE_WIDTH/2 + 10, 0, GATE_HEIGHT/2 - 10);
+  box(20, WALL_THICKNESS + 6, 20);
+  pop();
+
+  push();
+  translate(GATE_WIDTH/2 - 10, 0, GATE_HEIGHT/2 - 10);
+  box(20, WALL_THICKNESS + 6, 20);
+  pop();
+
+  // Add gate handles
+  push();
+  translate(0, WALL_THICKNESS/2 + 5, 0);
+  fill(40, 40, 40);
+  torus(15, 3);
+  pop();
 
   pop();
 
@@ -1323,6 +1618,33 @@ function drawWallAndGate() {
     pop();
   }
 
+  // Add wall towers at the ends if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Left tower
+    push();
+    translate(-BRIDGE_WIDTH/2 - 30, wallY, WALL_HEIGHT/2);
+    fill(90, 90, 90);
+    cylinder(40, WALL_HEIGHT);
+
+    // Tower top
+    translate(0, 0, WALL_HEIGHT/2 + 10);
+    fill(70, 70, 70);
+    cone(45, 40);
+    pop();
+
+    // Right tower
+    push();
+    translate(BRIDGE_WIDTH/2 + 30, wallY, WALL_HEIGHT/2);
+    fill(90, 90, 90);
+    cylinder(40, WALL_HEIGHT);
+
+    // Tower top
+    translate(0, 0, WALL_HEIGHT/2 + 10);
+    fill(70, 70, 70);
+    cone(45, 40);
+    pop();
+  }
+
   pop();
 }
 
@@ -1349,6 +1671,61 @@ function drawPowerUpLane() {
     fill(180, 220, 255, 150); // Lighter blue with transparency
     box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
     pop();
+  }
+
+  // Add power-up lane details if not on low performance mode
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Add glowing edge to power-up lane
+    push();
+    translate(POWER_UP_LANE_WIDTH/2 - 5, 0, 2);
+    fill(100, 200, 255, 180); // Brighter blue for the edge
+    box(3, BRIDGE_LENGTH, 4);
+    pop();
+
+    // Add floating energy particles along the lane
+    const particleCount = 15;
+    const particleSpacing = BRIDGE_LENGTH / particleCount;
+
+    for (let i = 0; i < particleCount; i++) {
+      const yPos = -BRIDGE_LENGTH/2 + i * particleSpacing + particleSpacing/2;
+
+      // Only draw particles that would be visible
+      if (yPos > -BRIDGE_LENGTH/2 && yPos < BRIDGE_LENGTH/2) {
+        push();
+        // Use sin function to make particles float up and down
+        const floatOffset = sin(frameCount * 0.05 + i) * 10;
+        translate(random(-POWER_UP_LANE_WIDTH/3, POWER_UP_LANE_WIDTH/3), yPos, 10 + floatOffset);
+
+        // Pulsing glow effect
+        const pulseSize = 5 + sin(frameCount * 0.1 + i * 0.5) * 2;
+
+        // No stroke for better performance
+        noStroke();
+
+        // Inner bright core
+        fill(200, 230, 255);
+        sphere(pulseSize * 0.3);
+
+        // Outer glow
+        fill(100, 200, 255, 100);
+        sphere(pulseSize);
+        pop();
+      }
+    }
+
+    // Add support structures connecting to main bridge
+    const supportCount = 5;
+    const supportSpacing = BRIDGE_LENGTH / supportCount;
+
+    for (let i = 0; i < supportCount; i++) {
+      const yPos = -BRIDGE_LENGTH/2 + i * supportSpacing + supportSpacing/2;
+
+      push();
+      translate(-POWER_UP_LANE_WIDTH/2 + 10, yPos, -5);
+      fill(130, 170, 200);
+      box(20, 30, 10);
+      pop();
+    }
   }
 
   pop();
