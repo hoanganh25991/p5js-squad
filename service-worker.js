@@ -1,10 +1,10 @@
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open("static-cache").then(function (cache) {
-      return cache.addAll([
+      const filesToCache = [
         "index.html",
         "squad.js",
-        "sound.js",
+        "sounds.js",
         "assets/logo.png",
         "assets/logo-192x192.png",
         "assets/favicon.ico",
@@ -34,7 +34,15 @@ self.addEventListener("install", function (event) {
         "sounds/environment/ambient.mp3",
         "sounds/powerups/collect.mp3",
         "sounds/powerups/spawn.mp3",
-      ]);
+      ];
+
+      return Promise.all(
+        filesToCache.map((file) =>
+          cache.add(file).catch((error) => {
+            console.error(`Failed to cache ${file}:`, error);
+          })
+        )
+      );
     })
   );
 });

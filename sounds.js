@@ -70,7 +70,7 @@ let soundSettings = {
     skill7: 0.8,
     skill8: 0.8
   },
-  muted: true, // Sound off by default
+  muted: false, // Sound off by default
   currentMusic: null,
 };
 
