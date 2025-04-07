@@ -172,12 +172,19 @@ let squadLeader = {
   id: Date.now(), // Unique ID for reference
 };
 
-// Font loading
+// Font and sound loading
 function preload() {
   // Load a default system font
   gameFont = loadFont(
     "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf"
   );
+
+  // Load all game sounds
+  try {
+    preloadSounds();
+  } catch (e) {
+    console.warn("Error loading sounds:", e);
+  }
 }
 
 // Game setup
@@ -227,6 +234,16 @@ function setup() {
   createDirectionalPadElement(); // Add directional pad for touch/click movement
   createSkillBarElement();
 
+  // Initialize sound system
+  try {
+    initSounds();
+
+    // Add sound toggle button
+    createSoundToggleButton();
+  } catch (e) {
+    console.warn("Error initializing sounds:", e);
+  }
+
   // Purge any old references
   setTimeout(function() {
     // Clear arrays just in case
@@ -242,11 +259,41 @@ function setup() {
         // Ignore if gc is not available
       }
     }
+
+    // Start background music
+    try {
+      playMusic('main');
+    } catch (e) {
+      console.warn("Error playing background music:", e);
+    }
   }, 1000);
 }
 
 // Memory warning overlay
 let memoryWarningOverlay = null;
+
+// Sound toggle button
+let soundToggleButton = null;
+
+function createSoundToggleButton() {
+  soundToggleButton = createButton('🔊');
+  soundToggleButton.position(width - 60, 20);
+  soundToggleButton.style('background-color', 'rgba(0, 0, 0, 0.5)');
+  soundToggleButton.style('color', 'white');
+  soundToggleButton.style('border', 'none');
+  soundToggleButton.style('border-radius', '50%');
+  soundToggleButton.style('width', '40px');
+  soundToggleButton.style('height', '40px');
+  soundToggleButton.style('font-size', '20px');
+  soundToggleButton.style('cursor', 'pointer');
+  soundToggleButton.style('z-index', '1000');
+
+  soundToggleButton.mousePressed(() => {
+    const isMuted = toggleMute();
+    soundToggleButton.html(isMuted ? '🔇' : '🔊');
+    playUISound('click');
+  });
+}
 
 function checkMemoryUsage() {
   // Check if we need to create memory warning
@@ -3618,14 +3665,25 @@ function updateSquad() {
 function fireWeapon(squadMember) {
   // Check if machine gun skill is active
   const isMachineGunActive = skills.skill2.active;
-  
+
+  // Play shooting sound with variation based on weapon and machine gun status
+  if (isMachineGunActive) {
+    // Machine gun sound - faster rate, slightly higher pitch
+    playCombatSound('shoot', squadMember.x, squadMember.y, 0.7);
+    sounds.combat.shoot.rate(random(1.1, 1.3));
+  } else {
+    // Normal weapon sound
+    playCombatSound('shoot', squadMember.x, squadMember.y, 0.9);
+    sounds.combat.shoot.rate(random(0.9, 1.1));
+  }
+
   // Use projectile from object pool if available (object reuse)
   let projectile;
-  
+
   if (projectilePool.length > 0) {
     // Reuse a projectile from the pool
     projectile = projectilePool.pop();
-    
+
     // Reset properties
     projectile.x = squadMember.x;
     projectile.y = squadMember.y;
@@ -4027,6 +4085,10 @@ function checkCollisions() {
         // Add hit effect
         createHitEffect(proj.x, proj.y, proj.z, WEAPON_COLORS[proj.weapon]);
 
+        // Play hit sound with variation based on weapon type
+        const isCritical = random() < 0.1; // 10% chance for critical hit sound
+        playRandomHitSound(proj.x, proj.y, isCritical);
+
         // Apply special effects based on weapon
         if (proj.weapon === "inferno") {
           // DoT effect - additional damage over time
@@ -4269,8 +4331,12 @@ function activateSkill(skillNumber) {
     frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown
   ) {
     // Skill on cooldown (only in non-debug mode)
+    playUISound('error'); // Play error sound for cooldown
     return;
   }
+
+  // Play skill activation sound
+  playSkillSound(skillNumber);
 
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
