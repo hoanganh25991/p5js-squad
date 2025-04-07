@@ -1198,13 +1198,6 @@ function drawPowerUpLane() {
     pop();
   }
 
-  // Draw a more visible edge between main bridge and power-up lane for clarity
-  push();
-  translate(-POWER_UP_LANE_WIDTH / 2, 0, 5);
-  fill(200, 230, 255, 200); // Bright edge color
-  box(2, BRIDGE_LENGTH, 1);
-  pop();
-
   pop();
 }
 
