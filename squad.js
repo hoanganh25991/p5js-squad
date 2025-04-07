@@ -7672,7 +7672,7 @@ function startGame() {
       controlsContainer.style("display", "flex");
       controlsContainer.style("visibility", "visible");
       controlsContainer.style("opacity", "1");
-      controlsContainer.position(0, height - 250); // Ensure correct position
+      // controlsContainer.position(0, height - 250); // Ensure correct position
       controlsContainer.style("margin", "0 auto");
 
       // Make sure D-pad is visible
@@ -8846,11 +8846,11 @@ function createControlsContainer() {
 
   // Adjust height based on screen size - smaller for mobile
   const isMobile = windowWidth < 768;
-  const containerHeight = isMobile ? 200 : 250;
+  // const containerHeight = isMobile ? 200 : 250;
 
-  controlsContainer.position(0, height - containerHeight); // Position at bottom of screen
+  // controlsContainer.position(0, height - containerHeight); // Position at bottom of screen
   controlsContainer.style("width", "100%");
-  controlsContainer.style("height", containerHeight + "px");
+  // controlsContainer.style("height", containerHeight + "px");
   controlsContainer.style("margin", "0 auto"); // Center horizontally
   controlsContainer.style("display", "flex");
   controlsContainer.style("flex-direction", "row");
@@ -8925,7 +8925,7 @@ function updateDirectionalPad() {
     controlsContainer.style("display", "flex");
     controlsContainer.style("visibility", "visible");
     controlsContainer.style("opacity", "1");
-    controlsContainer.position(0, height - 250); // Reposition in case of window resize
+    // controlsContainer.position(0, height - 250); // Reposition in case of window resize
     controlsContainer.style("margin", "0 auto");
 
     // Make sure the D-pad is visible
@@ -8968,9 +8968,9 @@ function windowResized() {
 
   // Reposition UI elements
   if (controlsContainer) {
-    controlsContainer.position(0, height - 250);
+    // controlsContainer.position(0, height - 250);
     controlsContainer.style("width", "100%");
-    controlsContainer.style("height", "250px");
+    // controlsContainer.style("height", "250px");
     controlsContainer.style("margin", "0 auto");
   }
 
