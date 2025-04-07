@@ -13,14 +13,14 @@ let waveEnemiesKilled = 0; // Enemies killed in the current wave
 // Font
 let gameFont;
 
-const MIN_ZOOM = 800; // Minimum zoom level to ensure the bridge is visible
-const MAX_ZOOM = 3000; // Maximum zoom level for when players want to zoom out further
+const MIN_ZOOM = -800; // Minimum zoom level to ensure the bridge is visible
+const MAX_ZOOM = 10_000; // Maximum zoom level for when players want to zoom out further
 let isDragging = false;
 let prevMouseX, prevMouseY;
 
 // Game dimensions
 const BRIDGE_LENGTH = 5500 * 1.5; // Significantly increased bridge length to fully fill the screen
-const BRIDGE_WIDTH = 1000;
+const BRIDGE_WIDTH = 400;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
@@ -32,8 +32,8 @@ const GATE_HEIGHT = 120;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
-const CAMERA_OFFSET_Y = -1200; // Even more significantly adjusted to show the squad at the bottom of the screen
-const CAMERA_OFFSET_Z = 2200; // Much further increased zoom distance to see the entire bridge
+const CAMERA_OFFSET_Y = -600; // Even more significantly adjusted to show the squad at the bottom of the screen
+const CAMERA_OFFSET_Z = 600; // Much further increased zoom distance to see the entire bridge
 
 // Debug mode for testing
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
@@ -215,7 +215,8 @@ function setup() {
   squad.push(squadLeader);
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
-  perspective(PI / 3.5, width / height, 0.1, 15000);
+  // perspective(PI / 3.5, width / height, 0.1, 15000);
+  perspective(PI / 4, width / height, 0.1, 5000);
 
   // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
   // This can improve performance in some cases
@@ -647,7 +648,8 @@ function draw() {
   }
 
   translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
-  rotateX(PI / 6.5); // Much flatter angle to show the entire bridge from bottom to top
+  // rotateX(PI / 6.5); // Much flatter angle to show the entire bridge from bottom to top
+  rotateX(PI / 4); // Much flatter angle to show the entire bridge from bottom to top
 
   // 3D
   drawGame();
@@ -775,6 +777,9 @@ function updateGame() {
   updateEnemies();
   updatePowerUps();
 
+  // Clean up any objects that have gone beyond the wall
+  cleanupEffectsBeyondWall();
+
   applyEffects();
   applyEnemyEffects();
 
@@ -858,6 +863,27 @@ function drawWallAndGate() {
     line(barX, 0, -GATE_HEIGHT/2, barX, 0, GATE_HEIGHT/2);
   }
 
+  pop();
+
+  // Add a visual boundary indicator - red line showing the wall boundary
+  push();
+  translate(0, wallY - WALL_THICKNESS/2, 5); // Position just in front of the wall
+  stroke(255, 0, 0); // Bright red
+  strokeWeight(3);
+  line(-BRIDGE_WIDTH/2, 0, BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH, 0);
+
+  // Add small warning indicators along the boundary
+  for (let x = -BRIDGE_WIDTH/2; x <= BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH; x += 50) {
+    // Pulsing effect for the warning indicators
+    const pulseSize = 5 + sin(frameCount * 0.1) * 2;
+
+    push();
+    translate(x, 0, 5);
+    noStroke();
+    fill(255, 0, 0, 150 + sin(frameCount * 0.1) * 50); // Pulsing opacity
+    sphere(pulseSize);
+    pop();
+  }
   pop();
 
   // Wall top decorations (crenellations)
@@ -3934,6 +3960,117 @@ function drawPowerUps() {
   }
 }
 
+// Helper function to check if an object is beyond the defensive wall
+function isBeyondWall(y) {
+  // Use the exact wall position from drawWallAndGate function
+  const wallPosition = 220; // This matches the fixed position in drawWallAndGate
+
+  // Check if the object's y position is beyond the wall
+  return y >= wallPosition;
+}
+
+// Function to create an explosion effect at the specified position
+function createExplosionEffect(x, y, z, color, size = 30) {
+  // Create the main explosion
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: "explosion",
+    size: size,
+    life: 45,
+    color: color || [255, 100, 0],
+    forceRenderDetail: true,
+  });
+
+  // Add some particle effects for more visual impact
+  const particleCount = Math.min(10, Math.floor(size / 3)); // Scale particles with size
+  for (let i = 0; i < particleCount; i++) {
+    const angle = random(TWO_PI);
+    const dist = random(size * 0.3, size * 0.7);
+    effects.push({
+      x: x + cos(angle) * dist,
+      y: y + sin(angle) * dist,
+      z: z + random(-10, 10),
+      type: "particle",
+      size: random(5, 10),
+      life: random(20, 40),
+      color: color || [255, 100, 0],
+      velocity: {
+        x: cos(angle) * random(1, 3),
+        y: sin(angle) * random(1, 3),
+        z: random(0.5, 2)
+      },
+    });
+  }
+
+  // Create a shockwave effect
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: "shockwave",
+    size: size * 1.5,
+    life: 30,
+    color: [255, 255, 255, 150],
+  });
+}
+
+// Function to create a hit effect at the specified position
+function createHitEffect(x, y, z, color, size = 15) {
+  // Create the main hit effect
+  effects.push({
+    x: x,
+    y: y,
+    z: z,
+    type: "hit",
+    size: size,
+    life: 20,
+    color: color || [255, 255, 255],
+  });
+
+  // Add a few spark particles
+  const sparkCount = Math.min(5, Math.floor(size / 3));
+  for (let i = 0; i < sparkCount; i++) {
+    const angle = random(TWO_PI);
+    const dist = random(size * 0.2, size * 0.5);
+    effects.push({
+      x: x + cos(angle) * dist,
+      y: y + sin(angle) * dist,
+      z: z + random(-5, 5),
+      type: "spark",
+      size: random(2, 5),
+      life: random(10, 20),
+      color: color || [255, 255, 255],
+      velocity: {
+        x: cos(angle) * random(0.5, 2),
+        y: sin(angle) * random(0.5, 2),
+        z: random(0.2, 1)
+      },
+    });
+  }
+}
+
+// Function to clean up any effects that go beyond the wall
+function cleanupEffectsBeyondWall() {
+  // Process effects from the end of the array to avoid index issues when removing
+  for (let i = effects.length - 1; i >= 0; i--) {
+    let effect = effects[i];
+
+    // Check if effect is beyond the wall and remove it
+    // Skip certain global effects that should persist regardless of position
+    if (effect.y &&
+        isBeyondWall(effect.y) &&
+        !effect.type.includes("global") &&
+        !effect.type.includes("atomic") &&
+        !effect.type.includes("shield")) {
+
+      // Remove the effect
+      effects.splice(i, 1);
+    }
+  }
+}
+
 // Helper function to move the squad in a specific direction
 function moveSquad(deltaX, deltaY) {
   if (squad.length == 0) {
@@ -3941,6 +4078,39 @@ function moveSquad(deltaX, deltaY) {
   }
 
   let mainMember = squad[0];
+
+  // Check for wall boundary when moving down (positive deltaY)
+  if (deltaY > 0) {
+    // Use the exact wall position from drawWallAndGate function
+    const wallPosition = 220; // This matches the fixed position in drawWallAndGate
+
+    // If the squad is approaching the wall, prevent movement past it
+    if (mainMember.y + deltaY >= wallPosition - SQUAD_SIZE - WALL_THICKNESS/2) {
+      // Only allow movement up to the wall boundary
+      mainMember.y = wallPosition - SQUAD_SIZE - WALL_THICKNESS/2;
+
+      // Add visual feedback when hitting the wall
+      if (frameCount % 5 === 0) { // Only create effect occasionally to avoid too many effects
+        // Create a small impact effect at the point of contact
+        createHitEffect(
+          mainMember.x,
+          wallPosition - WALL_THICKNESS/2, // Position at the wall
+          WALL_HEIGHT/2, // At the middle height of the wall
+          [255, 255, 255], // White spark
+          20 // Small effect
+        );
+
+        // Try to play a bump sound if available
+        if (typeof playCombatSound === "function" && sounds && sounds.combat && sounds.combat.hit) {
+          playCombatSound("hit", mainMember.x, mainMember.y, 0.3);
+        }
+      }
+
+      return; // Exit early as we've handled the movement
+    }
+  }
+
+  // For other directions, proceed normally
   mainMember.x += deltaX;
   mainMember.y += deltaY;
 
@@ -4207,6 +4377,23 @@ function updateProjectiles() {
       }
       projectiles.splice(i, 1);
     }
+    // Remove projectiles that go beyond the wall
+    else if (isBeyondWall(proj.y)) {
+      // Create a small effect when projectile hits the wall
+      createHitEffect(
+        proj.x,
+        220 - WALL_THICKNESS/2, // Position at the wall
+        proj.z,
+        WEAPON_COLORS[proj.weapon] || [255, 255, 255],
+        15 // Small effect
+      );
+
+      // Add to object pool for reuse
+      if (projectilePool.length < 50) {
+        projectilePool.push(proj);
+      }
+      projectiles.splice(i, 1);
+    }
   }
 
   // Limit total projectiles to avoid performance issues
@@ -4336,7 +4523,31 @@ function updateEnemies() {
   let shieldY = shieldEffect ? shieldEffect.y : targetY;
   let shieldRadius = shieldEffect ? shieldEffect.size : 0; // Adjust size factor as needed
 
-  for (let enemy of enemies) {
+  // Process enemies from the end of the array to avoid index issues when removing
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let enemy = enemies[i];
+
+    // Check if enemy is beyond the wall and remove it
+    if (isBeyondWall(enemy.y)) {
+      // Create an effect to show the enemy being destroyed by the wall
+      createExplosionEffect(
+        enemy.x,
+        220 - WALL_THICKNESS/2, // Position at the wall
+        enemy.z,
+        [255, 100, 0], // Orange explosion
+        enemy.size
+      );
+
+      // Play destruction sound if available
+      if (typeof playCombatSound === "function" && sounds && sounds.combat && sounds.combat.explosion) {
+        playCombatSound("explosion", enemy.x, enemy.y, 0.5);
+      }
+
+      // Remove the enemy
+      enemies.splice(i, 1);
+      continue; // Skip to the next enemy
+    }
+
     // Check if enemy is close to the squad
     const distanceToSquadY = Math.abs(targetY - enemy.y);
 
@@ -4465,8 +4676,22 @@ function updatePowerUps() {
     // Move down the lane at varying speeds
     powerUp.y += powerUp.speed;
 
+    // Check if power-up is beyond the wall and remove it
+    if (isBeyondWall(powerUp.y)) {
+      // Create a small effect when power-up hits the wall
+      createHitEffect(
+        powerUp.x,
+        220 - WALL_THICKNESS/2, // Position at the wall
+        powerUp.z,
+        WEAPON_COLORS[powerUp.type] || [200, 200, 200],
+        20 // Small effect
+      );
+
+      // Remove the power-up
+      powerUps.splice(i, 1);
+    }
     // Remove power-ups that go off-screen
-    if (powerUp.y > bottomBound) {
+    else if (powerUp.y > bottomBound) {
       powerUps.splice(i, 1);
     }
   }
