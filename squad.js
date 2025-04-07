@@ -831,19 +831,27 @@ function drawWallAndGate() {
 
   // Left section of wall
   push();
-  translate(-BRIDGE_WIDTH/2 + (BRIDGE_WIDTH - GATE_WIDTH)/4, wallY, WALL_HEIGHT/2);
-  box((BRIDGE_WIDTH - GATE_WIDTH)/2, WALL_THICKNESS, WALL_HEIGHT);
+  translate(
+    -BRIDGE_WIDTH / 2 + (BRIDGE_WIDTH - GATE_WIDTH) / 4,
+    wallY,
+    WALL_HEIGHT / 2
+  );
+  box((BRIDGE_WIDTH - GATE_WIDTH) / 2, WALL_THICKNESS, WALL_HEIGHT);
   pop();
 
   // Right section of wall
   push();
-  translate(BRIDGE_WIDTH/2 - (BRIDGE_WIDTH - GATE_WIDTH)/4, wallY, WALL_HEIGHT/2);
-  box((BRIDGE_WIDTH - GATE_WIDTH)/2, WALL_THICKNESS, WALL_HEIGHT);
+  translate(
+    BRIDGE_WIDTH / 2 - (BRIDGE_WIDTH - GATE_WIDTH) / 4,
+    wallY,
+    WALL_HEIGHT / 2
+  );
+  box((BRIDGE_WIDTH - GATE_WIDTH) / 2, WALL_THICKNESS, WALL_HEIGHT);
   pop();
 
   // Gate (closed)
   push();
-  translate(0, wallY, GATE_HEIGHT/2);
+  translate(0, wallY, GATE_HEIGHT / 2);
   fill(120, 80, 40); // Brown wooden gate
   box(GATE_WIDTH, WALL_THICKNESS + 5, GATE_HEIGHT);
 
@@ -853,27 +861,31 @@ function drawWallAndGate() {
 
   // Horizontal bars
   for (let i = 1; i < 3; i++) {
-    const barY = -GATE_HEIGHT/2 + i * (GATE_HEIGHT/3);
-    line(-GATE_WIDTH/2, 0, barY, GATE_WIDTH/2, 0, barY);
+    const barY = -GATE_HEIGHT / 2 + i * (GATE_HEIGHT / 3);
+    line(-GATE_WIDTH / 2, 0, barY, GATE_WIDTH / 2, 0, barY);
   }
 
   // Vertical supports
   for (let i = 0; i < 5; i++) {
-    const barX = -GATE_WIDTH/2 + i * (GATE_WIDTH/4);
-    line(barX, 0, -GATE_HEIGHT/2, barX, 0, GATE_HEIGHT/2);
+    const barX = -GATE_WIDTH / 2 + i * (GATE_WIDTH / 4);
+    line(barX, 0, -GATE_HEIGHT / 2, barX, 0, GATE_HEIGHT / 2);
   }
 
   pop();
 
   // Add a visual boundary indicator - red line showing the wall boundary
   push();
-  translate(0, wallY - WALL_THICKNESS/2, 5); // Position just in front of the wall
+  translate(0, wallY - WALL_THICKNESS / 2, 5); // Position just in front of the wall
   stroke(255, 0, 0); // Bright red
   strokeWeight(3);
-  line(-BRIDGE_WIDTH/2, 0, BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH, 0);
+  line(-BRIDGE_WIDTH / 2, 0, BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH, 0);
 
   // Add small warning indicators along the boundary
-  for (let x = -BRIDGE_WIDTH/2; x <= BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH; x += 50) {
+  for (
+    let x = -BRIDGE_WIDTH / 2;
+    x <= BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH;
+    x += 50
+  ) {
     // Pulsing effect for the warning indicators
     const pulseSize = 5 + sin(frameCount * 0.1) * 2;
 
@@ -896,15 +908,17 @@ function drawWallAndGate() {
 
   for (let i = 0; i < crenellationCount; i++) {
     // Skip the middle section where the gate is
-    if (i >= crenellationCount/2 - GATE_WIDTH/(2*crenellationWidth) &&
-        i < crenellationCount/2 + GATE_WIDTH/(2*crenellationWidth)) {
+    if (
+      i >= crenellationCount / 2 - GATE_WIDTH / (2 * crenellationWidth) &&
+      i < crenellationCount / 2 + GATE_WIDTH / (2 * crenellationWidth)
+    ) {
       continue;
     }
 
-    const x = -BRIDGE_WIDTH/2 + (i + 0.5) * crenellationWidth;
+    const x = -BRIDGE_WIDTH / 2 + (i + 0.5) * crenellationWidth;
 
     push();
-    translate(x, wallY, WALL_HEIGHT + crenellationHeight/2);
+    translate(x, wallY, WALL_HEIGHT + crenellationHeight / 2);
     fill(90, 90, 90);
     box(crenellationWidth * 0.8, WALL_THICKNESS, crenellationHeight);
     pop();
@@ -3999,7 +4013,7 @@ function createExplosionEffect(x, y, z, color, size = 30) {
       velocity: {
         x: cos(angle) * random(1, 3),
         y: sin(angle) * random(1, 3),
-        z: random(0.5, 2)
+        z: random(0.5, 2),
       },
     });
   }
@@ -4045,7 +4059,7 @@ function createHitEffect(x, y, z, color, size = 15) {
       velocity: {
         x: cos(angle) * random(0.5, 2),
         y: sin(angle) * random(0.5, 2),
-        z: random(0.2, 1)
+        z: random(0.2, 1),
       },
     });
   }
@@ -4059,12 +4073,13 @@ function cleanupEffectsBeyondWall() {
 
     // Check if effect is beyond the wall and remove it
     // Skip certain global effects that should persist regardless of position
-    if (effect.y &&
-        isBeyondWall(effect.y) &&
-        !effect.type.includes("global") &&
-        !effect.type.includes("atomic") &&
-        !effect.type.includes("shield")) {
-
+    if (
+      effect.y &&
+      isBeyondWall(effect.y) &&
+      !effect.type.includes("global") &&
+      !effect.type.includes("atomic") &&
+      !effect.type.includes("shield")
+    ) {
       // Remove the effect
       effects.splice(i, 1);
     }
@@ -4085,23 +4100,32 @@ function moveSquad(deltaX, deltaY) {
     const wallPosition = 220; // This matches the fixed position in drawWallAndGate
 
     // If the squad is approaching the wall, prevent movement past it
-    if (mainMember.y + deltaY >= wallPosition - SQUAD_SIZE - WALL_THICKNESS/2) {
+    if (
+      mainMember.y + deltaY >=
+      wallPosition - SQUAD_SIZE - WALL_THICKNESS / 2
+    ) {
       // Only allow movement up to the wall boundary
-      mainMember.y = wallPosition - SQUAD_SIZE - WALL_THICKNESS/2;
+      mainMember.y = wallPosition - SQUAD_SIZE - WALL_THICKNESS / 2;
 
       // Add visual feedback when hitting the wall
-      if (frameCount % 5 === 0) { // Only create effect occasionally to avoid too many effects
+      if (frameCount % 5 === 0) {
+        // Only create effect occasionally to avoid too many effects
         // Create a small impact effect at the point of contact
         createHitEffect(
           mainMember.x,
-          wallPosition - WALL_THICKNESS/2, // Position at the wall
-          WALL_HEIGHT/2, // At the middle height of the wall
+          wallPosition - WALL_THICKNESS / 2, // Position at the wall
+          WALL_HEIGHT / 2, // At the middle height of the wall
           [255, 255, 255], // White spark
           20 // Small effect
         );
 
         // Try to play a bump sound if available
-        if (typeof playCombatSound === "function" && sounds && sounds.combat && sounds.combat.hit) {
+        if (
+          typeof playCombatSound === "function" &&
+          sounds &&
+          sounds.combat &&
+          sounds.combat.hit
+        ) {
           playCombatSound("hit", mainMember.x, mainMember.y, 0.3);
         }
       }
@@ -4382,7 +4406,7 @@ function updateProjectiles() {
       // Create a small effect when projectile hits the wall
       createHitEffect(
         proj.x,
-        220 - WALL_THICKNESS/2, // Position at the wall
+        220 - WALL_THICKNESS / 2, // Position at the wall
         proj.z,
         WEAPON_COLORS[proj.weapon] || [255, 255, 255],
         15 // Small effect
@@ -4532,14 +4556,19 @@ function updateEnemies() {
       // Create an effect to show the enemy being destroyed by the wall
       createExplosionEffect(
         enemy.x,
-        220 - WALL_THICKNESS/2, // Position at the wall
+        220 - WALL_THICKNESS / 2, // Position at the wall
         enemy.z,
         [255, 100, 0], // Orange explosion
         enemy.size
       );
 
       // Play destruction sound if available
-      if (typeof playCombatSound === "function" && sounds && sounds.combat && sounds.combat.explosion) {
+      if (
+        typeof playCombatSound === "function" &&
+        sounds &&
+        sounds.combat &&
+        sounds.combat.explosion
+      ) {
         playCombatSound("explosion", enemy.x, enemy.y, 0.5);
       }
 
@@ -4681,7 +4710,7 @@ function updatePowerUps() {
       // Create a small effect when power-up hits the wall
       createHitEffect(
         powerUp.x,
-        220 - WALL_THICKNESS/2, // Position at the wall
+        220 - WALL_THICKNESS / 2, // Position at the wall
         powerUp.z,
         WEAPON_COLORS[powerUp.type] || [200, 200, 200],
         20 // Small effect
@@ -6576,7 +6605,9 @@ function updateTechnicalBoard() {
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
-    <div>Squad: x=${Math.floor(squadLeader.x)}, y=${Math.floor(squadLeader.y)}, z=${Math.floor(squadLeader.z)}</div>
+    <div>Squad: x=${Math.floor(squadLeader.x)}, y=${Math.floor(
+    squadLeader.y
+  )}, z=${Math.floor(squadLeader.z)}</div>
   `);
 
   // Force garbage collection attempt (not guaranteed to work, but might help signal)
