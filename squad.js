@@ -1,8 +1,15 @@
 // Squad Survival Game
 // A 3D p5.js game with squad-based combat
 
-// Game states
-let gameState = "menu"; // menu, playing, paused, gameOver
+// ===== GAME STATE =====
+const GameState = {
+  MENU: "menu",
+  PLAYING: "playing",
+  PAUSED: "paused",
+  GAME_OVER: "gameOver"
+};
+
+let gameState = GameState.MENU;
 let currentWave = 1;
 let score = 0;
 let gameStartTime = 0;
@@ -10,10 +17,17 @@ let startTime = 0;
 let totalEnemiesKilled = 0; // Total enemies killed across all waves
 let waveEnemiesKilled = 0; // Enemies killed in the current wave
 
-// Performance settings
+// ===== PERFORMANCE SETTINGS =====
+const PerformanceLevel = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  AUTO: "auto"
+};
+
 let isMobileDevice = false;
-let performanceMode = "auto"; // auto, low, medium, high
-let currentPerformanceLevel = "high"; // Will be set based on device detection
+let performanceMode = PerformanceLevel.AUTO;
+let currentPerformanceLevel = PerformanceLevel.HIGH; // Will be set based on device detection
 let fpsHistory = [];
 let lastPerformanceCheck = 0;
 let performanceCheckInterval = 300; // Check every 5 seconds (300 frames at 60fps)
@@ -188,7 +202,6 @@ let skills = {
 
 let squadLeader = {
   x: SQUAD_X,
-  // y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   y: SQUAD_Y, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   z: SQUAD_Z,
   size: HUMAN_SIZE,
@@ -217,91 +230,140 @@ function preload() {
 let lastMemoryWarning = 0;
 let memoryWarningShown = false;
 
-// Detect if the device is mobile
+// ===== PERFORMANCE MANAGEMENT =====
+const PerformanceManager = {
+  // Detect if the device is mobile
+  detectMobileDevice: function() {
+    // Check if the device has touch capability
+    const hasTouchScreen =
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      navigator.msMaxTouchPoints > 0;
+
+    // Check user agent for mobile devices
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile =
+      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(
+        userAgent
+      );
+
+    // Check screen size (typical mobile width is less than 768px)
+    const hasSmallScreen = window.innerWidth < 768;
+
+    // Consider it a mobile device if it has a touch screen and either has a mobile user agent or small screen
+    return hasTouchScreen && (isMobile || hasSmallScreen);
+  },
+
+  // Calculate average FPS from history
+  getAverageFPS: function() {
+    if (fpsHistory.length === 0) return 60; // Default to 60 if no history
+    return fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+  },
+
+  // Set performance level based on device and FPS
+  setPerformanceLevel: function() {
+    if (performanceMode !== PerformanceLevel.AUTO) {
+      currentPerformanceLevel = performanceMode;
+      return;
+    }
+
+    const avgFPS = this.getAverageFPS();
+
+    // If we're on a mobile device, use more conservative settings
+    if (isMobileDevice) {
+      currentPerformanceLevel = PerformanceLevel.MEDIUM;
+
+      // If we have enough FPS history and it's consistently low, adjust
+      if (fpsHistory.length >= 10) {
+        if (avgFPS < 30) {
+          currentPerformanceLevel = PerformanceLevel.LOW;
+        } else if (avgFPS > 55) {
+          // Stay at medium even with good FPS on mobile
+          currentPerformanceLevel = PerformanceLevel.MEDIUM;
+        }
+      }
+    } else {
+      // On desktop, start with high performance
+      currentPerformanceLevel = PerformanceLevel.HIGH;
+
+      // If we have enough FPS history and it's consistently low, adjust
+      if (fpsHistory.length >= 10) {
+        if (avgFPS < 30) {
+          currentPerformanceLevel = PerformanceLevel.MEDIUM;
+        } else if (avgFPS < 20) {
+          currentPerformanceLevel = PerformanceLevel.LOW;
+        }
+      }
+    }
+
+    console.log("Performance level set to:", currentPerformanceLevel);
+  },
+
+  // Get multipliers for effect counts based on performance level
+  getEffectMultiplier: function() {
+    switch (currentPerformanceLevel) {
+      case PerformanceLevel.LOW:
+        return 0.3; // 30% of normal effects
+      case PerformanceLevel.MEDIUM:
+        return 0.6; // 60% of normal effects
+      case PerformanceLevel.HIGH:
+        return 1.0; // 100% of normal effects
+      default:
+        return 0.6; // Default to medium
+    }
+  },
+
+  // Apply performance settings to WebGL context
+  applyWebGLSettings: function() {
+    // Configure WebGL settings based on performance level
+    if (currentPerformanceLevel === PerformanceLevel.LOW) {
+      setAttributes("antialias", false);
+      setAttributes("perPixelLighting", false);
+      setAttributes("depth", false);
+    } else if (currentPerformanceLevel === PerformanceLevel.MEDIUM) {
+      setAttributes("antialias", true);
+      setAttributes("perPixelLighting", false);
+      if (isMobileDevice) {
+        setAttributes("depth", false);
+      } else {
+        setAttributes("depth", true);
+      }
+    } else {
+      setAttributes("antialias", true);
+      setAttributes("perPixelLighting", true);
+      setAttributes("depth", true);
+    }
+
+    // Disable texture mipmapping to save memory
+    textureMode(NORMAL);
+  }
+};
+
+// Wrapper functions for backward compatibility
 function detectMobileDevice() {
-  // Check if the device has touch capability
-  const hasTouchScreen =
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0 ||
-    navigator.msMaxTouchPoints > 0;
-
-  // Check user agent for mobile devices
-  const userAgent = navigator.userAgent.toLowerCase();
-  const isMobile =
-    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(
-      userAgent
-    );
-
-  // Check screen size (typical mobile width is less than 768px)
-  const hasSmallScreen = window.innerWidth < 768;
-
-  // Consider it a mobile device if it has a touch screen and either has a mobile user agent or small screen
-  return hasTouchScreen && (isMobile || hasSmallScreen);
+  return PerformanceManager.detectMobileDevice();
 }
 
-// Set performance level based on device and FPS
 function setPerformanceLevel() {
-  if (performanceMode !== "auto") {
-    currentPerformanceLevel = performanceMode;
-    return;
-  }
-
-  // If we're on a mobile device, start with medium performance
-  if (isMobileDevice) {
-    currentPerformanceLevel = "medium";
-
-    // If we have FPS history and it's consistently low, drop to low performance
-    if (fpsHistory.length >= 10) {
-      const avgFPS =
-        fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
-      if (avgFPS < 30) {
-        currentPerformanceLevel = "low";
-      } else if (avgFPS > 55) {
-        currentPerformanceLevel = "medium"; // Stay at medium even with good FPS on mobile
-      }
-    }
-  } else {
-    // On desktop, start with high performance
-    currentPerformanceLevel = "high";
-
-    // If we have FPS history and it's consistently low, adjust accordingly
-    if (fpsHistory.length >= 10) {
-      const avgFPS =
-        fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
-      if (avgFPS < 30) {
-        currentPerformanceLevel = "medium";
-      } else if (avgFPS < 20) {
-        currentPerformanceLevel = "low";
-      }
-    }
-  }
-
-  console.log("Performance level set to:", currentPerformanceLevel);
+  PerformanceManager.setPerformanceLevel();
 }
 
-// Get multipliers for effect counts based on performance level
 function getEffectMultiplier() {
-  switch (currentPerformanceLevel) {
-    case "low":
-      return 0.3; // 30% of normal effects
-    case "medium":
-      return 0.6; // 60% of normal effects
-    case "high":
-      return 1.0; // 100% of normal effects
-    default:
-      return 0.6; // Default to medium
-  }
+  return PerformanceManager.getEffectMultiplier();
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
   // Detect if we're on a mobile device
-  isMobileDevice = detectMobileDevice();
+  isMobileDevice = PerformanceManager.detectMobileDevice();
   console.log("Mobile device detected:", isMobileDevice);
 
   // Set initial performance level
-  setPerformanceLevel();
+  PerformanceManager.setPerformanceLevel();
+
+  // Apply WebGL settings based on performance level
+  PerformanceManager.applyWebGLSettings();
 
   // Set the font for all text
   textFont(gameFont);
@@ -312,29 +374,29 @@ function setup() {
   // Set perspective for better 3D view with increased far plane to see the entire bridge
   perspective(PI / 4, width / height, 0.1, 5000);
 
-  // Configure WebGL settings based on performance level
-  if (currentPerformanceLevel === "low") {
-    setAttributes("antialias", false);
-  } else {
-    setAttributes("antialias", true);
-  }
-
-  // Disable texture mipmapping to save memory
-  textureMode(NORMAL);
-
-  // Set lower precision to improve performance
-  setAttributes("perPixelLighting", false);
-
-  // Disable depth sorting for better performance
-  if (isMobileDevice || currentPerformanceLevel === "low") {
-    setAttributes("depth", false);
-  }
-
   // Auto-start the game (no need to press enter)
   gameStartTime = frameCount;
 
-  createUiUsingDomElements();
+  // Create all UI elements
+  initializeUI();
 
+  // Clean up memory
+  cleanupMemory();
+
+  // Set sound as initially muted until user interaction
+  if (typeof soundSettings !== "undefined") {
+    soundSettings.muted = true;
+  }
+}
+
+// Initialize all UI elements
+function initializeUI() {
+  createUiUsingDomElements();
+  createPerformanceSettingsUI();
+}
+
+// Clean up memory and optimize performance
+function cleanupMemory() {
   // Purge any old references
   setTimeout(function () {
     // Clear arrays just in case
@@ -351,14 +413,6 @@ function setup() {
       }
     }
   }, 1000);
-
-  // Set sound as initially muted until user interaction
-  if (typeof soundSettings !== "undefined") {
-    soundSettings.muted = true;
-  }
-
-  // Create performance settings UI
-  createPerformanceSettingsUI();
 }
 
 function createUiUsingDomElements() {
@@ -379,33 +433,176 @@ function createUiUsingDomElements() {
   createSoundToggleButton();
 }
 
-// Memory warning overlay
-let memoryWarningOverlay = null;
+// ===== MEMORY MANAGEMENT =====
+const MemoryManager = {
+  warningOverlay: null,
+  warningShown: false,
+  lastWarningTime: 0,
+
+  // Create memory warning overlay if needed
+  createWarningOverlay: function() {
+    if (this.warningOverlay) return;
+
+    if (window.performance && window.performance.memory) {
+      this.warningOverlay = createStyledContainer(width / 2 - 150, 50, 300, {
+        styles: {
+          backgroundColor: "rgba(255, 0, 0, 0.7)",
+          textAlign: "center",
+          display: "none"
+        }
+      });
+    }
+  },
+
+  // Check memory usage and show warning if needed
+  checkMemoryUsage: function() {
+    this.createWarningOverlay();
+
+    if (!this.warningOverlay || !window.performance || !window.performance.memory) {
+      return;
+    }
+
+    const currentMemory = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+
+    // Show warning if memory usage is too high
+    if (currentMemory > 800 && !this.warningShown) {
+      this.warningShown = true;
+      this.warningOverlay.html(`
+        <h3>HIGH MEMORY USAGE!</h3>
+        <p>Game is using ${currentMemory.toFixed(1)} MB</p>
+        <p>Consider refreshing</p>
+      `);
+      this.warningOverlay.style("display", "block");
+
+      // Emergency cleanup
+      this.performEmergencyCleanup();
+    }
+
+    // Hide warning if memory usage drops
+    if (currentMemory < 600 && this.warningShown) {
+      this.warningShown = false;
+      this.warningOverlay.style("display", "none");
+    }
+  },
+
+  // Perform emergency cleanup when memory is too high
+  performEmergencyCleanup: function() {
+    projectiles = [];
+    projectilePool = [];
+    effects = [];
+
+    // Reduce enemies to essential minimum
+    if (enemies.length > 20) {
+      enemies.splice(20, enemies.length - 20);
+    }
+
+    // Try to trigger garbage collection
+    if (window.gc) {
+      try {
+        window.gc();
+      } catch (e) {
+        // Ignore if gc is not available
+      }
+    }
+  }
+};
 
 // Sound toggle button
 let soundToggleButton = null;
 
+// ===== UI STYLING UTILITIES =====
+// Utility function to apply common styles to UI elements
+function applyCommonStyles(element, styles = {}) {
+  const defaultStyles = {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    fontFamily: "monospace",
+    zIndex: "2000",
+    position: "fixed",
+    display: "block",
+    visibility: "visible"
+  };
+
+  // Merge default styles with provided styles
+  const finalStyles = { ...defaultStyles, ...styles };
+
+  // Apply all styles
+  Object.entries(finalStyles).forEach(([property, value]) => {
+    // Convert camelCase to kebab-case for CSS properties
+    const cssProperty = property.replace(/([A-Z])/g, '-$1').toLowerCase();
+    element.style(cssProperty, value);
+  });
+
+  return element;
+}
+
+// Create a styled button with common properties
+function createStyledButton(label, x, y, options = {}) {
+  const button = createButton(label);
+  button.position(x, y);
+
+  // Default button styles
+  const buttonStyles = {
+    padding: "8px 12px",
+    cursor: "pointer",
+    fontSize: "14px",
+    ...options.styles
+  };
+
+  applyCommonStyles(button, buttonStyles);
+
+  if (options.id) {
+    button.id(options.id);
+  }
+
+  if (options.onClick) {
+    button.mousePressed(options.onClick);
+    button.touchStarted(options.onClick);
+  }
+
+  return button;
+}
+
+// Create a styled container div
+function createStyledContainer(x, y, width, options = {}) {
+  const container = createDiv("");
+  container.position(x, y);
+
+  // Default container styles
+  const containerStyles = {
+    width: width + "px",
+    padding: "10px",
+    ...options.styles
+  };
+
+  applyCommonStyles(container, containerStyles);
+
+  if (options.id) {
+    container.id(options.id);
+  }
+
+  return container;
+}
+
 function createSoundToggleButton() {
   // Create button with initial state based on current mute setting
-  soundToggleButton = createButton(soundSettings.muted ? "🔇" : "🔊");
-  soundToggleButton.position(width - 120, 20); // Position it to the left of the pause button
-  soundToggleButton.style("background-color", "rgba(0, 0, 0, 0.7)");
-  soundToggleButton.style("color", "white");
-  soundToggleButton.style("border", "none");
-  soundToggleButton.style("border-radius", "50%");
-  soundToggleButton.style("width", "40px");
-  soundToggleButton.style("height", "40px");
-  soundToggleButton.style("font-size", "20px");
-  soundToggleButton.style("cursor", "pointer");
-  soundToggleButton.style("z-index", "2000"); // Higher z-index to ensure visibility
-  soundToggleButton.style("position", "fixed"); // Use fixed positioning to stay in place
-  soundToggleButton.style("display", "block"); // Ensure it's displayed
-  soundToggleButton.style("visibility", "visible"); // Ensure it's visible
-  soundToggleButton.id("sound-toggle-button"); // Add an ID for easier reference
+  const buttonLabel = soundSettings.muted ? "🔇" : "🔊";
 
-  // Handle both mouse and touch events for the sound toggle button
-  soundToggleButton.mousePressed(toggleSoundState);
-  soundToggleButton.touchStarted(toggleSoundState);
+  soundToggleButton = createStyledButton(buttonLabel, width - 120, 20, {
+    id: "sound-toggle-button",
+    styles: {
+      borderRadius: "50%",
+      width: "40px",
+      height: "40px",
+      fontSize: "20px",
+      padding: "0",
+      textAlign: "center",
+      lineHeight: "40px"
+    },
+    onClick: toggleSoundState
+  });
 
   // Function to handle sound toggle
   function toggleSoundState() {
@@ -458,74 +655,21 @@ function drawSoundToggleButton() {
   }
 }
 
+// Wrapper function for backward compatibility
 function checkMemoryUsage() {
-  // Check if we need to create memory warning
-  if (
-    !memoryWarningOverlay &&
-    window.performance &&
-    window.performance.memory
-  ) {
-    memoryWarningOverlay = createDiv("");
-    memoryWarningOverlay.position(width / 2 - 150, 50);
-    memoryWarningOverlay.style("background-color", "rgba(255, 0, 0, 0.7)");
-    memoryWarningOverlay.style("color", "white");
-    memoryWarningOverlay.style("padding", "10px");
-    memoryWarningOverlay.style("border-radius", "5px");
-    memoryWarningOverlay.style("width", "300px");
-    memoryWarningOverlay.style("text-align", "center");
-    memoryWarningOverlay.style("font-family", "monospace");
-    memoryWarningOverlay.style("z-index", "2000");
-    memoryWarningOverlay.style("display", "none");
-  }
-
-  // Check for high memory usage
-  if (memoryWarningOverlay && window.performance && window.performance.memory) {
-    const currentMemory =
-      window.performance.memory.usedJSHeapSize / (1024 * 1024);
-
-    // Show warning if memory usage is too high
-    if (currentMemory > 800 && !memoryWarningShown) {
-      memoryWarningShown = true;
-      memoryWarningOverlay.html(`
-        <h3>HIGH MEMORY USAGE!</h3>
-        <p>Game is using ${currentMemory.toFixed(1)} MB</p>
-        <p>Consider refreshing</p>
-      `);
-      memoryWarningOverlay.style("display", "block");
-
-      // Emergency cleanup
-      projectiles = [];
-      projectilePool = [];
-      effects = [];
-
-      // Reduce enemies to essential minimum
-      if (enemies.length > 20) {
-        enemies.splice(20, enemies.length - 20);
-      }
-    }
-
-    // Hide warning if memory usage drops
-    if (currentMemory < 600 && memoryWarningShown) {
-      memoryWarningShown = false;
-      memoryWarningOverlay.style("display", "none");
-    }
-  }
+  MemoryManager.checkMemoryUsage();
 }
 
 // Create UI for performance settings
 function createPerformanceSettingsUI() {
   // Create a container for performance settings
-  const perfContainer = createDiv("");
-  perfContainer.id("performance-settings");
-  perfContainer.position(width - 180, 70); // Position below sound toggle
-  perfContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
-  perfContainer.style("color", "white");
-  perfContainer.style("padding", "10px");
-  perfContainer.style("border-radius", "5px");
-  perfContainer.style("font-family", "monospace");
-  perfContainer.style("font-size", "12px");
-  perfContainer.style("z-index", "2000");
-  perfContainer.style("display", "none"); // Hidden by default
+  const perfContainer = createStyledContainer(width - 180, 70, 160, {
+    id: "performance-settings",
+    styles: {
+      fontSize: "12px",
+      display: "none" // Hidden by default
+    }
+  });
 
   // Add a title
   const title = createDiv("Performance");
@@ -534,7 +678,7 @@ function createPerformanceSettingsUI() {
   perfContainer.child(title);
 
   // Create radio buttons for performance modes
-  const modes = ["auto", "low", "medium", "high"];
+  const modes = Object.values(PerformanceLevel);
 
   for (let mode of modes) {
     const label = createDiv("");
@@ -553,13 +697,13 @@ function createPerformanceSettingsUI() {
 
     radio.changed(() => {
       performanceMode = mode;
-      setPerformanceLevel();
+      PerformanceManager.setPerformanceLevel();
+      PerformanceManager.applyWebGLSettings();
       console.log("Performance mode changed to:", mode);
     });
 
     label.child(radio);
     label.html(label.html() + mode.charAt(0).toUpperCase() + mode.slice(1));
-
     perfContainer.child(label);
   }
 
@@ -569,22 +713,20 @@ function createPerformanceSettingsUI() {
   perfContainer.child(fpsDisplay);
 
   // Add toggle button for settings
-  const toggleBtn = createButton("⚙️");
-  toggleBtn.position(width - 70, 20); // Position to the left of sound toggle
-  toggleBtn.style("background-color", "rgba(0, 0, 0, 0.7)");
-  toggleBtn.style("color", "white");
-  toggleBtn.style("border", "none");
-  toggleBtn.style("border-radius", "50%");
-  toggleBtn.style("width", "40px");
-  toggleBtn.style("height", "40px");
-  toggleBtn.style("font-size", "20px");
-  toggleBtn.style("cursor", "pointer");
-  toggleBtn.style("z-index", "2000");
-  toggleBtn.style("position", "fixed");
-
-  toggleBtn.mousePressed(() => {
-    const isVisible = perfContainer.style("display") !== "none";
-    perfContainer.style("display", isVisible ? "none" : "block");
+  const toggleBtn = createStyledButton("⚙️", width - 70, 20, {
+    styles: {
+      borderRadius: "50%",
+      width: "40px",
+      height: "40px",
+      fontSize: "20px",
+      padding: "0",
+      textAlign: "center",
+      lineHeight: "40px"
+    },
+    onClick: () => {
+      const isVisible = perfContainer.style("display") !== "none";
+      perfContainer.style("display", isVisible ? "none" : "block");
+    }
   });
 }
 
@@ -608,21 +750,19 @@ function updatePerformanceMetrics() {
 
   // Check if we need to adjust performance level
   if (frameCount - lastPerformanceCheck > performanceCheckInterval) {
-    setPerformanceLevel();
+    PerformanceManager.setPerformanceLevel();
     lastPerformanceCheck = frameCount;
   }
 }
 
+// ===== GAME LOOP =====
 function draw() {
-  // Check memory usage each frame
-  checkMemoryUsage();
-
-  // Update performance metrics
+  // Performance and memory management
+  MemoryManager.checkMemoryUsage();
   updatePerformanceMetrics();
-
-  // Limit effects based on performance level
   limitEffects();
 
+  // Clear background
   background(0);
 
   // Check for global effects
@@ -5054,20 +5194,62 @@ function checkCollisions() {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     let proj = projectiles[i];
 
+    // Skip if projectile is undefined or missing required properties
+    if (!proj || proj.x === undefined || proj.y === undefined) {
+      if (i >= 0 && i < projectiles.length) {
+        projectiles.splice(i, 1);
+      }
+      continue;
+    }
+
+    // Set default damage if not defined
+    if (proj.damage === undefined) {
+      proj.damage = 10 + damageBoost; // Base damage + boost
+    }
+
+    let hitEnemy = false;
+
     for (let j = enemies.length - 1; j >= 0; j--) {
       let enemy = enemies[j];
 
+      // Skip if enemy is undefined or missing required properties
+      if (!enemy || enemy.x === undefined || enemy.y === undefined) {
+        if (j >= 0 && j < enemies.length) {
+          enemies.splice(j, 1);
+        }
+        continue;
+      }
+
       // Skip collision checks for distant objects (culling optimization)
-      if (Math.abs(proj.y - enemy.y) > 100) continue;
+      // Increased the distance check to ensure we don't miss collisions
+      if (Math.abs(proj.y - enemy.y) > 150) continue;
 
       // Fast squared distance check (avoids expensive sqrt operation)
       const dx = proj.x - enemy.x;
       const dy = proj.y - enemy.y;
-      const dz = proj.z - enemy.z;
+      const dz = (proj.z || 0) - (enemy.z || 0); // Default to 0 if z is undefined
       const squaredDist = dx * dx + dy * dy + dz * dz;
-      const squaredThreshold = Math.pow(enemy.size / 2 + PROJECTILE_SIZE, 2);
+
+      // Significantly increased collision threshold to make hits much more forgiving
+      const collisionSize = enemy.size / 2 + (PROJECTILE_SIZE * 2.5);
+      const squaredThreshold = collisionSize * collisionSize;
 
       if (squaredDist < squaredThreshold) {
+        hitEnemy = true;
+
+        // Create a visual indicator of the collision area (only in debug mode)
+        if (DEBUG_MODE) {
+          effects.push({
+            x: (proj.x + enemy.x) / 2,
+            y: (proj.y + enemy.y) / 2,
+            z: (proj.z + enemy.z) / 2,
+            type: "hit",
+            size: collisionSize / 2,
+            life: 15,
+            color: [0, 255, 0, 150], // Green for successful hit
+          });
+        }
+
         // Apply damage
         enemy.health -= proj.damage;
 
@@ -5103,9 +5285,6 @@ function checkCollisions() {
           createPlasmaEffect(enemy.x, enemy.y, enemy.z);
         }
 
-        // Remove the projectile
-        projectiles.splice(i, 1);
-
         // Check if enemy is defeated
         if (enemy.health <= 0) {
           // Add score based on enemy type
@@ -5128,27 +5307,59 @@ function checkCollisions() {
         break; // Projectile hit something, move to next projectile
       }
     }
+
+    // Remove the projectile if it hit an enemy
+    if (hitEnemy && i >= 0 && i < projectiles.length) {
+      projectiles.splice(i, 1);
+    }
   }
 
   // Squad-PowerUp Collisions - using squared distance
   for (let i = powerUps.length - 1; i >= 0; i--) {
     let powerUp = powerUps[i];
 
+    // Skip if powerUp is undefined or missing required properties
+    if (!powerUp || powerUp.x === undefined || powerUp.y === undefined) {
+      if (i >= 0 && i < powerUps.length) {
+        powerUps.splice(i, 1);
+      }
+      continue;
+    }
+
     for (let squadMember of squad) {
+      // Skip if squadMember is undefined or missing required properties
+      if (!squadMember || squadMember.x === undefined || squadMember.y === undefined) {
+        continue;
+      }
+
       // Skip collision checks for distant power-ups (culling optimization)
-      if (Math.abs(powerUp.y - squadMember.y) > 100) continue;
+      // Increased the distance check to ensure we don't miss collisions
+      if (Math.abs(powerUp.y - squadMember.y) > 150) continue;
 
       // Fast squared distance calculation
       const dx = powerUp.x - squadMember.x;
       const dy = powerUp.y - squadMember.y;
-      const dz = powerUp.z - squadMember.z;
+      const dz = (powerUp.z || 0) - (squadMember.z || 0); // Default to 0 if z is undefined
       const squaredDist = dx * dx + dy * dy + dz * dz;
-      const squaredThreshold = Math.pow(
-        squadMember.size / 2 + POWER_UP_SIZE / 2,
-        2
-      );
+
+      // Significantly increased collision threshold to make pickups much more forgiving
+      const collisionSize = (squadMember.size / 2 + POWER_UP_SIZE / 2) * 2.0;
+      const squaredThreshold = collisionSize * collisionSize;
 
       if (squaredDist < squaredThreshold) {
+        // Create a visual indicator of the collision area (only in debug mode)
+        if (DEBUG_MODE) {
+          effects.push({
+            x: (powerUp.x + squadMember.x) / 2,
+            y: (powerUp.y + squadMember.y) / 2,
+            z: (powerUp.z + squadMember.z) / 2,
+            type: "hit",
+            size: collisionSize / 2,
+            life: 15,
+            color: [0, 255, 255, 150], // Cyan for power-up collision
+          });
+        }
+
         // Apply power-up effect
         if (powerUp.type === "mirror") {
           // Add a new squad member
@@ -5241,20 +5452,58 @@ function checkCollisions() {
   for (let i = enemies.length - 1; i >= 0; i--) {
     let enemy = enemies[i];
 
+    // Skip if enemy is undefined or missing required properties
+    if (!enemy || enemy.x === undefined || enemy.y === undefined) {
+      if (i >= 0 && i < enemies.length) {
+        enemies.splice(i, 1);
+      }
+      continue;
+    }
+
     for (let j = squad.length - 1; j >= 0; j--) {
       let member = squad[j];
 
+      // Skip if member is undefined or missing required properties
+      if (!member || member.x === undefined || member.y === undefined) {
+        continue;
+      }
+
       // Skip collision checks for distant objects (culling optimization)
-      if (Math.abs(enemy.y - member.y) > 100) continue;
+      // Increased the distance check to ensure we don't miss collisions
+      if (Math.abs(enemy.y - member.y) > 150) continue;
 
       // Fast squared distance calculation
       const dx = enemy.x - member.x;
       const dy = enemy.y - member.y;
-      const dz = enemy.z - member.z;
+      const dz = (enemy.z || 0) - (member.z || 0); // Default to 0 if z is undefined
       const squaredDist = dx * dx + dy * dy + dz * dz;
-      const squaredThreshold = Math.pow(enemy.size / 2 + member.size / 2, 2);
+
+      // Significantly increased collision threshold to make collisions more reliable
+      const collisionSize = (enemy.size / 2 + member.size / 2) * 2.0;
+      const squaredThreshold = collisionSize * collisionSize;
 
       if (squaredDist < squaredThreshold) {
+        // Create hit effect to visualize the collision
+        createHitEffect(
+          (enemy.x + member.x) / 2,
+          (enemy.y + member.y) / 2,
+          (enemy.z + member.z) / 2,
+          [255, 0, 0]
+        );
+
+        // Create a visual indicator of the collision area (only in debug mode)
+        if (DEBUG_MODE) {
+          effects.push({
+            x: (enemy.x + member.x) / 2,
+            y: (enemy.y + member.y) / 2,
+            z: (enemy.z + member.z) / 2,
+            type: "hit",
+            size: collisionSize / 2,
+            life: 15,
+            color: [255, 0, 0, 150], // Red for enemy collision
+          });
+        }
+
         // Squad member takes damage
         member.health -= 20;
 
@@ -5271,6 +5520,8 @@ function checkCollisions() {
         // Enemy also takes damage in collision
         enemy.health -= 30;
         if (enemy.health <= 0) {
+          // Create explosion effect
+          createExplosionEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0], enemy.size);
           enemies.splice(i, 1);
         }
 
