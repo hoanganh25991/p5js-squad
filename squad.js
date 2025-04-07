@@ -19,8 +19,8 @@ let isDragging = false;
 let prevMouseX, prevMouseY;
 
 // Game dimensions
-const BRIDGE_LENGTH = 5500 * 1;
-const BRIDGE_WIDTH = 400 * 2;
+const BRIDGE_LENGTH = 5500 * 1.5; // Significantly increased bridge length to fully fill the screen
+const BRIDGE_WIDTH = 1000;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
@@ -32,8 +32,8 @@ const GATE_HEIGHT = 120;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
-const CAMERA_OFFSET_Y = -300; // Adjusted to focus more on the squad's starting position
-const CAMERA_OFFSET_Z = 1600; // Increased zoom distance to see the entire bridge
+const CAMERA_OFFSET_Y = -1200; // Even more significantly adjusted to show the squad at the bottom of the screen
+const CAMERA_OFFSET_Z = 2200; // Much further increased zoom distance to see the entire bridge
 
 // Debug mode for testing
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
@@ -176,7 +176,8 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 300, // Starting further from the wall to be more visible
+  // y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
+  y: 100, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
@@ -214,7 +215,7 @@ function setup() {
   squad.push(squadLeader);
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
-  perspective(PI / 3.0, width / height, 0.1, 10000);
+  perspective(PI / 3.5, width / height, 0.1, 15000);
 
   // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
   // This can improve performance in some cases
@@ -646,7 +647,7 @@ function draw() {
   }
 
   translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
-  rotateX(PI / 4.5); // Adjusted angle to better view the squad and the entire bridge
+  rotateX(PI / 6.5); // Much flatter angle to show the entire bridge from bottom to top
 
   // 3D
   drawGame();
@@ -807,7 +808,7 @@ function drawMainLane() {
   push();
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH * 1, 10); // Increased bridge length to cover full screen
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH, 10); // Using the updated bridge length to cover full screen
   pop();
 
   // Draw the wall and gate at the start of the bridge
@@ -816,7 +817,8 @@ function drawMainLane() {
 
 function drawWallAndGate() {
   // Position at the bottom of the bridge (start)
-  const wallY = BRIDGE_LENGTH / 2 - WALL_THICKNESS / 2;
+  // const wallY = BRIDGE_LENGTH / 2 - WALL_THICKNESS / 2;
+  const wallY = 220 - WALL_THICKNESS / 2;
 
   push();
   // Wall color - stone gray
@@ -894,15 +896,15 @@ function drawPowerUpLane() {
   fill(...POWER_UP_LANE_COLOR);
 
   // Draw the base power-up lane
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH * 1, 10);
+  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 10);
 
   // Add lane markers/decorations for better visual guidance
-  const laneMarkers = 20; // Number of lane markers
-  const stepSize = (BRIDGE_LENGTH * 1) / laneMarkers;
+  const laneMarkers = 30; // Further increased number of lane markers for the even longer bridge
+  const stepSize = BRIDGE_LENGTH / laneMarkers;
 
   // Draw lane markers
   for (let i = 0; i < laneMarkers; i++) {
-    const yPos = (-BRIDGE_LENGTH * 1) / 2 + i * stepSize + stepSize / 2;
+    const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
     push();
     translate(0, yPos, 5.1); // Position slightly above the lane
     fill(180, 220, 255, 150); // Lighter blue with transparency
@@ -914,7 +916,7 @@ function drawPowerUpLane() {
   push();
   translate(-POWER_UP_LANE_WIDTH / 2, 0, 5.1);
   fill(200, 230, 255, 200); // Bright edge color
-  box(2, BRIDGE_LENGTH * 1, 1);
+  box(2, BRIDGE_LENGTH, 1);
   pop();
 
   pop();
@@ -6349,6 +6351,7 @@ function updateTechnicalBoard() {
     <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
     cameraOffsetY
   )}, z=${Math.floor(cameraZoom)}</div>
+    <div>Squad: x=${Math.floor(squadLeader.x)}, y=${Math.floor(squadLeader.y)}, z=${Math.floor(squadLeader.z)}</div>
   `);
 
   // Force garbage collection attempt (not guaranteed to work, but might help signal)
@@ -7174,7 +7177,7 @@ function resetGame() {
   squad = [
     {
       x: 0,
-      y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 300, // Position further from the wall to be more visible
+      y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Position extremely far from the wall to be clearly visible at the bottom of the screen
       z: 0,
       size: SQUAD_SIZE,
       health: 100,
