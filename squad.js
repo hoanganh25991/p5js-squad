@@ -218,29 +218,7 @@ function setup() {
   // resetGame();
   gameStartTime = frameCount;
 
-  // Create the HUD DOM elements
-  createStatusBoardElements();
-  createTechnicalBoardElements();
-  // Create Menu - Control
-  createMenuElement();
-  createPauseElement();
-  createResumeElement();
-  createGameOverElement();
-
-  // Create container for controls
-  createControlsContainer();
-
-  // Create skill bar and d-pad inside the container
-  createDirectionalPadElement(); // Add directional pad for touch/click movement
-  createSkillBarElement();
-
-  // Create sound toggle button but don't initialize sounds yet
-  // We'll initialize sounds only after user interaction
-  try {
-    createSoundToggleButton();
-  } catch (btnError) {
-    console.warn("Could not create sound toggle button:", btnError);
-  }
+  createUiUsingDomElements();
 
   // Purge any old references
   setTimeout(function() {
@@ -263,6 +241,24 @@ function setup() {
   if (typeof soundSettings !== 'undefined') {
     soundSettings.muted = true;
   }
+}
+
+function createUiUsingDomElements(){
+    // Create the HUD DOM elements
+    createStatusBoardElements();
+    createTechnicalBoardElements();
+    // Create Menu - Control
+    createMenuElement();
+    createPauseElement();
+    createResumeElement();
+    createGameOverElement();
+    // Create container for controls
+    createControlsContainer();
+    // Create skill bar and d-pad inside the container
+    createDirectionalPadElement();
+    createSkillBarElement();
+    // Create sound toggle button but don't initialize sounds yet
+    createSoundToggleButton();
 }
 
 // Memory warning overlay
@@ -317,9 +313,8 @@ function createSoundToggleButton() {
     const isMuted = toggleMute();
     soundToggleButton.html(isMuted ? '🔇' : '🔊');
 
-    // Only play UI sound if we're unmuting
-    if (!isMuted) {
-      playUISound('click');
+    if (isMuted) {
+      stopAllSounds();
     }
 
     // Prevent default to avoid double triggering
@@ -5828,6 +5823,9 @@ function drawPauseContainer() {
 
 function pauseGame() {
   gameState = "paused";
+
+  // Stop all sounds when game is paused
+  stopAllSounds();
 }
 
 // Draw resume button in top right corner
@@ -7050,6 +7048,7 @@ function createPlasmaEffect(x, y, z) {
 // Window resize handling
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  createUiUsingDomElements();
 }
 
 // Directional pad variables

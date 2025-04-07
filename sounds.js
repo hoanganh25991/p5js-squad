@@ -398,22 +398,7 @@ function toggleMute() {
     // Check if p5.sound is available
     if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
       if (soundSettings.muted) {
-        // Set master volume to 0
-        masterVolume(0);
-
-        // Pause all currently playing sounds
-        // This ensures sounds actually stop when muted
-        Object.values(sounds.music).forEach(sound => {
-          if (sound && sound.isPlaying && sound.isPlaying()) {
-            sound.pause();
-          }
-        });
-
-        Object.values(sounds.environment).forEach(sound => {
-          if (sound && sound.isPlaying && sound.isPlaying()) {
-            sound.pause();
-          }
-        });
+        stopAllSounds();
       } else {
         // Restore master volume
         masterVolume(soundSettings.masterVolume);
