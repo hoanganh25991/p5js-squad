@@ -32,7 +32,7 @@ const GATE_HEIGHT = 120;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
-const CAMERA_OFFSET_Y = 0; // Reduced Y offset to center the view
+const CAMERA_OFFSET_Y = -300; // Adjusted to focus more on the squad's starting position
 const CAMERA_OFFSET_Z = 1600; // Increased zoom distance to see the entire bridge
 
 // Debug mode for testing
@@ -176,7 +176,7 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 100, // Starting near the wall at the bottom of the bridge
+  y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 300, // Starting further from the wall to be more visible
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
@@ -646,7 +646,7 @@ function draw() {
   }
 
   translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
-  rotateX(PI / 5); // Slightly reduced angle for a better view of the entire bridge
+  rotateX(PI / 4.5); // Adjusted angle to better view the squad and the entire bridge
 
   // 3D
   drawGame();
@@ -7174,7 +7174,7 @@ function resetGame() {
   squad = [
     {
       x: 0,
-      y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 100, // Position near the wall
+      y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 300, // Position further from the wall to be more visible
       z: 0,
       size: SQUAD_SIZE,
       health: 100,
