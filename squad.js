@@ -13,8 +13,8 @@ let waveEnemiesKilled = 0; // Enemies killed in the current wave
 // Font
 let gameFont;
 
-const MIN_ZOOM = 400 * 0;
-const MAX_ZOOM = 1200 * 5;
+const MIN_ZOOM = 800; // Minimum zoom level to ensure the bridge is visible
+const MAX_ZOOM = 3000; // Maximum zoom level for when players want to zoom out further
 let isDragging = false;
 let prevMouseX, prevMouseY;
 
@@ -24,10 +24,16 @@ const BRIDGE_WIDTH = 400 * 2;
 const POWER_UP_LANE_WIDTH = 150;
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
+// Wall and gate dimensions
+const WALL_HEIGHT = 200;
+const WALL_THICKNESS = 50;
+const GATE_WIDTH = 150;
+const GATE_HEIGHT = 120;
+
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
-const CAMERA_OFFSET_Y = 150;
-const CAMERA_OFFSET_Z = 800;
+const CAMERA_OFFSET_Y = 0; // Reduced Y offset to center the view
+const CAMERA_OFFSET_Z = 1600; // Increased zoom distance to see the entire bridge
 
 // Debug mode for testing
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
@@ -170,7 +176,7 @@ let skills = {
 
 let squadLeader = {
   x: 0,
-  y: 0, // Starting near the bottom of extended bridge
+  y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 100, // Starting near the wall at the bottom of the bridge
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
@@ -207,8 +213,8 @@ function setup() {
   // Initialize the squad with a single member
   squad.push(squadLeader);
 
-  // Set perspective for better 3D view
-  perspective(PI / 3.0, width / height, 0.1, 5000);
+  // Set perspective for better 3D view with increased far plane to see the entire bridge
+  perspective(PI / 3.0, width / height, 0.1, 10000);
 
   // Enable depth testing for proper 3D rendering but disable depth sort for transparent objects
   // This can improve performance in some cases
@@ -640,7 +646,7 @@ function draw() {
   }
 
   translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
-  rotateX(PI / 4); // Angle the view down to see the bridge
+  rotateX(PI / 5); // Slightly reduced angle for a better view of the entire bridge
 
   // 3D
   drawGame();
@@ -802,6 +808,80 @@ function drawMainLane() {
   translate(0, 0, 0);
   fill(...BRIDGE_COLOR);
   box(BRIDGE_WIDTH, BRIDGE_LENGTH * 1, 10); // Increased bridge length to cover full screen
+  pop();
+
+  // Draw the wall and gate at the start of the bridge
+  drawWallAndGate();
+}
+
+function drawWallAndGate() {
+  // Position at the bottom of the bridge (start)
+  const wallY = BRIDGE_LENGTH / 2 - WALL_THICKNESS / 2;
+
+  push();
+  // Wall color - stone gray
+  fill(100, 100, 100);
+
+  // Left section of wall
+  push();
+  translate(-BRIDGE_WIDTH/2 + (BRIDGE_WIDTH - GATE_WIDTH)/4, wallY, WALL_HEIGHT/2);
+  box((BRIDGE_WIDTH - GATE_WIDTH)/2, WALL_THICKNESS, WALL_HEIGHT);
+  pop();
+
+  // Right section of wall
+  push();
+  translate(BRIDGE_WIDTH/2 - (BRIDGE_WIDTH - GATE_WIDTH)/4, wallY, WALL_HEIGHT/2);
+  box((BRIDGE_WIDTH - GATE_WIDTH)/2, WALL_THICKNESS, WALL_HEIGHT);
+  pop();
+
+  // Gate (closed)
+  push();
+  translate(0, wallY, GATE_HEIGHT/2);
+  fill(120, 80, 40); // Brown wooden gate
+  box(GATE_WIDTH, WALL_THICKNESS + 5, GATE_HEIGHT);
+
+  // Gate details
+  stroke(60, 40, 20);
+  strokeWeight(3);
+
+  // Horizontal bars
+  for (let i = 1; i < 3; i++) {
+    const barY = -GATE_HEIGHT/2 + i * (GATE_HEIGHT/3);
+    line(-GATE_WIDTH/2, 0, barY, GATE_WIDTH/2, 0, barY);
+  }
+
+  // Vertical supports
+  for (let i = 0; i < 5; i++) {
+    const barX = -GATE_WIDTH/2 + i * (GATE_WIDTH/4);
+    line(barX, 0, -GATE_HEIGHT/2, barX, 0, GATE_HEIGHT/2);
+  }
+
+  pop();
+
+  // Wall top decorations (crenellations)
+  stroke(80, 80, 80);
+  strokeWeight(2);
+
+  const crenellationCount = 20;
+  const crenellationWidth = BRIDGE_WIDTH / crenellationCount;
+  const crenellationHeight = 20;
+
+  for (let i = 0; i < crenellationCount; i++) {
+    // Skip the middle section where the gate is
+    if (i >= crenellationCount/2 - GATE_WIDTH/(2*crenellationWidth) &&
+        i < crenellationCount/2 + GATE_WIDTH/(2*crenellationWidth)) {
+      continue;
+    }
+
+    const x = -BRIDGE_WIDTH/2 + (i + 0.5) * crenellationWidth;
+
+    push();
+    translate(x, wallY, WALL_HEIGHT + crenellationHeight/2);
+    fill(90, 90, 90);
+    box(crenellationWidth * 0.8, WALL_THICKNESS, crenellationHeight);
+    pop();
+  }
+
   pop();
 }
 
@@ -7090,11 +7170,11 @@ function resetGame() {
   waveEnemiesKilled = 0;
   startTime = millis();
 
-  // Reset squad
+  // Reset squad - position near the wall
   squad = [
     {
       x: 0,
-      y: BRIDGE_LENGTH / 2 - 100,
+      y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 100, // Position near the wall
       z: 0,
       size: SQUAD_SIZE,
       health: 100,
@@ -7123,7 +7203,7 @@ function resetGame() {
     skills[`skill${i}`].lastUsed = 0;
   }
 
-  // Reset camera
+  // Reset camera to show the entire bridge
   cameraOffsetX = CAMERA_OFFSET_X;
   cameraOffsetY = CAMERA_OFFSET_Y;
   cameraZoom = CAMERA_OFFSET_Z;
