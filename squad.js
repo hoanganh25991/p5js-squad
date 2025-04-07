@@ -227,8 +227,7 @@ function preload() {
 
 // Game setup
 // Track and manage memory issues
-let lastMemoryWarning = 0;
-let memoryWarningShown = false;
+// Using MemoryManager for memory tracking instead of global variables
 
 // ===== PERFORMANCE MANAGEMENT =====
 const PerformanceManager = {
@@ -7696,9 +7695,9 @@ function startGame() {
     }
 
     // Reset memory warning
-    memoryWarningShown = false;
-    if (memoryWarningOverlay) {
-      memoryWarningOverlay.style("display", "none");
+    MemoryManager.warningShown = false;
+    if (MemoryManager.warningOverlay) {
+      MemoryManager.warningOverlay.style("display", "none");
     }
 
     // Make sure sound toggle button is visible
