@@ -218,15 +218,17 @@ let memoryWarningShown = false;
 // Detect if the device is mobile
 function detectMobileDevice() {
   // Check if the device has touch capability
-  const hasTouchScreen = (
-    'ontouchstart' in window ||
+  const hasTouchScreen =
+    "ontouchstart" in window ||
     navigator.maxTouchPoints > 0 ||
-    navigator.msMaxTouchPoints > 0
-  );
+    navigator.msMaxTouchPoints > 0;
 
   // Check user agent for mobile devices
   const userAgent = navigator.userAgent.toLowerCase();
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(userAgent);
+  const isMobile =
+    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(
+      userAgent
+    );
 
   // Check screen size (typical mobile width is less than 768px)
   const hasSmallScreen = window.innerWidth < 768;
@@ -248,7 +250,8 @@ function setPerformanceLevel() {
 
     // If we have FPS history and it's consistently low, drop to low performance
     if (fpsHistory.length >= 10) {
-      const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+      const avgFPS =
+        fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
       if (avgFPS < 30) {
         currentPerformanceLevel = "low";
       } else if (avgFPS > 55) {
@@ -261,7 +264,8 @@ function setPerformanceLevel() {
 
     // If we have FPS history and it's consistently low, adjust accordingly
     if (fpsHistory.length >= 10) {
-      const avgFPS = fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
+      const avgFPS =
+        fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
       if (avgFPS < 30) {
         currentPerformanceLevel = "medium";
       } else if (avgFPS < 20) {
@@ -276,10 +280,14 @@ function setPerformanceLevel() {
 // Get multipliers for effect counts based on performance level
 function getEffectMultiplier() {
   switch (currentPerformanceLevel) {
-    case "low": return 0.3;  // 30% of normal effects
-    case "medium": return 0.6;  // 60% of normal effects
-    case "high": return 1.0;  // 100% of normal effects
-    default: return 0.6;  // Default to medium
+    case "low":
+      return 0.3; // 30% of normal effects
+    case "medium":
+      return 0.6; // 60% of normal effects
+    case "high":
+      return 1.0; // 100% of normal effects
+    default:
+      return 0.6; // Default to medium
   }
 }
 
@@ -585,7 +593,8 @@ function updatePerformanceMetrics() {
 
   // Update FPS history
   fpsHistory.push(currentFPS);
-  if (fpsHistory.length > 60) { // Keep last 60 frames (1 second at 60fps)
+  if (fpsHistory.length > 60) {
+    // Keep last 60 frames (1 second at 60fps)
     fpsHistory.shift();
   }
 
@@ -903,37 +912,48 @@ const MAX_EFFECTS = 500; // Maximum visual effects
 // Function to limit effects based on performance level
 function limitEffects() {
   // Get maximum effects based on performance level
-  const maxEffects = isMobileDevice ?
-    (currentPerformanceLevel === "low" ? 100 :
-     currentPerformanceLevel === "medium" ? 200 : 300) :
-    (currentPerformanceLevel === "low" ? 200 :
-     currentPerformanceLevel === "medium" ? 350 : MAX_EFFECTS);
+  const maxEffects = isMobileDevice
+    ? currentPerformanceLevel === "low"
+      ? 100
+      : currentPerformanceLevel === "medium"
+      ? 200
+      : 300
+    : currentPerformanceLevel === "low"
+    ? 200
+    : currentPerformanceLevel === "medium"
+    ? 350
+    : MAX_EFFECTS;
 
   // If we have too many effects, remove the oldest ones
   if (effects.length > maxEffects) {
     // Sort effects by priority (keep important ones)
-    const priorityEffects = effects.filter(e =>
-      e.forceRenderDetail ||
-      e.type === "atomicBomb" ||
-      e.type === "atomicExplosion" ||
-      e.type === "atomicFlash" ||
-      e.type === "shockwave" ||
-      e.type === "areaBarrier" ||
-      e.type === "globalFrost"
+    const priorityEffects = effects.filter(
+      (e) =>
+        e.forceRenderDetail ||
+        e.type === "atomicBomb" ||
+        e.type === "atomicExplosion" ||
+        e.type === "atomicFlash" ||
+        e.type === "shockwave" ||
+        e.type === "areaBarrier" ||
+        e.type === "globalFrost"
     );
 
-    const normalEffects = effects.filter(e =>
-      !e.forceRenderDetail &&
-      e.type !== "atomicBomb" &&
-      e.type !== "atomicExplosion" &&
-      e.type !== "atomicFlash" &&
-      e.type !== "shockwave" &&
-      e.type !== "areaBarrier" &&
-      e.type !== "globalFrost"
+    const normalEffects = effects.filter(
+      (e) =>
+        !e.forceRenderDetail &&
+        e.type !== "atomicBomb" &&
+        e.type !== "atomicExplosion" &&
+        e.type !== "atomicFlash" &&
+        e.type !== "shockwave" &&
+        e.type !== "areaBarrier" &&
+        e.type !== "globalFrost"
     );
 
     // Keep all priority effects and as many normal effects as we can
-    const normalEffectsToKeep = Math.max(0, maxEffects - priorityEffects.length);
+    const normalEffectsToKeep = Math.max(
+      0,
+      maxEffects - priorityEffects.length
+    );
 
     // Keep the newest normal effects (they're more relevant)
     const newNormalEffects = normalEffects.slice(-normalEffectsToKeep);
@@ -1039,9 +1059,11 @@ function updateGame() {
 }
 
 function drawGame() {
-  drawMainLane();
-
   drawPowerUpLane();
+
+  drawPowerUps();
+
+  drawMainLane();
 
   drawSquad();
 
@@ -1050,8 +1072,6 @@ function drawGame() {
   drawProjectiles();
 
   drawEffects();
-
-  drawPowerUps();
 }
 
 function drawMainLane() {
@@ -1210,7 +1230,7 @@ function drawSquad() {
     const isInPowerUpLane = member.x > BRIDGE_WIDTH / 2;
 
     // Adjust z-position to be higher when in power-up lane
-    const zOffset = isInPowerUpLane ? 60 : 40;
+    const zOffset = isInPowerUpLane ? 80 : 40;
 
     push();
     translate(member.x, member.y, member.z + zOffset);
@@ -1249,14 +1269,6 @@ function drawHuman(size, isLeader) {
   sphere(size * 0.25);
   pop();
 
-  // Hat
-  push();
-  translate(0, -size * 0.95, 0);
-  noStroke(); // Remove stroke from the hat
-  isLeader ? fill(255, 215, 0) : fill(50, 50, 50); // Gold for leader, dark gray for others
-  cylinder(size * 0.3, size * 0.1);
-  pop();
-
   // Body
   push();
   translate(0, -size * 0.25, 0);
@@ -1268,7 +1280,7 @@ function drawHuman(size, isLeader) {
   push();
   translate(-size * 0.4, -size * 0.25, 0);
   fill(0, 255, 0); // Green sleeves
-  rotateZ(-PI / 4);
+  rotateZ(PI / 4);
   box(size * 0.1, size * 0.5, size * 0.1);
   pop();
 
@@ -1300,12 +1312,12 @@ function drawHuman(size, isLeader) {
   box(size * 0.1, size * 0.5, size * 0.1);
   pop();
 
-  // Bullet belt
+  // Hat
   push();
-  translate(0, 0, -size * 0.2);
-  fill(255, 223, 0); // Bullet belt color
-  rotateY(PI / 4);
-  cylinder(size * 0.05, size);
+  translate(0, -size * 0.95, 0);
+  noStroke(); // Remove stroke from the hat
+  isLeader ? fill(255, 215, 0) : fill(50, 50, 50); // Gold for leader, dark gray for others
+  cylinder(size * 0.3, size * 0.1);
   pop();
 }
 
@@ -1601,35 +1613,48 @@ function drawEffects() {
   const useLowDetail = currentPerformanceLevel === "low";
 
   // Limit the number of effects to render based on performance level
-  const maxEffectsToRender = isMobileDevice ?
-    (useLowDetail ? 50 : useMediumDetail ? 100 : 150) :
-    (useLowDetail ? 100 : useMediumDetail ? 200 : 300);
+  const maxEffectsToRender = isMobileDevice
+    ? useLowDetail
+      ? 50
+      : useMediumDetail
+      ? 100
+      : 150
+    : useLowDetail
+    ? 100
+    : useMediumDetail
+    ? 200
+    : 300;
 
   // Sort effects by priority (certain effect types are more important)
-  const priorityEffects = effects.filter(e =>
-    e.forceRenderDetail ||
-    e.type === "atomicBomb" ||
-    e.type === "atomicExplosion" ||
-    e.type === "atomicFlash" ||
-    e.type === "shockwave" ||
-    e.type === "areaBarrier" ||
-    e.type === "globalFrost"
+  const priorityEffects = effects.filter(
+    (e) =>
+      e.forceRenderDetail ||
+      e.type === "atomicBomb" ||
+      e.type === "atomicExplosion" ||
+      e.type === "atomicFlash" ||
+      e.type === "shockwave" ||
+      e.type === "areaBarrier" ||
+      e.type === "globalFrost"
   );
 
-  const normalEffects = effects.filter(e =>
-    !e.forceRenderDetail &&
-    e.type !== "atomicBomb" &&
-    e.type !== "atomicExplosion" &&
-    e.type !== "atomicFlash" &&
-    e.type !== "shockwave" &&
-    e.type !== "areaBarrier" &&
-    e.type !== "globalFrost"
+  const normalEffects = effects.filter(
+    (e) =>
+      !e.forceRenderDetail &&
+      e.type !== "atomicBomb" &&
+      e.type !== "atomicExplosion" &&
+      e.type !== "atomicFlash" &&
+      e.type !== "shockwave" &&
+      e.type !== "areaBarrier" &&
+      e.type !== "globalFrost"
   );
 
   // Combine effects, prioritizing important ones
   const effectsToRender = [
     ...priorityEffects,
-    ...normalEffects.slice(0, Math.max(0, maxEffectsToRender - priorityEffects.length))
+    ...normalEffects.slice(
+      0,
+      Math.max(0, maxEffectsToRender - priorityEffects.length)
+    ),
   ];
 
   // Draw visual effects - optimized with distance culling
@@ -1653,9 +1678,11 @@ function drawEffects() {
         effect.type === "globalFrost";
 
       // On mobile/low performance, use more aggressive culling
-      const cullingDistanceSquared = isMobileDevice ?
-        (useLowDetail ? 300*300 : 400*400) :
-        500*500;
+      const cullingDistanceSquared = isMobileDevice
+        ? useLowDetail
+          ? 300 * 300
+          : 400 * 400
+        : 500 * 500;
 
       // Fast distance check - if effect is far away AND not forced to render in detail, skip detailed rendering
       if (!forceDetailedRendering && distSquared > cullingDistanceSquared) {
@@ -1695,7 +1722,9 @@ function drawEffects() {
 
     // Calculate final particle count
     const baseParticleCount = 10;
-    const particleCount = Math.ceil(lifeFactor * performanceFactor * baseParticleCount);
+    const particleCount = Math.ceil(
+      lifeFactor * performanceFactor * baseParticleCount
+    );
 
     if (effect.type === "explosion") {
       // Explosion effect
@@ -1722,7 +1751,10 @@ function drawEffects() {
       // Hit effect - simplified
       fill(...effectColor, 255 * (effect.life / EFFECT_DURATION));
       // Reduce particle count
-      const hitParticles = Math.min(8, Math.ceil(lifeFactor * performanceFactor * 8));
+      const hitParticles = Math.min(
+        8,
+        Math.ceil(lifeFactor * performanceFactor * 8)
+      );
       for (let i = 0; i < hitParticles; i++) {
         push();
         translate(random(-10, 10), random(-10, 10), random(-10, 10));
@@ -1792,7 +1824,10 @@ function drawEffects() {
           y = 0,
           z = 0;
         // Simplified lightning path
-        const points = Math.max(5, Math.ceil(lifeFactor * performanceFactor * 10));
+        const points = Math.max(
+          5,
+          Math.ceil(lifeFactor * performanceFactor * 10)
+        );
         for (let j = 0; j < points; j++) {
           vertex(x, y, z);
           x += random(-10, 10);
@@ -4486,7 +4521,7 @@ function updateSquad() {
   const leftBound = -BRIDGE_WIDTH / 2;
   const rightBound = BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH - HUMAN_SIZE;
   const topBound = (-BRIDGE_LENGTH * 1) / 2;
-  const bottomBound = (BRIDGE_LENGTH * 1) / 2 ;
+  const bottomBound = (BRIDGE_LENGTH * 1) / 2;
 
   // Formation - arrange other squad members around the leader
   if (squad.length > 1) {
@@ -5646,17 +5681,29 @@ function activateSkill(skillNumber) {
 
       // Reduce crystal count on mobile or low performance
       if (isMobileDevice) {
-        crystalCount = currentPerformanceLevel === "low" ? 15 :
-                      currentPerformanceLevel === "medium" ? 25 : 30;
+        crystalCount =
+          currentPerformanceLevel === "low"
+            ? 15
+            : currentPerformanceLevel === "medium"
+            ? 25
+            : 30;
       } else {
-        crystalCount = currentPerformanceLevel === "low" ? 20 :
-                      currentPerformanceLevel === "medium" ? 30 : 40 + aoeBoost * 2;
+        crystalCount =
+          currentPerformanceLevel === "low"
+            ? 20
+            : currentPerformanceLevel === "medium"
+            ? 30
+            : 40 + aoeBoost * 2;
       }
 
       // Create a grid of ice crystals - adjust grid size based on performance
-      const gridSize = isMobileDevice ?
-                      (currentPerformanceLevel === "low" ? 3 : 4) :
-                      (currentPerformanceLevel === "low" ? 4 : 5); // Smaller grid on mobile/low performance
+      const gridSize = isMobileDevice
+        ? currentPerformanceLevel === "low"
+          ? 3
+          : 4
+        : currentPerformanceLevel === "low"
+        ? 4
+        : 5; // Smaller grid on mobile/low performance
       const gridSpacing = 300; // 300 units apart
 
       for (let gridX = -gridSize / 2; gridX <= gridSize / 2; gridX++) {
@@ -5668,9 +5715,13 @@ function activateSkill(skillNumber) {
           // Stagger the crystal formation for dramatic effect
           setTimeout(() => {
             // Create a cluster of crystals at each grid point - fewer on mobile/low performance
-            const clusterSize = isMobileDevice ?
-                              (currentPerformanceLevel === "low" ? 1 : 2) :
-                              (currentPerformanceLevel === "low" ? 2 : 3);
+            const clusterSize = isMobileDevice
+              ? currentPerformanceLevel === "low"
+                ? 1
+                : 2
+              : currentPerformanceLevel === "low"
+              ? 2
+              : 3;
 
             for (let j = 0; j < clusterSize; j++) {
               const clusterX = x + random(-30, 30);
@@ -5734,11 +5785,17 @@ function activateSkill(skillNumber) {
           createIceEffect(enemy.x, enemy.y, enemy.z);
 
           // Add ice crystals around the enemy that follow it - fewer on mobile/low performance
-          const enemyCrystalCount = isMobileDevice ?
-                                  (currentPerformanceLevel === "low" ? 1 :
-                                   currentPerformanceLevel === "medium" ? 2 : 3) :
-                                  (currentPerformanceLevel === "low" ? 2 :
-                                   currentPerformanceLevel === "medium" ? 3 : 5);
+          const enemyCrystalCount = isMobileDevice
+            ? currentPerformanceLevel === "low"
+              ? 1
+              : currentPerformanceLevel === "medium"
+              ? 2
+              : 3
+            : currentPerformanceLevel === "low"
+            ? 2
+            : currentPerformanceLevel === "medium"
+            ? 3
+            : 5;
 
           for (let j = 0; j < enemyCrystalCount; j++) {
             const offsetX = random(-20, 20);
@@ -7312,7 +7369,7 @@ function createSkillBarElement() {
     skillDiv.style("-webkit-tap-highlight-color", "transparent");
     skillDiv.style("flex", "1"); // Allow buttons to grow to fill available space
     skillDiv.style("min-width", skillButtonSize + "px"); // Set minimum width
-    skillDiv.style("max-width", (skillButtonSize * 1.2) + "px"); // Set maximum width
+    skillDiv.style("max-width", skillButtonSize * 1.2 + "px"); // Set maximum width
 
     skillDiv.html(`
       <div id="skillName${i}" style="font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
@@ -7635,7 +7692,6 @@ function updateSkillBar() {
   }
 }
 
-
 // Create directional pad for touch/click movement
 function createDirectionalPadElement() {
   // Determine if we're on a mobile device
@@ -7655,7 +7711,7 @@ function createDirectionalPadElement() {
   dPad.style("height", dPadSize + "px");
   dPad.style("position", "relative");
   dPad.style("background-color", "rgba(30, 30, 30, 0.8)");
-  dPad.style("border-radius", (dPadSize/2) + "px");
+  dPad.style("border-radius", dPadSize / 2 + "px");
   dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
   dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)");
   dPad.style("z-index", "1600");
@@ -7762,7 +7818,7 @@ function createDirectionalPadElement() {
   centerButton.style("height", buttonSize + "px");
   centerButton.style("background-color", "rgba(70, 70, 70, 0.8)");
   centerButton.style("color", "white");
-  centerButton.style("font-size", (fontSize + 4) + "px");
+  centerButton.style("font-size", fontSize + 4 + "px");
   centerButton.style("display", "flex");
   centerButton.style("align-items", "center");
   centerButton.style("justify-content", "center");
