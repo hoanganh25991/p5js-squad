@@ -13,27 +13,31 @@ let waveEnemiesKilled = 0; // Enemies killed in the current wave
 // Font
 let gameFont;
 
-const MIN_ZOOM = -800; // Minimum zoom level to ensure the bridge is visible
+const MIN_ZOOM = -10_000; // Minimum zoom level to ensure the bridge is visible
 const MAX_ZOOM = 10_000; // Maximum zoom level for when players want to zoom out further
 let isDragging = false;
 let prevMouseX, prevMouseY;
 
+// Wall and gate dimensions
+const WALL_HEIGHT = 180;
+const WALL_THICKNESS = 20;
+const GATE_WIDTH = 150;
+const GATE_HEIGHT = WALL_HEIGHT - 10;
+
 // Game dimensions
-const BRIDGE_LENGTH = 5500 * 1.5; // Significantly increased bridge length to fully fill the screen
+const BRIDGE_LENGTH = 5000; // Significantly increased bridge length to fully fill the screen
 const BRIDGE_WIDTH = 400;
 const POWER_UP_LANE_WIDTH = 150;
-const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
-
-// Wall and gate dimensions
-const WALL_HEIGHT = 200;
-const WALL_THICKNESS = 50;
-const GATE_WIDTH = 150;
-const GATE_HEIGHT = 120;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
 const CAMERA_OFFSET_Y = -600; // Even more significantly adjusted to show the squad at the bottom of the screen
-const CAMERA_OFFSET_Z = 600; // Much further increased zoom distance to see the entire bridge
+const CAMERA_OFFSET_Z = 270; // Much further increased zoom distance to see the entire bridge
+const SQUAD_Y = -200
+const WALL_Y = SQUAD_Y + 100
+const ENEMY_FIGHT_DISTANCE_THRESHOLD = 500;
+
+const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
 // Debug mode for testing
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
@@ -45,7 +49,6 @@ const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies nee
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
 
-const ENEMY_FIGHT_DISTANCE_THRESHOLD = (BRIDGE_LENGTH * 1) / 20;
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -177,7 +180,7 @@ let skills = {
 let squadLeader = {
   x: 0,
   // y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
-  y: 100, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
+  y: SQUAD_Y, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   z: 0,
   size: SQUAD_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
@@ -823,7 +826,7 @@ function drawMainLane() {
 function drawWallAndGate() {
   // Position at the bottom of the bridge (start)
   // const wallY = BRIDGE_LENGTH / 2 - WALL_THICKNESS / 2;
-  const wallY = 220 - WALL_THICKNESS / 2;
+  const wallY = WALL_Y;
 
   push();
   // Wall color - stone gray
@@ -4097,7 +4100,7 @@ function moveSquad(deltaX, deltaY) {
   // Check for wall boundary when moving down (positive deltaY)
   if (deltaY > 0) {
     // Use the exact wall position from drawWallAndGate function
-    const wallPosition = 220; // This matches the fixed position in drawWallAndGate
+    const wallPosition = WALL_Y; // This matches the fixed position in drawWallAndGate
 
     // If the squad is approaching the wall, prevent movement past it
     if (
