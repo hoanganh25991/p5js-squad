@@ -1761,7 +1761,7 @@ function drawEffects() {
         // Rotate 90 degrees around Y axis to change the orientation of the half-circle
         push();
         rotateY(HALF_PI); // Rotate 90 degrees around Y axis
-        rotateZ(HALF_PI); // Rotate 90 degrees around Y axis
+        rotateZ(HALF_PI); // Rotate 90 degrees around z axis
 
         // Draw main arc
         push();
