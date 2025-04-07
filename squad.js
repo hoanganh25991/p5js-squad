@@ -4592,23 +4592,6 @@ function activateSkill(skillNumber) {
         forceRenderDetail: true
       });
 
-      // Create a visual feedback effect
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: shieldCenter.x,
-            y: shieldCenter.y,
-            z: shieldCenter.z,
-            type: "shockwave",
-            size: shieldRadius * (0.5 + i * 0.25),
-            life: 60 - i * 15,
-            color: [0, 200, 255], // Blue for protection
-            layer: i,
-            forceRenderDetail: true
-          });
-        }, i * 100);
-      }
-
       // Schedule deactivation after duration
       setTimeout(() => {
         skills.skill3.active = false;
