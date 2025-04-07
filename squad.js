@@ -1017,10 +1017,11 @@ function updateGame() {
   spawnEnemies();
   spawnPowerUps();
 
+  updatePowerUps();
+
   updateSquad();
   updateProjectiles();
   updateEnemies();
-  updatePowerUps();
 
   // Clean up any objects that have gone beyond the wall
   cleanupEffectsBeyondWall();
@@ -5022,15 +5023,6 @@ function updatePowerUps() {
 
     // Check if power-up is beyond the wall and remove it
     if (isBeyondWall(powerUp.y)) {
-      // Create a small effect when power-up hits the wall
-      createHitEffect(
-        powerUp.x,
-        220 - WALL_THICKNESS / 2, // Position at the wall
-        powerUp.z,
-        WEAPON_COLORS[powerUp.type] || [200, 200, 200],
-        20 // Small effect
-      );
-
       // Remove the power-up
       powerUps.splice(i, 1);
     }
