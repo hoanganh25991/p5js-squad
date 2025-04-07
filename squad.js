@@ -175,7 +175,7 @@ let skills = {
     cooldown: 600,
     lastUsed: 0,
     active: false,
-    activeDuration: 360, // Freeze duration (6 seconds = 360 frames at 60fps)
+    activeDuration: 120, // Freeze duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
   skill5: { cooldown: 600, lastUsed: 0 },
@@ -632,38 +632,29 @@ function draw() {
 
   // Handle multiple global effects with priority
   if (globalFrostEffect && globalFireEffect && globalTimeDilationEffect) {
-    // If all three effects are active, create a complex blend
+    // If all three effects are active, create a simplified blend
     const frostIntensity = globalFrostEffect.intensity || 0.5;
     const fireIntensity = globalFireEffect.intensity || 0.3;
     const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 15; // Reduced for blending
-    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 15; // Reduced for blending
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 12; // Adjusted for shorter duration
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 12; // Reduced for blending
     const dilationFadeAlpha =
-      (globalTimeDilationEffect.life / 480) * dilationIntensity * 15; // Reduced for blending
+      (globalTimeDilationEffect.life / 480) * dilationIntensity * 12; // Reduced for blending
 
-    // Apply a multi-layered overlay
+    // Apply a simplified overlay
     push();
     translate(0, 0, 1000); // Move in front of everything
     noStroke();
 
-    // First layer - fire effect
-    fill(255, 100, 50, fireFadeAlpha);
+    // Combined layer - blend all effects
+    fill(
+      (255 + 200 + 0) / 3,
+      (100 + 240 + 200) / 3,
+      (50 + 255 + 255) / 3,
+      min((frostFadeAlpha + fireFadeAlpha + dilationFadeAlpha) / 2, 150) // Cap alpha for performance
+    );
     plane(width * 2, height * 2);
-
-    // Second layer - frost effect
-    fill(200, 240, 255, frostFadeAlpha * 0.6);
-    plane(width * 2, height * 2);
-
-    // Third layer - time dilation effect
-    fill(0, 200, 255, dilationFadeAlpha * 0.5);
-    plane(width * 2, height * 2);
-
-    // Add special combined effect
-    if (frameCount % 3 === 0) {
-      fill(200, 200, 255, random(5, 10));
-      plane(width * 2, height * 2);
-    }
 
     pop();
 
@@ -671,25 +662,25 @@ function draw() {
     ambientLight(200, 200, 210);
     directionalLight(220, 220, 240, 0, -1, -1);
   } else if (globalFrostEffect && globalFireEffect) {
-    // If both frost and fire effects are active, blend them
+    // If both frost and fire effects are active, use a simplified blend
     const frostIntensity = globalFrostEffect.intensity || 0.5;
     const fireIntensity = globalFireEffect.intensity || 0.3;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 20; // Reduced for blending
-    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 20; // Reduced for blending
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15; // Adjusted for shorter duration
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 15; // Reduced for blending
 
-    // Apply a semi-transparent blended overlay
+    // Apply a single blended overlay for better performance
     push();
-    // Use a 2D overlay for the combined effect
     translate(0, 0, 1000); // Move in front of everything
-
-    // First layer - fire effect
-    fill(255, 100, 50, fireFadeAlpha);
     noStroke();
-    plane(width * 2, height * 2); // Cover the entire screen
 
-    // Second layer - frost effect (with blending)
-    fill(200, 240, 255, frostFadeAlpha * 0.7); // Reduced opacity for blending
+    // Combined layer - purple-ish blend of fire and ice
+    fill(
+      (255 + 200) / 2,
+      (100 + 240) / 2,
+      (50 + 255) / 2,
+      min((frostFadeAlpha + fireFadeAlpha) / 2, 150) // Cap alpha for performance
+    );
     plane(width * 2, height * 2); // Cover the entire screen
 
     pop();
@@ -698,30 +689,31 @@ function draw() {
     ambientLight(200, 190, 210); // Balanced ambient light
     directionalLight(230, 220, 230, 0, -1, -1); // Balanced directional light
   } else if (globalFrostEffect && globalTimeDilationEffect) {
-    // If both frost and time dilation effects are active, blend them
+    // If both frost and time dilation effects are active, use a simplified blend
     const frostIntensity = globalFrostEffect.intensity || 0.5;
     const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 300) * frostIntensity * 20; // Reduced for blending
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15; // Adjusted for shorter duration
     const dilationFadeAlpha =
-      (globalTimeDilationEffect.life / 480) * dilationIntensity * 20; // Reduced for blending
+      (globalTimeDilationEffect.life / 480) * dilationIntensity * 15; // Reduced for blending
 
-    // Apply a semi-transparent blended overlay
+    // Apply a single blended overlay for better performance
     push();
     translate(0, 0, 1000); // Move in front of everything
     noStroke();
 
-    // First layer - frost effect
-    fill(200, 240, 255, frostFadeAlpha * 0.7);
+    // Combined layer - cyan blend of frost and time dilation
+    fill(
+      (200 + 0) / 2,
+      (240 + 200) / 2,
+      255,
+      min((frostFadeAlpha + dilationFadeAlpha) / 2, 150) // Cap alpha for performance
+    );
     plane(width * 2, height * 2);
 
-    // Second layer - time dilation effect
-    fill(0, 200, 255, dilationFadeAlpha * 0.6);
-    plane(width * 2, height * 2);
-
-    // Add special combined effect - frozen time particles
-    if (frameCount % 4 === 0) {
-      fill(150, 220, 255, random(5, 10));
+    // Simplified special effect - only on desktop and less frequent
+    if (!isMobileDevice && frameCount % 8 === 0) {
+      fill(150, 220, 255, random(3, 8));
       plane(width * 2, height * 2);
     }
 
@@ -764,21 +756,20 @@ function draw() {
     ambientLight(210, 190, 200);
     directionalLight(230, 210, 220, 0, -1, -1);
   } else if (globalFrostEffect) {
-    // Apply a blue tint to the scene based on the frost intensity
+    // Apply a simplified blue tint to the scene based on the frost intensity
     const intensity = globalFrostEffect.intensity || 0.5;
-    const fadeAlpha = (globalFrostEffect.life / 300) * intensity * 30; // Fade as effect expires
+    const fadeAlpha = (globalFrostEffect.life / 120) * intensity * 25; // Fade as effect expires, adjusted for shorter duration
 
-    // Apply a semi-transparent blue overlay
+    // Apply a simplified semi-transparent blue overlay
     push();
-    // Use a 2D overlay for the frost effect
     translate(0, 0, 1000); // Move in front of everything
-    fill(200, 240, 255, fadeAlpha);
+    fill(200, 240, 255, min(fadeAlpha, 150)); // Cap the maximum alpha for better performance
     noStroke();
     plane(width * 2, height * 2); // Cover the entire screen
     pop();
 
-    // Adjust lighting for frost effect - cooler, bluer light
-    ambientLight(180, 200, 220); // Bluer ambient light
+    // Simplified lighting for frost effect
+    ambientLight(190, 210, 230); // Bluer ambient light
     directionalLight(200, 220, 255, 0, -1, -1); // Bluer directional light
   } else if (globalFireEffect) {
     // Apply a red-orange tint to the scene based on the fire intensity
@@ -5599,14 +5590,16 @@ function activateSkill(skillNumber) {
 
       break;
 
-    case 4: // Freeze - dramatic ice effect that freezes the entire bridge and all enemies
-      let freezeDuration = skills.skill4.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
+    case 4: // Freeze - ice effect that freezes enemies
+      // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
+      let visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
+      let enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
       let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
-      let freezeRadius = 2000; // Extremely large radius to cover the entire bridge
+      let freezeRadius = 1500; // Reduced radius for better performance
 
       // Activate freeze mode
       skills.skill4.active = true;
-      skills.skill4.endTime = frameCount + freezeDuration;
+      skills.skill4.endTime = frameCount + visualEffectDuration;
 
       // Calculate the center point of the squad for the freeze effect
       let freezeCenter = { x: 0, y: 0, z: 0 };
@@ -5625,85 +5618,42 @@ function activateSkill(skillNumber) {
       }
 
       // Create a global freeze effect
-      // 1. First, create a massive freezing shockwave that covers the entire bridge
-      for (let i = 0; i < 8; i++) {
-        // More rings for a more dramatic effect
+      // 1. Create a simplified freezing shockwave
+      const shockwaveCount = isMobileDevice ? 3 : 5; // Fewer rings on mobile
+      for (let i = 0; i < shockwaveCount; i++) {
         setTimeout(() => {
           effects.push({
             x: freezeCenter.x,
             y: freezeCenter.y,
             z: freezeCenter.z,
             type: "shockwave",
-            size: freezeRadius * (0.1 + i * 0.15), // Expanding size for each ring
-            life: 120 - i * 10, // Longer life for dramatic effect
+            size: freezeRadius * (0.2 + i * 0.2), // Simplified expanding size
+            life: 60 - i * 5, // Shorter life for better performance
             color: [100, 200, 255], // Ice blue color
             layer: i,
-            forceRenderDetail: true,
+            forceRenderDetail: !isMobileDevice, // Only force render on desktop
           });
-        }, i * 120); // Slower expansion for dramatic effect
+        }, i * 80); // Faster expansion
       }
 
-      // 2. Create multiple bridge freeze effects that cover the entire bridge
-      // Main central frost
+      // 2. Create a single bridge frost effect
       effects.push({
         x: freezeCenter.x,
         y: freezeCenter.y,
         z: 0, // At bridge level
         type: "bridgeFrost",
         size: freezeRadius,
-        life: freezeDuration,
+        life: visualEffectDuration,
         color: [200, 240, 255, 150], // Light blue with transparency
-        forceRenderDetail: true,
+        forceRenderDetail: !isMobileDevice, // Only force render on desktop
       });
 
-      // Additional frost patches for more coverage
-      for (let i = 0; i < 4; i++) {
-        const offsetDistance = 800;
-        const angle = (i / 4) * TWO_PI;
-        const offsetX = cos(angle) * offsetDistance;
-        const offsetY = sin(angle) * offsetDistance;
-
-        effects.push({
-          x: freezeCenter.x + offsetX,
-          y: freezeCenter.y + offsetY,
-          z: 0, // At bridge level
-          type: "bridgeFrost",
-          size: freezeRadius * 0.7,
-          life: freezeDuration - random(0, 60),
-          color: [200, 240, 255, 150], // Light blue with transparency
-          forceRenderDetail: true,
-        });
-      }
-
-      // 3. Create ice crystal formations across the entire bridge
+      // 3. Create simplified ice crystal formations
       // Adjust crystal count based on performance level
-      let crystalCount = 40 + aoeBoost * 2; // Base crystal count
+      let crystalCount = isMobileDevice ? 10 : 20; // Significantly reduced count
 
-      // Reduce crystal count on mobile or low performance
-      if (isMobileDevice) {
-        crystalCount =
-          currentPerformanceLevel === "low"
-            ? 15
-            : currentPerformanceLevel === "medium"
-            ? 25
-            : 30;
-      } else {
-        crystalCount =
-          currentPerformanceLevel === "low"
-            ? 20
-            : currentPerformanceLevel === "medium"
-            ? 30
-            : 40 + aoeBoost * 2;
-      }
-
-      // Create a grid of ice crystals - adjust grid size based on performance
-      const gridSize = isMobileDevice
-        ? currentPerformanceLevel === "low"
-          ? 3
-          : 4
-        : currentPerformanceLevel === "low"
-        ? 4
-        : 5; // Smaller grid on mobile/low performance
+      // Create a simplified grid of ice crystals
+      const gridSize = isMobileDevice ? 2 : 3; // Smaller grid for better performance
       const gridSpacing = 300; // 300 units apart
 
       for (let gridX = -gridSize / 2; gridX <= gridSize / 2; gridX++) {
@@ -5712,43 +5662,27 @@ function activateSkill(skillNumber) {
           const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
           const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
 
-          // Stagger the crystal formation for dramatic effect
-          setTimeout(() => {
-            // Create a cluster of crystals at each grid point - fewer on mobile/low performance
-            const clusterSize = isMobileDevice
-              ? currentPerformanceLevel === "low"
-                ? 1
-                : 2
-              : currentPerformanceLevel === "low"
-              ? 2
-              : 3;
-
-            for (let j = 0; j < clusterSize; j++) {
-              const clusterX = x + random(-30, 30);
-              const clusterY = y + random(-30, 30);
-
-              effects.push({
-                x: clusterX,
-                y: clusterY,
-                z: 0, // Start at bridge level
-                type: "iceCrystal",
-                size: random(40, 100),
-                life: freezeDuration - random(0, 60),
-                color: [200, 240, 255, 200],
-                growthTime: random(10, 30), // Frames to reach full size
-                forceRenderDetail: currentPerformanceLevel === "high", // Only force render on high performance
-              });
-            }
-          }, (Math.abs(gridX) + Math.abs(gridY)) * 100); // Stagger based on distance from center
+          // Create a single crystal at each grid point
+          effects.push({
+            x: x,
+            y: y,
+            z: 0, // Start at bridge level
+            type: "iceCrystal",
+            size: random(40, 80),
+            life: visualEffectDuration - random(0, 30),
+            color: [200, 240, 255, 200],
+            growthTime: random(5, 15), // Faster growth
+            forceRenderDetail: false, // Never force render for better performance
+          });
         }
       }
 
       // 4. Apply freeze effect to ALL enemies regardless of distance
       let enemiesFrozen = 0;
 
-      // Create a "freeze wave" that moves outward
-      const freezeWaveSpeed = 20; // Units per frame
-      const maxFreezeDelay = 2000; // Maximum delay in ms
+      // Create a faster "freeze wave" that moves outward
+      const freezeWaveSpeed = 30; // Faster units per frame
+      const maxFreezeDelay = 1000; // Reduced maximum delay in ms
 
       for (let enemy of enemies) {
         // Calculate distance from freeze center
@@ -5767,11 +5701,11 @@ function activateSkill(skillNumber) {
           enemy.originalSpeed = enemy.speed;
         }
 
-        // Apply freeze effect to ALL enemies
+        // Apply freeze effect to ALL enemies - note the longer duration
         setTimeout(() => {
           if (!enemy.effects) enemy.effects = {};
           enemy.effects.frozen = {
-            duration: freezeDuration,
+            duration: enemyFreezeEffectDuration, // 5 seconds freeze effect on enemies
             slowFactor: max(0.05, freezeStrength), // Min 5% of normal speed
             originalSpeed: enemy.originalSpeed || enemy.speed,
           };
@@ -5784,40 +5718,26 @@ function activateSkill(skillNumber) {
           // Create ice effect on enemy
           createIceEffect(enemy.x, enemy.y, enemy.z);
 
-          // Add ice crystals around the enemy that follow it - fewer on mobile/low performance
-          const enemyCrystalCount = isMobileDevice
-            ? currentPerformanceLevel === "low"
-              ? 1
-              : currentPerformanceLevel === "medium"
-              ? 2
-              : 3
-            : currentPerformanceLevel === "low"
-            ? 2
-            : currentPerformanceLevel === "medium"
-            ? 3
-            : 5;
+          // Add a single ice crystal to the enemy
+          const offsetX = random(-20, 20);
+          const offsetY = random(-20, 20);
+          const offsetZ = random(0, 30);
 
-          for (let j = 0; j < enemyCrystalCount; j++) {
-            const offsetX = random(-20, 20);
-            const offsetY = random(-20, 20);
-            const offsetZ = random(0, 30);
-
-            effects.push({
-              x: enemy.x + offsetX,
-              y: enemy.y + offsetY,
-              z: enemy.z + offsetZ,
-              type: "iceCrystal",
-              size: random(10, 30),
-              life: freezeDuration * 0.8,
-              color: [200, 240, 255, 200],
-              growthTime: random(5, 15),
-              enemy: enemy, // Reference to follow the enemy
-              offsetX: offsetX,
-              offsetY: offsetY,
-              offsetZ: offsetZ,
-              forceRenderDetail: false,
-            });
-          }
+          effects.push({
+            x: enemy.x + offsetX,
+            y: enemy.y + offsetY,
+            z: enemy.z + offsetZ,
+            type: "iceCrystal",
+            size: random(10, 20),
+            life: min(visualEffectDuration, 60), // Short visual effect
+            color: [200, 240, 255, 200],
+            growthTime: random(5, 10),
+            enemy: enemy, // Reference to follow the enemy
+            offsetX: offsetX,
+            offsetY: offsetY,
+            offsetZ: offsetZ,
+            forceRenderDetail: false,
+          });
 
           // Add a frost burst effect
           effects.push({
@@ -5825,8 +5745,8 @@ function activateSkill(skillNumber) {
             y: enemy.y,
             z: enemy.z + 20,
             type: "frostBurst",
-            size: 40,
-            life: 30,
+            size: 30,
+            life: 20,
             color: [200, 240, 255],
           });
         }, freezeDelay);
@@ -5834,69 +5754,53 @@ function activateSkill(skillNumber) {
         enemiesFrozen++;
       }
 
-      // 5. Add dramatic visual feedback for the massive freeze
+      // 5. Add simplified visual feedback for the freeze
       // Create a central ice explosion
       effects.push({
         x: freezeCenter.x,
         y: freezeCenter.y,
         z: freezeCenter.z + 50,
         type: "frostBurst",
-        size: 100,
-        life: 60,
+        size: 80,
+        life: 40,
         color: [200, 240, 255],
       });
 
-      // Add floating ice shards
-      for (let i = 0; i < 30; i++) {
-        setTimeout(() => {
-          const angle = random(TWO_PI);
-          const dist = random(100, 500);
-          effects.push({
-            x: freezeCenter.x + cos(angle) * dist,
-            y: freezeCenter.y + sin(angle) * dist,
-            z: random(50, 200),
-            type: "iceCrystal",
-            size: random(20, 40),
-            life: random(120, 240),
-            color: [200, 240, 255, 180],
-            growthTime: 5,
-            rotationSpeed: random(-0.1, 0.1),
-            forceRenderDetail: true,
-          });
-        }, i * 50);
-      }
-
-      // Add a success indicator
-      const frozenText = `${enemiesFrozen} enemies frozen!`;
-      // Add visual effect instead of text
-      for (let i = 0; i < 10; i++) {
+      // Add a few floating ice shards
+      const shardCount = isMobileDevice ? 5 : 10;
+      for (let i = 0; i < shardCount; i++) {
+        const angle = random(TWO_PI);
+        const dist = random(100, 300);
         effects.push({
-          x: freezeCenter.x + random(-100, 100),
-          y: freezeCenter.y + random(-100, 100),
-          z: freezeCenter.z + random(50, 150),
-          type: "hit",
-          size: 25,
-          life: 90,
-          color: [100, 200, 255],
+          x: freezeCenter.x + cos(angle) * dist,
+          y: freezeCenter.y + sin(angle) * dist,
+          z: random(50, 150),
+          type: "iceCrystal",
+          size: random(15, 30),
+          life: random(60, 90),
+          color: [200, 240, 255, 180],
+          growthTime: 5,
+          rotationSpeed: random(-0.05, 0.05),
+          forceRenderDetail: false,
         });
       }
 
-      // 6. Create a stronger global frost effect (blue tint to the scene)
+      // 6. Create a global frost effect (blue tint to the scene) - shorter duration
       effects.push({
         type: "globalFrost",
-        life: freezeDuration,
-        intensity: 0.7 + aoeBoost * 0.05, // Stronger effect with AOE boost
-        forceRenderDetail: true,
+        life: visualEffectDuration, // Only 2 seconds for visual effect
+        intensity: 0.6 + aoeBoost * 0.03, // Slightly reduced intensity
+        forceRenderDetail: false,
       });
 
-      // 7. Add a screen shake effect for impact
-      cameraShake = 10;
+      // 7. Add a small screen shake effect for impact
+      cameraShake = 5; // Reduced shake
 
-      // 8. Schedule deactivation after duration
+      // 8. Schedule deactivation after visual duration
       setTimeout(() => {
         skills.skill4.active = false;
 
-        // Final thaw effect when the skill ends
+        // Simple thaw effect when the skill ends
         if (squad.length > 0) {
           let finalCenter = { x: 0, y: 0, z: 0 };
           let totalX = 0,
@@ -5911,26 +5815,27 @@ function activateSkill(skillNumber) {
           finalCenter.y = totalY / squad.length;
           finalCenter.z = totalZ / squad.length;
 
-          // Create thaw effect - water droplets falling
-          for (let i = 0; i < 20; i++) {
+          // Create minimal thaw effect
+          const dropletCount = isMobileDevice ? 5 : 10;
+          for (let i = 0; i < dropletCount; i++) {
             const angle = random(TWO_PI);
-            const dist = random(100, 800);
+            const dist = random(100, 400);
             const x = finalCenter.x + cos(angle) * dist;
             const y = finalCenter.y + sin(angle) * dist;
 
             effects.push({
               x: x,
               y: y,
-              z: random(50, 150),
+              z: random(50, 100),
               type: "hit",
-              size: random(10, 20),
-              life: random(30, 60),
+              size: random(8, 15),
+              life: random(20, 40),
               color: [100, 200, 255, 150],
               forceRenderDetail: false,
             });
           }
         }
-      }, freezeDuration * (1000 / 60)); // Convert frames to ms
+      }, visualEffectDuration * (1000 / 60)); // Convert frames to ms
 
       break;
 
