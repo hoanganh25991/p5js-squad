@@ -33,8 +33,8 @@ const POWER_UP_LANE_WIDTH = 150;
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
 const CAMERA_OFFSET_Y = -600; // Even more significantly adjusted to show the squad at the bottom of the screen
 const CAMERA_OFFSET_Z = 270; // Much further increased zoom distance to see the entire bridge
-const SQUAD_Y = -200
-const WALL_Y = SQUAD_Y + 100
+const SQUAD_Y = -200;
+const WALL_Y = SQUAD_Y + 100;
 const ENEMY_FIGHT_DISTANCE_THRESHOLD = 500;
 
 const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
@@ -48,7 +48,6 @@ const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before 
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
-
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -6502,6 +6501,9 @@ let lastTechUpdateTime = 0;
 const TECH_UPDATE_INTERVAL = 15; // Update tech stats less frequently (every 15 frames)
 
 function createTechnicalBoardElements() {
+  if (!DEBUG_MODE) {
+    return;
+  }
   // Create technical board element
   techBoard = createDiv("");
   techBoard.id("tech-board");
@@ -6526,6 +6528,10 @@ const MAX_MEMORY_SAMPLES = 5;
 let peakMemoryUsage = 0;
 
 function updateTechnicalBoard() {
+  if (!DEBUG_MODE) {
+    return;
+  }
+
   // Only update DOM elements every few frames for better performance
   if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
     return;
