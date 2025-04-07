@@ -51,6 +51,8 @@ const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
 
 // Configurable game parameters
+const SQUAD_X = 0;
+const SQUAD_Z = 40;
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
@@ -185,10 +187,10 @@ let skills = {
 };
 
 let squadLeader = {
-  x: 0,
+  x: SQUAD_X,
   // y: BRIDGE_LENGTH / 2 - WALL_THICKNESS - 800, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   y: SQUAD_Y, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
-  z: 0,
+  z: SQUAD_Z,
   size: HUMAN_SIZE,
   health: SQUAD_HEALTH, // Use configurable health
   weapon: currentWeapon,
@@ -1217,14 +1219,8 @@ function drawSquad() {
   for (let i = 0; i < squad.length; i++) {
     const member = squad[i];
 
-    // Check if the squad member is in the power-up lane
-    const isInPowerUpLane = member.x > BRIDGE_WIDTH / 2;
-
-    // Adjust z-position to be higher when in power-up lane
-    const zOffset = isInPowerUpLane ? 80 : 40;
-
     push();
-    translate(member.x, member.y, member.z + zOffset);
+    translate(member.x, member.y, member.z);
 
     // Rotate the member to stand upright
     rotateX(-HALF_PI); // Rotate 90 degrees to make the box stand upright
@@ -5178,7 +5174,7 @@ function checkCollisions() {
             squad.push({
               x: newX,
               y: newY,
-              z: 0,
+              z: SQUAD_Z,
               size: HUMAN_SIZE,
               health: SQUAD_HEALTH, // Use configurable health
               weapon: currentWeapon,
