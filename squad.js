@@ -1753,8 +1753,6 @@ function drawEffects() {
       strokeWeight(5);
 
       // Expanding ring
-      // rotateX(HALF_PI); // Align with ground plane
-
       if (effect.type === "directionalShockwave") {
         // Draw half-circle arc for directional shockwave
         const angleStart = effect.angleStart || 0;
