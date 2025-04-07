@@ -5,9 +5,7 @@
 let sounds = {
   // Background music
   music: {
-    main: {
-      false: true
-    },
+    main: null,
     battle: null,
     boss: null,
     victory: null,
@@ -45,8 +43,7 @@ let sounds = {
   
   // Environment sounds
   environment: {
-    wind: null,
-    ambient: null,
+    wind: true,
   },
   
   // Power-up sounds
@@ -59,7 +56,7 @@ let sounds = {
 // Sound settings
 let soundSettings = {
   masterVolume: 0.5,
-  musicVolume: 0.05, // Reduced background music volume
+  musicVolume: 0.1, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
   combatVolume: {
@@ -139,7 +136,6 @@ function preloadSounds() {
 
     // Environment sounds
     sounds.environment.wind = safeLoadSound('sounds/environment/wind.mp3');
-    sounds.environment.ambient = safeLoadSound('sounds/environment/ambient.mp3');
 
     // Power-up sounds
     sounds.powerups.collect = safeLoadSound('sounds/powerups/collect.mp3');
@@ -409,14 +405,6 @@ function toggleMute() {
           // If no music was playing, start the main theme
           playMusic('main', 0.5);
         }
-
-        // Resume ambient sounds
-        if (sounds.environment.ambient &&
-            sounds.environment.ambient.loop &&
-            !sounds.environment.ambient.isPlaying()) {
-          sounds.environment.ambient.setVolume(0.3 * soundSettings.sfxVolume);
-          sounds.environment.ambient.loop();
-        }
       }
     } else {
       console.warn("p5.sound library not fully loaded. Mute state changed but volume control unavailable.");
@@ -501,19 +489,6 @@ function playExplosionSound(x, y, size = 1.0) {
   
   playCombatSound('explosion', x, y, volume);
   sounds.combat.explosion.rate(rate);
-}
-
-// Play ambient sounds based on game state
-function updateAmbientSounds() {
-  // Adjust wind sound based on camera height
-  if (sounds.environment.wind) {
-    const windVolume = map(cameraZoom, 300, 1000, 0.1, 0.4);
-    sounds.environment.wind.setVolume(windVolume * soundSettings.sfxVolume);
-    
-    if (!sounds.environment.wind.isPlaying()) {
-      sounds.environment.wind.loop();
-    }
-  }
 }
 
 // Handle sound fallbacks if files don't load

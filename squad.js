@@ -747,11 +747,26 @@ function updateGame() {
 }
 
 function drawGame() {
+  // Set up the camera position to ensure proper view of the game
+  // This ensures the sky is visible outside the main lane
+  camera(
+    cameraOffsetX,
+    cameraOffsetY,
+    cameraZoom,
+    cameraOffsetX,
+    cameraOffsetY,
+    0,
+    0, 1, 0
+  );
+
   // Add ambient lighting for the entire scene
   ambientLight(40, 40, 50); // Subtle blue-tinted ambient light
 
   // Add a directional light for the scene
   directionalLight(200, 200, 220, 0, 1, -1);
+
+  // Add a secondary light to illuminate enemies better
+  pointLight(150, 150, 200, cameraOffsetX, cameraOffsetY - 500, cameraZoom - 200);
 
   // Draw the background first (behind everything else)
   drawBackground();
@@ -779,6 +794,13 @@ function drawBackground() {
   // Use a very far negative z-value to ensure the background is behind everything
   // No need to disable depth testing which can cause rendering issues
 
+  // Set the camera position to ensure proper perspective
+  // This ensures the sky is visible outside the main lane
+  // We don't need to translate by cameraOffsetX/Y here since we're using the camera() function
+
+  // Enable blending for better visual effects
+  blendMode(BLEND);
+
   // Draw a distant starfield
   drawStarfield();
 
@@ -787,6 +809,9 @@ function drawBackground() {
 
   // Draw a ground plane below the bridge
   drawGround();
+
+  // Reset blend mode
+  blendMode(BLEND);
 
   pop();
 }
@@ -799,17 +824,36 @@ function drawStarfield() {
   // Use frameCount to ensure we're not regenerating stars every frame
   randomSeed(1234); // Use a fixed seed for consistent star pattern
 
-  // Move far away from the camera
-  translate(0, 0, -3000);
+  // Move far away from the camera but not so far that it's clipped
+  // This ensures the starfield is visible but doesn't interfere with gameplay
+  translate(0, 0, -2000);
 
   // Draw the main space background (dark blue with gradient)
   noStroke();
-  fill(5, 10, 30);
 
-  // Draw a large background plane
+  // Create a more interesting gradient background
   push();
   rotateX(PI/2); // Rotate to be perpendicular to view
+
+  // Use a larger plane to ensure it covers the entire view
+  // This ensures the sky is visible from all camera angles
+  fill(5, 10, 30); // Dark blue base
+  plane(15000, 15000);
+
+  // Add a subtle nebula effect
+  push();
+  translate(0, 0, 1);
+  fill(30, 20, 50, 30); // Purple nebula, very transparent
+  plane(12000, 12000);
+  pop();
+
+  // Add another nebula layer
+  push();
+  translate(0, 0, 2);
+  fill(20, 40, 60, 20); // Blue nebula, very transparent
   plane(10000, 10000);
+  pop();
+
   pop();
 
   // Draw stars at fixed positions
@@ -999,8 +1043,30 @@ function drawMainLane() {
   // Draw the bridge (main lane) - extending from bottom to top of screen
   push();
   translate(0, 0, 0);
-  fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 10); // Increased bridge length to cover full screen
+
+  // Use semi-transparent fill to allow seeing through the bridge slightly
+  // This helps with visibility of enemies and the sky beyond
+  fill(...BRIDGE_COLOR, 230); // Added alpha value for slight transparency
+
+  // Make the bridge thinner in the z-dimension so it doesn't block the view
+  // Increased length to ensure it spans from bottom to top of screen
+  box(BRIDGE_WIDTH, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER, 5); // Reduced thickness from 10 to 5
+
+  // Add subtle edge highlights to better define the bridge boundaries
+  push();
+  translate(-BRIDGE_WIDTH/2, 0, 3);
+  stroke(200, 200, 220, 150);
+  strokeWeight(2);
+  line(0, -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2, 0, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2);
+  pop();
+
+  push();
+  translate(BRIDGE_WIDTH/2, 0, 3);
+  stroke(200, 200, 220, 150);
+  strokeWeight(2);
+  line(0, -BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2, 0, BRIDGE_LENGTH * BRIDGE_LENGTH_MULTIPLIER/2);
+  pop();
+
   pop();
 
   // Draw the defensive wall at the bottom of the bridge
@@ -6542,18 +6608,18 @@ function startGame() {
             audioContext.resume().then(() => {
               console.log("AudioContext resumed successfully");
               // Play music after AudioContext is resumed
-              playMusic('main');
+              playMusic('main', 0.5);
             });
           } else {
             // AudioContext already running, play music directly
-            playMusic('main');
+            playMusic('main', 0.5);
           }
         } catch (e) {
           console.warn("Error accessing AudioContext:", e);
         }
       } else {
         // No AudioContext function available, try playing music directly
-        playMusic('main');
+        playMusic('main', 0.5);
       }
 
       console.log("Sound system initialized and main theme music started");

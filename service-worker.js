@@ -28,7 +28,6 @@ self.addEventListener("install", function (event) {
         "sounds/skills/quantum_acceleration.mp3",
         "sounds/skills/apocalypse.mp3",
         "sounds/environment/wind.mp3",
-        "sounds/environment/ambient.mp3",
         "sounds/powerups/collect.mp3",
         "sounds/powerups/spawn.mp3",
       ];
