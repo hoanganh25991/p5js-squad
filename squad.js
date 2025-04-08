@@ -7006,30 +7006,6 @@ function checkWaveCompletion() {
 const ATOMIC_BOMB_FALL_DURATION = 150; // 2.5 seconds at 60fps
 const ATOMIC_BOMB_FALL_DURATION_MS = ATOMIC_BOMB_FALL_DURATION * (1000 / 60); // in milliseconds
 
-// Skill name constants
-const SkillName = {
-  STAR_BLAST: "STAR_BLAST",
-  MACHINE_GUN: "MACHINE_GUN",
-  SHIELD: "SHIELD",
-  FREEZE: "FREEZE",
-  REJUVENATION: "REJUVENATION",
-  INFERNAL_RAGE: "INFERNAL_RAGE",
-  QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
-  APOCALYPTIC_DEVASTATION: "APOCALYPTIC_DEVASTATION"
-};
-
-// Mapping of skill numbers to names for backward compatibility
-const skillNumberToName = {
-  1: SkillName.STAR_BLAST,
-  2: SkillName.MACHINE_GUN,
-  3: SkillName.SHIELD,
-  4: SkillName.FREEZE,
-  5: SkillName.REJUVENATION,
-  6: SkillName.INFERNAL_RAGE,
-  7: SkillName.QUANTUM_ACCELERATION,
-  8: SkillName.APOCALYPTIC_DEVASTATION
-};
-
 // Skill system
 function activateSkill(skillNameOrNumber) {
   // Convert number to skill name if needed
