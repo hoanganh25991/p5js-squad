@@ -180,7 +180,7 @@ function preloadSounds() {
     sounds.skills.skill6 = safeLoadSound('sounds/skills/infernal_rage.mp3');
     sounds.skills.skill7 = safeLoadSound('sounds/skills/quantum_acceleration.mp3');
     sounds.skills.skill8 = safeLoadSound('sounds/skills/apocalypse.mp3');
-    sounds.skills.skill9 = safeLoadSound('sounds/skills/heavy_strike.mp3'); // Reusing heavy_strike sound for barrier
+    sounds.skills.skill9 = safeLoadSound('sounds/skills/barrier.mp3');
 
     // Environment sounds
     sounds.environment.wind = safeLoadSound('sounds/environment/wind.mp3');
