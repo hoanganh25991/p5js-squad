@@ -7534,7 +7534,7 @@ function activateSkill(skillNumber) {
     case 5: // Rejuvenation Field - Advanced healing with regeneration over time
       let initialHealAmount = 30 + damageBoost * 3; // Immediate healing
       let regenAmount = 2 + Math.floor(damageBoost * 0.5); // Health regenerated per tick
-      let regenDuration = 300 + fireRateBoost * 30; // 5 seconds + 0.5s per fire rate boost
+      let regenDuration = 60 * 3 + fireRateBoost * 30; // 5 seconds + 0.5s per fire rate boost
       let regenInterval = 30; // Regenerate every 0.5 seconds
       let healRadius = 150 + aoeBoost * 10; // Healing field radius
 
