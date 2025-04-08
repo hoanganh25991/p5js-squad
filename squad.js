@@ -263,8 +263,6 @@ const PerformanceManager = {
           extensions: gl.getSupportedExtensions()
         };
         
-        console.log('GPU Info:', this.gpuInfo);
-        
         // Determine GPU tier based on renderer string
         const rendererLower = renderer.toLowerCase();
         
