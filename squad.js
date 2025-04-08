@@ -6999,9 +6999,6 @@ function checkWaveCompletion() {
     waveEnemiesKilled = 0;
     currentWave++;
     gameStartTime = frameCount;
-
-    // Spawn some power-ups as rewards
-    // TODO
   }
 }
 
