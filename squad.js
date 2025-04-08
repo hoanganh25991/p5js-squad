@@ -266,6 +266,8 @@ const PerformanceManager = {
         // Check for high-end GPUs
         if (rendererLower.includes('nvidia') && !rendererLower.includes('mobile') ||
             rendererLower.includes('amd') && !rendererLower.includes('mobile') ||
+            rendererLower.includes('metal') || // Apple Metal GPU
+            rendererLower.includes('apple') || // Apple GPU
             rendererLower.includes('intel') && (
               rendererLower.includes('iris') || 
               rendererLower.includes('hd 6') || 
@@ -430,7 +432,7 @@ const PerformanceManager = {
   
   // Check if we can use advanced GPU features
   canUseAdvancedFeatures: function() {
-    return this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW;
+    return this.gpuTier >= 1 && currentPerformanceLevel !== PerformanceLevel.LOW;
   }
 };
 
