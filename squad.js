@@ -1081,13 +1081,16 @@ function createPerformanceSettingsUI() {
         borderRadius: "50%",
         width: "40px",
         height: "40px",
-        fontSize: "16px",
+        fontSize: "18px", // Larger font size for better visibility
+        fontWeight: "bold", // Make the text bold
         padding: "0",
         textAlign: "center",
         lineHeight: "40px",
         visibility: "hidden", // Initially hidden, will be shown by updatePauseResumeButton
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
-        transition: "background-color 0.3s ease"
+        backgroundColor: "rgba(0, 0, 0, 0.8)", // Darker background for better contrast
+        color: "#4CAF50", // Default to green
+        transition: "all 0.3s ease", // Transition for all properties
+        boxShadow: "0 2px 5px rgba(0,0,0,0.3)" // Add shadow for depth
       },
       onClick: () => {
         // Toggle tech board visibility
@@ -1221,16 +1224,39 @@ function updateTechBoardButton() {
       fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length : 
       frameRate());
     
+    // Determine color based on FPS
+    let fpsColor;
+    let bgColor;
+    
+    if (avgFPS >= 50) {
+      // Good performance - green
+      fpsColor = "#4CAF50"; // Bright green
+      bgColor = "rgba(0, 50, 0, 0.8)"; // Dark green background
+    } else if (avgFPS >= 30) {
+      // Medium performance - yellow/orange
+      fpsColor = "#FFC107"; // Amber yellow
+      bgColor = "rgba(50, 50, 0, 0.8)"; // Dark yellow background
+    } else {
+      // Poor performance - red
+      fpsColor = "#F44336"; // Material red
+      bgColor = "rgba(50, 0, 0, 0.8)"; // Dark red background
+    }
+    
     // Update button text with FPS
     techBoardButton.html(avgFPS);
     
-    // Flash the background when updated
-    techBoardButton.style("background-color", "rgba(0, 100, 255, 0.8)");
+    // Set the text color based on performance
+    techBoardButton.style("color", fpsColor);
     
-    // Reset the background color after a short delay
+    // Flash the background when updated
+    techBoardButton.style("background-color", "rgba(255, 255, 255, 0.3)");
+    techBoardButton.style("transform", "scale(1.1)");
+    
+    // Reset the background color and scale after a short delay
     setTimeout(() => {
       if (techBoardButton) {
-        techBoardButton.style("background-color", "rgba(0, 0, 0, 0.6)");
+        techBoardButton.style("background-color", bgColor);
+        techBoardButton.style("transform", "scale(1.0)");
       }
     }, 200);
   } catch (e) {
@@ -9178,6 +9204,13 @@ function updateHUD() {
     updateStatusBoard();
     updateTechnicalBoard();
     updateSkillBar();
+    
+    // Always update the tech board button to show current FPS
+    // even if the technical board is hidden
+    updateTechBoardButton();
+  } else if (gameState === "paused") {
+    // Update FPS display even when paused
+    updateTechBoardButton();
   }
 }
 
