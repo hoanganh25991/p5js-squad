@@ -3403,10 +3403,10 @@ function drawEffects() {
       // Calculate health percentage for color
       const healthPercent = effect.health / effect.maxHealth;
       
-      // Color changes from blue to red as health decreases
-      const r = 150 + (1 - healthPercent) * 105; // 150 to 255
-      const g = 150 - (1 - healthPercent) * 50;  // 150 to 100
-      const b = 200 - (1 - healthPercent) * 100; // 200 to 100
+      // Color changes from yellow brick to red as health decreases
+      const r = 230 + (1 - healthPercent) * 25; // 230 to 255
+      const g = 180 - (1 - healthPercent) * 130;  // 180 to 50
+      const b = 60 - (1 - healthPercent) * 10; // 60 to 50
       
       // Draw the barrier wall
       push();
@@ -3471,7 +3471,7 @@ function drawEffects() {
               type: "energyBurst",
               size: 15,
               life: 10,
-              color: [r, g, b, 150],
+              color: [r, g, b, 150], // Uses the same color as the barrier
               forceRenderDetail: false,
             });
           }
@@ -7423,7 +7423,7 @@ function activateBarrierSkill() {
     life: Infinity, // No lifetime - will exist until destroyed
     health: barrierHealth,
     maxHealth: barrierHealth, // Store max health for health bar display
-    color: [150, 150, 200, 200], // Bluish-gray color for the barrier
+    color: [230, 180, 60, 200], // Yellow brick color for the barrier
     forceRenderDetail: true,
     // Add a callback for when the barrier is destroyed
     onDestroy: function() {
@@ -7451,7 +7451,7 @@ function createBarrierDeploymentEffect(position, width, height) {
     type: "shockwave",
     size: width * 0.5,
     life: 30,
-    color: [150, 150, 200],
+    color: [230, 180, 60],
     forceRenderDetail: true,
   });
   
@@ -7468,7 +7468,7 @@ function createBarrierDeploymentEffect(position, width, height) {
       type: "energyBurst",
       size: 30,
       life: 20 + random(0, 10),
-      color: [150, 150, 200, 150],
+      color: [230, 180, 60, 150],
       forceRenderDetail: false,
     });
   }
@@ -7486,7 +7486,7 @@ function createBarrierCollapseEffect(position, width, height) {
     type: "shockwave",
     size: width * 0.4,
     life: 20,
-    color: [150, 150, 200, 150],
+    color: [230, 180, 60, 150],
     forceRenderDetail: false,
   });
   
@@ -7504,7 +7504,7 @@ function createBarrierCollapseEffect(position, width, height) {
       type: "debris",
       size: 20,
       life: 30 + random(0, 15),
-      color: [150, 150, 200, 200],
+      color: [230, 180, 60, 200],
       velocity: { x: random(-2, 2), y: random(-2, 2), z: random(-1, 1) },
       forceRenderDetail: false,
     });
