@@ -7316,7 +7316,7 @@ function activateSkill(skillNameOrNumber) {
   }
 
   // Play skill activation sound
-  playSkillSound(skillNumber);
+  playSkillSound(skillKey);
 
   // Set cooldown
   skills[skillKey].lastUsed = frameCount;

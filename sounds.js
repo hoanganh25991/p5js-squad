@@ -544,42 +544,17 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
 }
 
 // Play skill sound
-function playSkillSound(skillNameOrNumber) {
-  let skillNumber;
-  
-  // Handle different input types
-  if (typeof skillNameOrNumber === 'number') {
-    // It's already a number
-    skillNumber = skillNameOrNumber;
-  } else if (typeof skillNameOrNumber === 'string') {
-    if (skillNameOrNumber.startsWith('skill')) {
-      // It's in the format 'skill1', 'skill2', etc.
-      skillNumber = parseInt(skillNameOrNumber.replace('skill', ''));
-    } else {
-      // It's a skill name constant, find the corresponding number
-      for (const [num, name] of Object.entries(skillNumberToName)) {
-        if (name === skillNameOrNumber) {
-          skillNumber = parseInt(num);
-          break;
-        }
-      }
-    }
-  }
-  
-  // If we couldn't determine the skill number, return
-  if (!skillNumber) return;
-  
-  const skillSoundKey = `skill${skillNumber}`;
-  if (sounds.skills[skillSoundKey]) {
+function playSkillSound(skillKey) {
+  if (sounds.skills[skillKey]) {
     // Use specific skill volume if available, otherwise use default sfx volume
-    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillSoundKey]
-      ? soundSettings.skillVolume[skillSoundKey]
+    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillKey]
+      ? soundSettings.skillVolume[skillKey]
       : soundSettings.sfxVolume;
     
     // Skills have high priority
     const priority = soundSettings.soundPriority.skills || 8;
     
-    playSound(sounds.skills[skillSoundKey], volume, 1.0, 0, 'skill', priority);
+    playSound(sounds.skills[skillKey], volume, 1.0, 0, 'skill', priority);
   }
 }
 
