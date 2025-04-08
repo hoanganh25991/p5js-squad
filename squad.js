@@ -557,6 +557,9 @@ const PerformanceManager = {
 
         // Set depth function to less than or equal for better z-fighting handling
         gl.depthFunc(gl.LEQUAL);
+        
+        // Reset any custom shaders to default to avoid 'totalLight' errors
+        resetShader();
       }
 
       console.log(
@@ -796,15 +799,32 @@ function setup() {
       "webglcontextrestored",
       function () {
         console.log("WebGL context restored. Reinitializing...");
-
-        // Reapply WebGL settings
-        PerformanceManager.applyWebGLSettings();
-
-        // Reset perspective
-        perspective(PI / 4, width / height, 0.1, 5000);
-
-        // Recalculate camera zoom
-        cameraZoom = calculateDynamicCameraZoom();
+        
+        try {
+          // Reset any custom shaders to default
+          resetShader();
+          
+          // Reapply WebGL settings
+          PerformanceManager.applyWebGLSettings();
+          
+          // Reset perspective
+          perspective(PI / 4, width / height, 0.1, 5000);
+          
+          // Recalculate camera zoom
+          cameraZoom = calculateDynamicCameraZoom();
+          
+          // Force a redraw
+          redraw();
+          
+          console.log("WebGL context successfully restored");
+        } catch (e) {
+          console.error("Error during WebGL context restoration:", e);
+          
+          // Try to recover by reloading the page if restoration fails
+          if (confirm("Graphics recovery failed. Would you like to reload the game?")) {
+            window.location.reload();
+          }
+        }
       },
       false
     );
@@ -2091,32 +2111,56 @@ function drawSkyOverlay() {
 
       // ===== CLOUDS OVERLAY =====
       // Add clouds that appear on top of the bridge near the horizon
-      // Use noise for cloud positions
-      for (let i = 0; i < 6; i++) {
-        // Reduced number of clouds
-        // Position clouds near the horizon (middle of screen)
-        const cloudX =
-          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) -
-          extraSize;
+      // Use a simpler approach for mobile devices
+      if (isMobileDevice) {
+        try {
+          // For mobile, use a much simpler cloud rendering approach
+          // Draw just a few simple cloud shapes
+          const cloudCount = 3; // Fewer clouds for mobile
+          
+          for (let i = 0; i < cloudCount; i++) {
+            // Simple cloud positioning
+            const cloudX = map(noise(i * 0.5, frameCount * 0.0005), 0, 1, -width/2, width/2);
+            const cloudY = height * 0.25; // Fixed position above horizon
+            
+            // Draw a simple cloud shape
+            fill(255, 255, 255, 80); // Very transparent
+            noStroke();
+            
+            // Use a single ellipse for each cloud on mobile
+            const cloudWidth = 150 + i * 30;
+            const cloudHeight = 40;
+            
+            ellipse(cloudX, cloudY, cloudWidth, cloudHeight);
+          }
+        } catch (e) {
+          console.warn("Error in mobile cloud rendering:", e);
+          // Clouds are non-essential, so we can just skip them if there's an error
+        }
+      } else {
+        // Desktop version with more detailed clouds
+        // Use noise for cloud positions
+        for (let i = 0; i < 6; i++) {
+          // Position clouds near the horizon (middle of screen)
+          const cloudX =
+            noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) -
+            extraSize;
 
-        // Position clouds slightly above the horizon line for better visibility of the bridge/wall
-        // Adjust based on device - higher on mobile to show more of the bridge
-        const cloudY = 420; // Slightly above center of screen in ortho mode
+          // Position clouds slightly above the horizon line for better visibility
+          const cloudY = 420; // Slightly above center of screen in ortho mode
 
-        const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
-        const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
+          const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
+          const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
 
-        // Draw cloud as a series of overlapping ellipses
-        for (let j = 0; j < 5; j++) {
-          try {
-            const offsetX = ((j - 2) * cloudWidth) / 6;
-            const offsetY = sin(j * 0.5) * 6;
-
-            // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
-            fill(255, 255, 255, map(j, 0, 4, 80, 120));
-
-            // Use try/catch for each ellipse to prevent errors from stopping the entire function
+          // Draw cloud as a series of overlapping ellipses
+          for (let j = 0; j < 5; j++) {
             try {
+              const offsetX = ((j - 2) * cloudWidth) / 6;
+              const offsetY = sin(j * 0.5) * 6;
+
+              // Add alpha to make clouds more transparent
+              fill(255, 255, 255, map(j, 0, 4, 80, 120));
+
               ellipse(
                 cloudX + offsetX,
                 cloudY + offsetY,
@@ -2124,10 +2168,8 @@ function drawSkyOverlay() {
                 cloudHeight
               );
             } catch (e) {
-              console.warn("Error drawing cloud ellipse:", e);
+              // Silently ignore errors in cloud drawing - non-critical element
             }
-          } catch (e) {
-            console.warn("Error in cloud calculation:", e);
           }
         }
       }
@@ -2598,35 +2640,73 @@ function drawPowerUpLane() {
     if (isMobileDevice) {
       try {
         push();
-        translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
-
-        // Use a slightly different fill color for better contrast
-        fill(...POWER_UP_LANE_COLOR);
-
-        // Use a 2D rect for mobile - most compatible approach
-        push();
-        rectMode(CENTER);
-        translate(0, 0, 0);
-        rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
-        pop();
-
-        // Add minimal lane markers for mobile
-        const laneMarkers = 10; // Even fewer markers for mobile
-        const stepSize = BRIDGE_LENGTH / laneMarkers;
-
-        for (let i = 0; i < laneMarkers; i++) {
-          const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
-          push();
-          translate(0, yPos, 5);
-          fill(180, 220, 255, 150);
+        // Use 2D mode for mobile rendering to avoid WebGL issues
+        // Save the current renderer state
+        const currentCanvas = _renderer;
+        
+        // Switch to 2D temporarily if we're in WEBGL mode
+        let tempCanvas = null;
+        if (_renderer.isP3D) {
+          // Create a temporary 2D canvas for drawing
+          tempCanvas = createGraphics(width, height);
+          tempCanvas.background(0, 0, 0, 0); // Transparent background
+          
+          // Set up the 2D canvas
+          tempCanvas.push();
+          tempCanvas.translate(width/2, height/2); // Center origin
+          tempCanvas.fill(POWER_UP_LANE_COLOR[0], POWER_UP_LANE_COLOR[1], POWER_UP_LANE_COLOR[2]);
+          tempCanvas.rectMode(CENTER);
+          
+          // Draw the power-up lane as a simple rectangle
+          const laneWidth = POWER_UP_LANE_WIDTH;
+          const laneHeight = height * 0.8; // Use a percentage of screen height
+          tempCanvas.rect(BRIDGE_WIDTH/2 + laneWidth/2, 0, laneWidth, laneHeight);
+          
+          // Add a few simple lane markers
+          tempCanvas.fill(180, 220, 255, 150);
+          const markerCount = 5;
+          const markerSpacing = laneHeight / markerCount;
+          
+          for (let i = 0; i < markerCount; i++) {
+            const yPos = -laneHeight/2 + i * markerSpacing + markerSpacing/2;
+            tempCanvas.rect(BRIDGE_WIDTH/2 + laneWidth/2, yPos, laneWidth - 20, 5);
+          }
+          
+          tempCanvas.pop();
+          
+          // Draw the 2D canvas to the screen
+          image(tempCanvas, -width/2, -height/2);
+        } else {
+          // If we're already in 2D mode, draw directly
+          translate(width/2 + BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2, height/2);
+          fill(...POWER_UP_LANE_COLOR);
           rectMode(CENTER);
-          rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
-          pop();
+          rect(0, 0, POWER_UP_LANE_WIDTH, height * 0.8);
+          
+          // Add minimal lane markers
+          fill(180, 220, 255, 150);
+          const laneHeight = height * 0.8;
+          const markerCount = 5;
+          const markerSpacing = laneHeight / markerCount;
+          
+          for (let i = 0; i < markerCount; i++) {
+            const yPos = -laneHeight/2 + i * markerSpacing + markerSpacing/2;
+            rect(0, yPos, POWER_UP_LANE_WIDTH - 20, 5);
+          }
         }
-
+        
         pop();
       } catch (e) {
         console.warn("Error in mobile power-up lane rendering:", e);
+        // Fallback to an even simpler rendering if there's an error
+        try {
+          push();
+          fill(POWER_UP_LANE_COLOR[0], POWER_UP_LANE_COLOR[1], POWER_UP_LANE_COLOR[2], 200);
+          rect(width - POWER_UP_LANE_WIDTH, 0, POWER_UP_LANE_WIDTH, height);
+          pop();
+        } catch (e2) {
+          console.error("Even fallback power-up lane rendering failed:", e2);
+        }
       }
       return; // Exit early for mobile devices
     }
