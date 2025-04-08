@@ -678,11 +678,48 @@ function updateTechnicalBoard() {
       memoryInfo = `Memory: ${usedMemory}MB / ${totalMemory}MB`;
     }
     
+    // Get GPU acceleration status
+    const gpuAccelerated = PerformanceManager.canUseAdvancedFeatures();
+    const gpuAccelerationStatus = gpuAccelerated ? 
+      "<span style='color: #00ff00;'>GPU Acceleration: ON</span>" : 
+      "<span style='color: #ff6666;'>GPU Acceleration: OFF</span>";
+    
+    // Get GPU cores information if available
+    let gpuCoresInfo = "";
+    if (PerformanceManager.gpuInfo) {
+      // Try to extract core count from renderer info if available
+      const renderer = PerformanceManager.gpuInfo.renderer || "";
+      let coreCount = "Unknown";
+      
+      // Try to extract core count from renderer string
+      const coreMatch = renderer.match(/\b(\d+)\s*cores?\b/i);
+      if (coreMatch) {
+        coreCount = coreMatch[1];
+      } else if (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) {
+        // Use hardware concurrency as a fallback (CPU cores, not GPU cores)
+        coreCount = navigator.hardwareConcurrency;
+      }
+      
+      // Get hardware acceleration info if available
+      let hwAccelInfo = "";
+      if (typeof checkHardwareAcceleration === 'function') {
+        const hwAccel = checkHardwareAcceleration();
+        if (hwAccel && !hwAccel.supported) {
+          hwAccelInfo = " (Software rendering)";
+        }
+      }
+      
+      gpuCoresInfo = `<div>GPU: ${PerformanceManager.gpuTier > 0 ? 
+        ['Low-end', 'Mid-range', 'High-end'][PerformanceManager.gpuTier - 1] : 'Unknown'} (${coreCount} cores${hwAccelInfo})</div>`;
+    }
+    
     // Update technical board content
     technicalBoard.html(`
       <div>FPS: ${currentFPS.toFixed(1)}</div>
       <div>Objects: ${squad.length + enemies.length + projectiles.length + effects.length}</div>
       <div>Performance: ${currentPerformanceLevel}</div>
+      <div>${gpuAccelerationStatus}</div>
+      ${gpuCoresInfo}
       <div>${memoryInfo}</div>
     `);
   } else if (gameState !== "playing") {

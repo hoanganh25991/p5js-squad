@@ -1,44 +1,22 @@
 // Squad Survival Game
 // A 3D p5.js game with squad-based combat
 
-// ===== GAME STATE =====
-const GameState = {
-  MENU: "menu",
-  PLAYING: "playing",
-  PAUSED: "paused",
-  GAME_OVER: "gameOver"
-};
+// ===== ALL CONSTANTS =====
 
-let gameState = GameState.MENU;
-let currentWave = 1;
-let score = 0;
-let gameStartTime = 0;
-let startTime = 0;
-let totalEnemiesKilled = 0; // Total enemies killed across all waves
-let waveEnemiesKilled = 0; // Enemies killed in the current wave
+// Game state constants
+GameState;
 
-// ===== PERFORMANCE SETTINGS =====
-const PerformanceLevel = {
-  LOW: "low",
-  MEDIUM: "medium",
-  HIGH: "high",
-  AUTO: "auto"
-};
+// Performance settings
+PerformanceLevel;
 
-let isMobileDevice = false;
-let performanceMode = PerformanceLevel.AUTO;
-let currentPerformanceLevel = PerformanceLevel.HIGH; // Will be set based on device detection
-let fpsHistory = [];
-let lastPerformanceCheck = 0;
-let performanceCheckInterval = 300; // Check every 5 seconds (300 frames at 60fps)
+// Performance management
 
-// Font
-let gameFont;
+// Debug mode for testing
+const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
 
+// Camera and zoom settings
 const MIN_ZOOM = -10_000; // Minimum zoom level to ensure the bridge is visible
 const MAX_ZOOM = 10_000; // Maximum zoom level for when players want to zoom out further
-let isDragging = false;
-let prevMouseX, prevMouseY;
 
 // Wall and gate dimensions
 const WALL_HEIGHT = 180;
@@ -50,6 +28,7 @@ const GATE_HEIGHT = WALL_HEIGHT - 10;
 const BRIDGE_LENGTH = 5000; // Significantly increased bridge length to fully fill the screen
 const BRIDGE_WIDTH = 400;
 const POWER_UP_LANE_WIDTH = 150;
+const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
 
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
@@ -59,19 +38,48 @@ const SQUAD_Y = -200;
 const WALL_Y = SQUAD_Y + 100;
 const ENEMY_FIGHT_DISTANCE_THRESHOLD = 500;
 
-const TOTAL_WIDTH = BRIDGE_WIDTH + POWER_UP_LANE_WIDTH;
-
-// Debug mode for testing
-const DEBUG_MODE = false; // Set to true for easier testing, false for normal gameplay
-
-// Configurable game parameters
+// Squad constants
 const SQUAD_X = 0;
 const SQUAD_Z = 40;
 const SQUAD_HEALTH = DEBUG_MODE ? 500 : 100; // Higher health in debug mode
 const MAX_SQUAD_MEMBERS_PER_ROW = 9; // Number of squad members in a row before stacking vertically
+const HUMAN_SIZE = 30;
+const SQUAD_SIZE = 9; // Maximum number of squad members
+
+// Enemy constants
+const ENEMY_SPAWN_RATE = 45; // frames between spawns (much faster)
+const STANDARD_ENEMY_SIZE = 25;
+const ELITE_ENEMY_SIZE = 35;
+const BOSS_SIZES = [50, 70, 90];
+const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
 const ENEMIES_TO_KILL_FOR_NEXT_WAVE = DEBUG_MODE ? 10 : 30; // Fewer enemies needed in debug mode
+
+// Projectile constants
+const PROJECTILE_SPEED = 12 * 1.5; // Faster projectiles
+const PROJECTILE_SIZE = STANDARD_ENEMY_SIZE * 1.2;
+
+// Effect constants
+
+// Power-up constants
+const POWER_UP_SIZE = 60;
+const POWER_UP_SPAWN_RATE = 90 * 1; // frames between power-up spawns (continuous spawning)
+const WEAPON_SPAWN_CHANCE = DEBUG_MODE ? 1 : 0.1; // chance for weapon
+const SKILL_SPAWN_CHANCE = 0.3; // chance for skill
+const POWER_UP_SPEED = 3 * 2; // Speed at which power-ups move down the lane
 const MIRROR_POWERUP_SPAWN_RATE = DEBUG_MODE ? 30 : 10; // Frames between mirror power-up spawns (0.5s in debug)
 const MAX_POWER_UPS = 20; // Maximum number of power-ups allowed on screen
+
+// Weapon and skill types
+const WEAPON_TYPES = [
+  "thunderbolt",
+  "blaster",
+  "inferno",
+  "frostbite",
+  "vortex",
+  "plasma",
+  "photon",
+];
+const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 
 // Colors
 const BRIDGE_COLOR = [150, 150, 150];
@@ -95,52 +103,63 @@ const WEAPON_COLORS = {
   mirror: [255, 255, 255], // Add mirror type
 };
 
-// Squad properties
-const HUMAN_SIZE = 30;
-const SQUAD_SIZE = 9; // Maximum number of squad members
-let squad = [];
-let squadSpeed = 10;
-let squadFireRate = 30; // frames between shots (faster firing rate)
-let lastFireTime = 0;
+// ===== ALL GLOBAL VARIABLES =====
+
+// Game state variables
+/* global */ gameState = GameState.MENU;
+/* global */ currentWave = 1;
+/* global */ score = 0;
+/* global */ gameStartTime = 0;
+/* global */ startTime = 0;
+/* global */ totalEnemiesKilled = 0; // Total enemies killed across all waves
+/* global */ waveEnemiesKilled = 0; // Enemies killed in the current wave
+
+// Performance variables
+/* global */ isMobileDevice = false;
+/* global */ performanceMode = PerformanceLevel.AUTO;
+/* global */ currentPerformanceLevel = PerformanceLevel.HIGH; // Will be set based on device detection
+/* global */ fpsHistory = [];
+/* global */ lastPerformanceCheck = 0;
+/* global */ performanceCheckInterval = 300; // Check every 5 seconds (300 frames at 60fps)
+
+// Font
+let gameFont;
+
+// Camera and interaction variables
+/* global */ isDragging = false;
+/* global */ prevMouseX, prevMouseY;
+/* global */ cameraOffsetX = CAMERA_OFFSET_X;
+/* global */ cameraOffsetY = CAMERA_OFFSET_Y;
+/* global */ cameraZoom = CAMERA_OFFSET_Z;
+
+// Squad variables
+/* global */ squad = [];
+/* global */ squadSpeed = 10;
+/* global */ squadFireRate = 30; // frames between shots (faster firing rate)
+/* global */ lastFireTime = 0;
+/* global */ currentWeapon = WEAPON_TYPES[0];
 
 // Skill upgrade tracking
-let fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
-let damageBoost = DEBUG_MODE ? 10 : 0; // Increases damage (starts with some in debug mode)
-let aoeBoost = DEBUG_MODE ? 10 : 0; // Increases area of effect (starts with some in debug mode)
-let cameraOffsetX = CAMERA_OFFSET_X;
-let cameraOffsetY = CAMERA_OFFSET_Y;
-let cameraZoom = CAMERA_OFFSET_Z;
+/* global */ fireRateBoost = DEBUG_MODE ? 10 : 0; // Reduces time between shots (starts with some in debug mode)
+/* global */ damageBoost = DEBUG_MODE ? 10 : 0; // Increases damage (starts with some in debug mode)
+/* global */ aoeBoost = DEBUG_MODE ? 10 : 0; // Increases area of effect (starts with some in debug mode)
 
-// Enemy properties
-let enemies = [];
-let lastEnemySpawn = 0;
-
-const ENEMY_SPAWN_RATE = 45; // frames between spawns (much faster)
-const STANDARD_ENEMY_SIZE = 25;
-const ELITE_ENEMY_SIZE = 35;
-const BOSS_SIZES = [50, 70, 90];
-const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
+// Enemy variables
+/* global */ enemies = [];
+/* global */ lastEnemySpawn = 0;
 
 // Projectiles
-let projectiles = [];
-const PROJECTILE_SPEED = 12 * 1.5; // Faster projectiles
-const PROJECTILE_SIZE = STANDARD_ENEMY_SIZE * 1.2;
+/* global */ projectiles = [];
 
 // Visual effects
-let effects = [];
-const EFFECT_DURATION = 30 * 0.5; // frames
+/* global */ effects = [];
 
 // Power-ups
-let powerUps = [];
-const POWER_UP_SIZE = 60;
-const POWER_UP_SPAWN_RATE = 90 * 1; // frames between power-up spawns (continuous spawning)
-const WEAPON_SPAWN_CHANCE = DEBUG_MODE ? 1 : 0.1; // chance for weapon
-const SKILL_SPAWN_CHANCE = 0.3; // chance for skill
-let lastPowerUpSpawn = 0;
-const POWER_UP_SPEED = 3 * 2; // Speed at which power-ups move down the lane
+/* global */ powerUps = [];
+/* global */ lastPowerUpSpawn = 0;
 
 // Weapons inventory (false means locked, true means available)
-let weapons = {
+/* global */ weapons = {
   thunderbolt: true,
   blaster: false,
   inferno: false,
@@ -150,22 +169,8 @@ let weapons = {
   photon: false,
 };
 
-const WEAPON_TYPES = [
-  "thunderbolt",
-  "blaster",
-  "inferno",
-  "frostbite",
-  "vortex",
-  "plasma",
-  "photon",
-];
-const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
-
-// Currently equipped weapon
-let currentWeapon = WEAPON_TYPES[0];
-
 // Skills cooldowns and durations in frames (60 frames = 1 second)
-let skills = {
+/* global */ skills = {
   skill1: {
     cooldown: 300,
     lastUsed: 0,
@@ -200,7 +205,7 @@ let skills = {
   skill8: { cooldown: 600, lastUsed: 0 },
 };
 
-let squadLeader = {
+/* global */ squadLeader = {
   x: SQUAD_X,
   y: SQUAD_Y, // Starting extremely far from the wall to be clearly visible at the bottom of the screen
   z: SQUAD_Z,
@@ -228,211 +233,6 @@ function preload() {
 // Game setup
 // Track and manage memory issues
 // Using MemoryManager for memory tracking instead of global variables
-
-// ===== PERFORMANCE MANAGEMENT =====
-const PerformanceManager = {
-  gpuInfo: null,
-  gpuTier: 0, // 0=unknown, 1=low, 2=medium, 3=high
-  
-  // Detect GPU capabilities
-  detectGPUCapabilities: function() {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      
-      if (!gl) {
-        console.warn('WebGL not supported');
-        return false;
-      }
-      
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-      if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-        
-        this.gpuInfo = {
-          vendor: vendor,
-          renderer: renderer,
-          maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
-          maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS),
-          extensions: gl.getSupportedExtensions()
-        };
-        
-        console.log('GPU Info:', this.gpuInfo);
-        
-        // Determine GPU tier based on renderer string
-        const rendererLower = renderer.toLowerCase();
-        
-        // Check for high-end GPUs
-        if (rendererLower.includes('nvidia') && !rendererLower.includes('mobile') ||
-            rendererLower.includes('amd') && !rendererLower.includes('mobile') ||
-            rendererLower.includes('intel') && (
-              rendererLower.includes('iris') || 
-              rendererLower.includes('hd 6') || 
-              rendererLower.includes('uhd')
-            )) {
-          this.gpuTier = 3; // High-end
-        }
-        // Check for mid-range GPUs
-        else if (rendererLower.includes('intel') || 
-                 rendererLower.includes('mali-t') ||
-                 rendererLower.includes('adreno 6')) {
-          this.gpuTier = 2; // Mid-range
-        }
-        // Everything else is considered low-end
-        else {
-          this.gpuTier = 1; // Low-end
-        }
-        
-        console.log('GPU Tier:', this.gpuTier);
-        return true;
-      }
-    } catch (e) {
-      console.warn('Error detecting GPU:', e);
-    }
-    
-    return false;
-  },
-
-  // Detect if the device is mobile
-  detectMobileDevice: function() {
-    // Check if the device has touch capability
-    const hasTouchScreen =
-      "ontouchstart" in window ||
-      navigator.maxTouchPoints > 0 ||
-      navigator.msMaxTouchPoints > 0;
-
-    // Check user agent for mobile devices
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isMobile =
-      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(
-        userAgent
-      );
-
-    // Check screen size (typical mobile width is less than 768px)
-    const hasSmallScreen = window.innerWidth < 768;
-
-    // Consider it a mobile device if it has a touch screen and either has a mobile user agent or small screen
-    return hasTouchScreen && (isMobile || hasSmallScreen);
-  },
-
-  // Calculate average FPS from history
-  getAverageFPS: function() {
-    if (fpsHistory.length === 0) return 60; // Default to 60 if no history
-    return fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
-  },
-
-  // Set performance level based on device, GPU and FPS
-  setPerformanceLevel: function() {
-    if (performanceMode !== PerformanceLevel.AUTO) {
-      currentPerformanceLevel = performanceMode;
-      return;
-    }
-
-    // Try to detect GPU capabilities if not already done
-    if (!this.gpuInfo) {
-      this.detectGPUCapabilities();
-    }
-
-    const avgFPS = this.getAverageFPS();
-
-    // If we're on a mobile device, use more conservative settings
-    if (isMobileDevice) {
-      // Start with medium as default for mobile
-      currentPerformanceLevel = PerformanceLevel.MEDIUM;
-      
-      // If we have GPU info, use it to refine our decision
-      if (this.gpuTier === 3) {
-        // High-end mobile GPU can handle medium settings
-        currentPerformanceLevel = PerformanceLevel.MEDIUM;
-      } else if (this.gpuTier === 1) {
-        // Low-end mobile GPU should use low settings
-        currentPerformanceLevel = PerformanceLevel.LOW;
-      }
-
-      // If we have enough FPS history and it's consistently low, adjust down
-      if (fpsHistory.length >= 10) {
-        if (avgFPS < 30) {
-          currentPerformanceLevel = PerformanceLevel.LOW;
-        }
-      }
-    } else {
-      // On desktop, start with high performance
-      currentPerformanceLevel = PerformanceLevel.HIGH;
-      
-      // If we have GPU info, use it to refine our decision
-      if (this.gpuTier === 1) {
-        // Low-end desktop GPU should use medium settings
-        currentPerformanceLevel = PerformanceLevel.MEDIUM;
-      }
-
-      // If we have enough FPS history and it's consistently low, adjust
-      if (fpsHistory.length >= 10) {
-        if (avgFPS < 30) {
-          currentPerformanceLevel = PerformanceLevel.MEDIUM;
-        } else if (avgFPS < 20) {
-          currentPerformanceLevel = PerformanceLevel.LOW;
-        }
-      }
-    }
-
-    console.log("Performance level set to:", currentPerformanceLevel);
-  },
-
-  // Get multipliers for effect counts based on performance level
-  getEffectMultiplier: function() {
-    switch (currentPerformanceLevel) {
-      case PerformanceLevel.LOW:
-        return 0.3; // 30% of normal effects
-      case PerformanceLevel.MEDIUM:
-        return 0.6; // 60% of normal effects
-      case PerformanceLevel.HIGH:
-        return 1.0; // 100% of normal effects
-      default:
-        return 0.6; // Default to medium
-    }
-  },
-
-  // Apply performance settings to WebGL context
-  applyWebGLSettings: function() {
-    // Configure WebGL settings based on performance level
-    if (currentPerformanceLevel === PerformanceLevel.LOW) {
-      setAttributes("antialias", false);
-      setAttributes("perPixelLighting", false);
-      setAttributes("depth", false);
-      setAttributes("preserveDrawingBuffer", false);
-    } else if (currentPerformanceLevel === PerformanceLevel.MEDIUM) {
-      setAttributes("antialias", true);
-      setAttributes("perPixelLighting", false);
-      setAttributes("preserveDrawingBuffer", false);
-      if (isMobileDevice) {
-        setAttributes("depth", false);
-      } else {
-        setAttributes("depth", true);
-      }
-    } else {
-      setAttributes("antialias", true);
-      setAttributes("perPixelLighting", true);
-      setAttributes("depth", true);
-      setAttributes("preserveDrawingBuffer", false);
-    }
-
-    // Disable texture mipmapping to save memory
-    textureMode(NORMAL);
-    
-    // Enable hardware acceleration hints
-    if (typeof _renderer !== 'undefined' && _renderer.GL) {
-      const gl = _renderer.GL;
-      gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
-      gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
-    }
-  },
-  
-  // Check if we can use advanced GPU features
-  canUseAdvancedFeatures: function() {
-    return this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW;
-  }
-};
 
 // Wrapper functions for backward compatibility
 function detectMobileDevice() {
@@ -561,81 +361,10 @@ function createUiUsingDomElements() {
 }
 
 // ===== MEMORY MANAGEMENT =====
-const MemoryManager = {
-  warningOverlay: null,
-  warningShown: false,
-  lastWarningTime: 0,
 
-  // Create memory warning overlay if needed
-  createWarningOverlay: function() {
-    if (this.warningOverlay) return;
-
-    if (window.performance && window.performance.memory) {
-      this.warningOverlay = createStyledContainer(width / 2 - 150, 50, 300, {
-        styles: {
-          backgroundColor: "rgba(255, 0, 0, 0.7)",
-          textAlign: "center",
-          display: "none"
-        }
-      });
-    }
-  },
-
-  // Check memory usage and show warning if needed
-  checkMemoryUsage: function() {
-    this.createWarningOverlay();
-
-    if (!this.warningOverlay || !window.performance || !window.performance.memory) {
-      return;
-    }
-
-    const currentMemory = window.performance.memory.usedJSHeapSize / (1024 * 1024);
-
-    // Show warning if memory usage is too high
-    if (currentMemory > 800 && !this.warningShown) {
-      this.warningShown = true;
-      this.warningOverlay.html(`
-        <h3>HIGH MEMORY USAGE!</h3>
-        <p>Game is using ${currentMemory.toFixed(1)} MB</p>
-        <p>Consider refreshing</p>
-      `);
-      this.warningOverlay.style("display", "block");
-
-      // Emergency cleanup
-      this.performEmergencyCleanup();
-    }
-
-    // Hide warning if memory usage drops
-    if (currentMemory < 600 && this.warningShown) {
-      this.warningShown = false;
-      this.warningOverlay.style("display", "none");
-    }
-  },
-
-  // Perform emergency cleanup when memory is too high
-  performEmergencyCleanup: function() {
-    projectiles = [];
-    projectilePool = [];
-    effects = [];
-
-    // Reduce enemies to essential minimum
-    if (enemies.length > 20) {
-      enemies.splice(20, enemies.length - 20);
-    }
-
-    // Try to trigger garbage collection
-    if (window.gc) {
-      try {
-        window.gc();
-      } catch (e) {
-        // Ignore if gc is not available
-      }
-    }
-  }
-};
 
 // Sound toggle button
-let soundToggleButton = null;
+/* global */ soundToggleButton = null;
 
 // ===== UI STYLING UTILITIES =====
 // Utility function to apply common styles to UI elements
@@ -1163,11 +892,7 @@ function draw() {
 }
 
 // Memory leak tracking and prevention
-let lastMemoryCleanup = 0;
-const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
-const MAX_OBJECTS = 1_000; // Maximum total number of game objects
-const MAX_PROJECTILES = 300; // Maximum projectiles
-const MAX_EFFECTS = 500; // Maximum visual effects
+/* global */ lastMemoryCleanup = 0;
 
 // Function to limit effects based on performance level
 function limitEffects() {
@@ -7562,111 +7287,6 @@ let memoryUsageSamples = [];
 const MAX_MEMORY_SAMPLES = 5;
 let peakMemoryUsage = 0;
 
-function updateTechnicalBoard() {
-  // if (!DEBUG_MODE) {
-  //   return;
-  // }
-
-  // Only update DOM elements every few frames for better performance
-  if (frameCount - lastTechUpdateTime < TECH_UPDATE_INTERVAL) {
-    return;
-  }
-
-  lastTechUpdateTime = frameCount;
-
-  // Record current FPS for averaging
-  fpsHistory.push(frameRate());
-  if (fpsHistory.length > FPS_HISTORY_LENGTH) {
-    fpsHistory.shift(); // Remove oldest value
-  }
-
-  // Calculate average FPS for smoother display
-  const avgFPS =
-    fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
-
-  // Calculate time elapsed
-  const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
-  const minutes = Math.floor(elapsedSeconds / 60);
-  const seconds = elapsedSeconds % 60;
-
-  // Calculate total objects (game complexity metric)
-  const objectCount =
-    squad.length +
-    enemies.length +
-    projectiles.length +
-    powerUps.length +
-    effects.length;
-
-  // Memory usage tracking - attempt to get actual heap size if available
-  let memoryUsage = 0;
-
-  // Try to get accurate memory usage if performance.memory is available
-  if (window.performance && window.performance.memory) {
-    memoryUsage = window.performance.memory.usedJSHeapSize / (1024 * 1024);
-    memoryUsageSamples.push(memoryUsage);
-
-    // Keep a rolling window of samples
-    if (memoryUsageSamples.length > MAX_MEMORY_SAMPLES) {
-      memoryUsageSamples.shift();
-    }
-
-    // Track peak memory
-    if (memoryUsage > peakMemoryUsage) {
-      peakMemoryUsage = memoryUsage;
-    }
-  } else {
-    // Fallback to estimation
-    memoryUsage = (objectCount * 0.5).toFixed(1);
-  }
-
-  // Calculate average memory usage for smoother display
-  const avgMemory =
-    memoryUsageSamples.length > 0
-      ? memoryUsageSamples.reduce((sum, mem) => sum + mem, 0) /
-        memoryUsageSamples.length
-      : memoryUsage;
-
-  // Memory usage warning
-  const memoryColor =
-    avgMemory > 500 ? "red" : avgMemory > 200 ? "yellow" : "white";
-
-  // Add debug mode indicator if needed
-  const debugModeText = DEBUG_MODE
-    ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
-    : "";
-
-  // Update technical board with HTML content
-  techBoard.html(`
-    <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
-    ${debugModeText}
-    <div>FPS: ${Math.floor(avgFPS)}</div>
-    <div>Objects: ${objectCount}</div>
-    <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(
-    1
-  )} MB</div>
-    <div>Peak Mem: ${peakMemoryUsage.toFixed(1)} MB</div>
-    <div>Time: ${minutes}m ${seconds}s</div>
-    <div>Camera: x=${Math.floor(cameraOffsetX)}, y=${Math.floor(
-    cameraOffsetY
-  )}, z=${Math.floor(cameraZoom)}</div>
-    <div>Squad: x=${Math.floor(squadLeader.x)}, y=${Math.floor(
-    squadLeader.y
-  )}, z=${Math.floor(squadLeader.z)}</div>
-  `);
-
-  // Force garbage collection attempt (not guaranteed to work, but might help signal)
-  if (frameCount % 600 === 0) {
-    // Every 10 seconds
-    if (window.gc) {
-      try {
-        window.gc();
-      } catch (e) {
-        // Ignore if gc is not available
-      }
-    }
-  }
-}
-
 function createMenuElement() {
   // Create menu container element
   menuContainer = createDiv("");
@@ -8956,9 +8576,9 @@ function windowResized() {
 }
 
 // Directional pad variables
-let dPad;
+/* global */ dPad;
 let upButton, downButton, leftButton, rightButton;
-let activeDirections = {
+/* global */ activeDirections = {
   up: false,
   down: false,
   left: false,
@@ -8966,7 +8586,7 @@ let activeDirections = {
 };
 
 // Controls container for bottom row layout
-let controlsContainer;
+/* global */ controlsContainer;
 
 // Create container for controls (d-pad and skill bar)
 function createControlsContainer() {
