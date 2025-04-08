@@ -8543,8 +8543,6 @@ function updateSkillBar() {
 
         // Calculate remaining time percentage for active skill
         const activeTimeRemaining = skills.skill1.endTime - frameCount;
-        const activeTimePercent =
-          activeTimeRemaining / skills.skill1.activeDuration;
 
         // Add a timer overlay for active duration
         select(`#skillName${i}`).html(
@@ -8603,8 +8601,6 @@ function updateSkillBar() {
 
         // Calculate remaining time percentage for active skill
         const activeTimeRemaining = skills.skill4.endTime - frameCount;
-        const activeTimePercent =
-          activeTimeRemaining / skills.skill4.activeDuration;
 
         // Add a timer overlay for active duration
         select(`#skillName${i}`).html(
@@ -10282,6 +10278,9 @@ function activateFreezeSkill() {
   // OPTIMIZATION: Use frameCount-based deactivation instead of setTimeout
   // This avoids potential issues with setTimeout in p5.js
   // The actual deactivation will happen in the draw loop when frameCount >= skills.skill4.endTime
+  setTimeout(() => {
+    skills.skill4.active = false;
+  }, visualEffectDuration * 1000 / 60);
 }
 
 /**
