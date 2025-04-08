@@ -195,10 +195,34 @@ let skills = {
     activeDuration: 120, // Freeze duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  skill5: { cooldown: 600, lastUsed: 0 },
-  skill6: { cooldown: 600, lastUsed: 0 },
-  skill7: { cooldown: 600, lastUsed: 0 },
-  skill8: { cooldown: 600, lastUsed: 0 },
+  skill5: {
+    cooldown: 600,
+    lastUsed: 0,
+    active: false,
+    activeDuration: 120,
+    endTime: 0,
+  },
+  skill6: {
+    cooldown: 600,
+    lastUsed: 0,
+    active: false,
+    activeDuration: 120,
+    endTime: 0,
+  },
+  skill7: {
+    cooldown: 600,
+    lastUsed: 0,
+    active: false,
+    activeDuration: 120,
+    endTime: 0,
+  },
+  skill8: {
+    cooldown: 600,
+    lastUsed: 0,
+    active: false,
+    activeDuration: 120,
+    endTime: 0,
+  },
   skill9: {
     cooldown: 450,
     lastUsed: 0,
@@ -7345,6 +7369,12 @@ function activateSkill(skillNameOrNumber) {
  * causing massive damage to enemies in a large area
  */
 function activateApocalypticDevastation() {
+  skills.skill8.active = true;
+  skills.skill8.endTime = frameCount + skills.skill8.activeDuration;
+  setTimeout(() => {
+    skills.skill8.active = false;
+  }, (skills.skill8.activeDuration * 1000) / 60);
+
   // Get bomb drop point - farther ahead of the player for better visibility
   let bombCenter = { x: 0, y: 0, z: 0 };
   if (squad.length > 0) {
@@ -7471,6 +7501,12 @@ function activateBarrierSkill() {
     playUISound("error");
     return; // Exit the function without creating a barrier
   }
+
+  skills.skill9.active = true;
+  skills.skill9.endTime = frameCount + skills.skill9.cooldown;
+  setTimeout(() => {
+    skills.skill9.active = false;
+  }, skills.skill9.cooldown);
 
   // Calculate barrier parameters based on player stats
   const barrierHealth = skills.skill9.health + damageBoost * 20; // Barrier health enhanced by damage boost
@@ -8570,30 +8606,32 @@ function updateSkillBar() {
   skillBar.style("visibility", "visible");
   for (let i = 1; i <= 12; i++) {
     const skill = skills[`skill${i}`];
-
     if (!skill) {
       console.log(`Skill ${i} not defined`);
       continue;
     }
 
-    const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
-    const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
-
-    // Get skill element and check for active state
     const skillDiv = select(`#skill${i}`);
-
     if (!skillDiv) {
-      console.log(`skillDiv ${i} not exists`)
-      return;
+      console.log(`skillDiv ${i} not exists`);
+      continue;
     }
 
     // Check if skills are active
-    const isSkillActive = skill.active;
-    const isAtomicBombActive =
-      i == 8 && frameCount - skills.skill8.lastUsed < 120; // Show atomic effect for 2 seconds after activation
+    const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
+    const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
+    const isSkillActive = i != 8 && skill.active;
+    const isAtomicBombActive = i == 8 && frameCount - skill.lastUsed < skill.activeDuration;
 
+      if (cooldownPercent <= 0) {
+        skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
+      }
+  
+      if (cooldownRemaining >= 0) {
+        skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+        select(`#skillName${i}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
+      }
     if (isSkillActive) {
-
       // Get colors for current skill
       const colors = generateSkillColors(i);
 
@@ -8602,21 +8640,8 @@ function updateSkillBar() {
       const [r, g, b] = colors.primary;
 
       // Apply visual effects
-      skillDiv.style(
-        "background-color",
-        `rgba(${r}, ${g}, ${b}, ${pulseIntensity})`
-      );
+      skillDiv.style("background-color",`rgba(${r}, ${g}, ${b}, ${pulseIntensity})`);
       skillDiv.style("box-shadow", `0 0 10px rgba(${r}, ${g}, ${b}, 0.8)`);
-
-      // Calculate remaining time percentage for active skill
-      const activeTimeRemaining = skills[`skill${i}`].endTime - frameCount;
-
-      // Add a timer overlay for active duration
-      select(`#skillName${i}`).html(
-        `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
-      );
-
-      // Skill key should appear in bright color
       select(`#skillKey${i}`).style("color", colors.keyColor);
     } else if (isAtomicBombActive) {
       // Atomic bomb explosion effect in skill bar
@@ -8659,14 +8684,14 @@ function updateSkillBar() {
       select(`#skillName${i}`).html(getSkillName(i));
       select(`#skillName${i}`).style("color", "white");
 
+      // Reset key color
+      select(`#skillKey${i}`).style("color", "white");
+      select(`#skillKey${i}`).style("text-shadow", "none");
+
       // Reset key display
       if (i === 8) {
         select(`#skillKey${i}`).html("R");
       }
-
-      // Reset key color
-      select(`#skillKey${i}`).style("color", "white");
-      select(`#skillKey${i}`).style("text-shadow", "none");
     }
 
     // Update needle rotation
@@ -8721,12 +8746,6 @@ function updateSkillBar() {
         `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
       );
       overlayDiv.style("border-radius", "10px"); // Maintain border radius
-    }
-
-    if (cooldownPercent <= 0) {
-      skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
-    } else {
-      skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
     }
   }
 }
@@ -10263,6 +10282,12 @@ function activateShieldSkill() {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateFreezeSkill() {
+  skills.skill4.active = true;
+  skills.skill4.endTime = frameCount + skills.skill4.cooldown;
+  setTimeout(() => {
+    skills.skill4.active = false;
+  }, (skills.skill4.cooldown * 1000) / 60);
+
   // OPTIMIZATION: Check device performance
   const freezeIsLowPerformance =
     isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
@@ -10279,10 +10304,6 @@ function activateFreezeSkill() {
     : freezeIsMediumPerformance
     ? 1250
     : 1500;
-
-  // Activate freeze mode
-  skills.skill4.active = true;
-  skills.skill4.endTime = frameCount + visualEffectDuration;
 
   // Calculate the center point of the squad for the freeze effect
   const freezeCenter = calculateSquadCenter();
@@ -10309,9 +10330,6 @@ function activateFreezeSkill() {
   // OPTIMIZATION: Use frameCount-based deactivation instead of setTimeout
   // This avoids potential issues with setTimeout in p5.js
   // The actual deactivation will happen in the draw loop when frameCount >= skills.skill4.endTime
-  setTimeout(() => {
-    skills.skill4.active = false;
-  }, (visualEffectDuration * 1000) / 60);
 }
 
 /**
@@ -10539,6 +10557,12 @@ function applyFreezeEffectToEnemies(
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateRejuvenationSkill() {
+  skills.skill5.active = true;
+  skills.skill5.endTime = frameCount + skills.skill5.cooldown;
+  setTimeout(() => {
+    skills.skill5.active = false;
+  }, skills.skill5.cooldown);
+
   // Calculate healing parameters based on player stats
   const initialHealAmount = 30 + damageBoost * 3; // Immediate healing
   const regenAmount = 2 + Math.floor(damageBoost * 0.5); // Health regenerated per tick
@@ -10679,6 +10703,12 @@ function createHealingShockwaves(center, radius) {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateInfernalRageSkill() {
+  skills.skill6.active = true;
+  skills.skill6.endTime = frameCount + skills.skill6.cooldown;
+  setTimeout(() => {
+    skills.skill6.active = false;
+  }, (skills.skill6.cooldown * 1000) / 60);
+
   // Calculate damage parameters based on player stats
   const damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
   const damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
@@ -11214,7 +11244,7 @@ function calculateSquadCenter() {
 }
 
 // Define color palette based on skill index
-function generateSkillColors(index){
+function generateSkillColors(index) {
   // Use the golden ratio to create visually distinct colors
   const hue = ((index * 137.5) % 360) / 360;
 
@@ -11234,7 +11264,7 @@ function generateSkillColors(index){
     secondary,
     keyColor: `rgba(${keyR}, ${keyG}, ${keyB}, 1.0)`,
   };
-};
+}
 
 // Helper function to convert HSV to RGB
 function hsvToRgb(h, s, v) {
@@ -11278,9 +11308,5 @@ function hsvToRgb(h, s, v) {
       break;
   }
 
-  return [
-    Math.round(r * 255),
-    Math.round(g * 255),
-    Math.round(b * 255),
-  ];
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
