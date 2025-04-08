@@ -203,7 +203,6 @@ let skills = {
     cooldown: 450,
     lastUsed: 0,
     active: false,
-    activeDuration: 600, // Barrier duration (10 seconds = 600 frames at 60fps)
     endTime: 0,
     health: 500, // Barrier health
     maxBarriers: 5, // Maximum number of barriers allowed
@@ -8354,12 +8353,8 @@ function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  // skillBar.style("background-color", "rgba(50, 50, 50, 0.27)"); // Reduced opacity to 1/3 of 0.8
   skillBar.style("background", "transparent"); // Reduced opacity to 1/3 of 0.8
   skillBar.style("color", "white");
-  // skillBar.style("padding", isMobile ? "5px" : "10px");
-  // skillBar.style("border-radius", "5px");
-  // skillBar.style("flex", "1"); // Allow it to grow to fill available space
   skillBar.style("height", skillBarHeight + "px");
   skillBar.style("display", "flex");
   skillBar.style("flex-direction", "column");
@@ -8368,31 +8363,36 @@ function createSkillBarElement() {
   skillBar.style("box-sizing", "border-box");
   skillBar.style("margin-left", isMobile ? "5px" : "10px");
   skillBar.style("margin-right", isMobile ? "5px" : "10px");
-  // skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)");
-  // skillBar.style("max-width", "calc(100% - " + (isMobile ? "190px" : "240px") + ")"); // Ensure it doesn't overlap with d-pad
   skillBar.style("max-width", "500px"); // Ensure it doesn't overlap with d-pad
 
   // Add skill bar to the controls container
   controlsContainer.child(skillBar);
 
-  // Create top row (Q, W, E, R) and bottom row (A, S, D, F) containers
-  const topRow = createDiv("");
-  topRow.style("display", "flex");
-  topRow.style("justify-content", "space-around");
-  topRow.style("margin-bottom", rowSpacing);
-  topRow.style("width", "100%");
+  // Create row (Q, W, E, R), row (A, S, D, F) containers
+  const firstRow = createDiv("");
+  firstRow.style("display", "flex");
+  firstRow.style("justify-content", "space-around");
+  firstRow.style("margin-bottom", rowSpacing);
+  firstRow.style("width", "100%");
 
-  const bottomRow = createDiv("");
-  bottomRow.style("display", "flex");
-  bottomRow.style("justify-content", "space-around");
-  bottomRow.style("width", "100%");
+  const secondRow = createDiv("");
+  secondRow.style("display", "flex");
+  secondRow.style("justify-content", "space-around");
+  secondRow.style("margin-bottom", rowSpacing);
+  secondRow.style("width", "100%");
+
+  const thirdRow = createDiv("");
+  thirdRow.style("display", "flex");
+  thirdRow.style("justify-content", "space-around");
+  thirdRow.style("width", "100%");
 
   // Add rows to skill bar
-  skillBar.child(topRow);
-  skillBar.child(bottomRow);
+  skillBar.child(firstRow);
+  skillBar.child(secondRow);
+  skillBar.child(thirdRow);
 
   // Create individual skill elements
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 12; i++) {
     const skillDiv = createDiv("");
     skillDiv.id(`skill${i}`);
     skillDiv.style("text-align", "center");
@@ -8469,15 +8469,15 @@ function createSkillBarElement() {
     // Q, W, E, R (skills 5-8) go in top row
     // A, S, D, F (skills 1-4) go in bottom row
     // Barrier (skill 9) goes in the center of the top row
-    if (i >= 5 && i <= 8) {
+    if (i >= 0 && i <= 4) {
       // Q, W, E, R (skills 5-8)
-      topRow.child(skillDiv);
-    } else if (i === 9) {
+      firstRow.child(skillDiv);
+    } else if (i >= 5 && i <= 8) {
+      // Q, W, E, R (skills 5-8)
+      secondRow.child(skillDiv);
+    } else if (i >= 9) {
       // Barrier (skill 9) - add to top row
-      topRow.child(skillDiv);
-    } else {
-      // A, S, D, F (skills 1-4)
-      bottomRow.child(skillDiv);
+      thirdRow.child(skillDiv);
     }
   }
   skillBar.style("visibility", "hidden");
@@ -8489,12 +8489,16 @@ function updateSkillBar() {
   }
 
   skillBar.style("visibility", "visible");
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 12; i++) {
     const skillKey = `skill${i}`;
+    const skill = skills[skillKey];
+    if (!skill) {
+      continue;
+    }
     const cooldownRemaining =
-      skills[skillKey].cooldown - (frameCount - skills[skillKey].lastUsed);
+    skill.cooldown - (frameCount - skill.lastUsed);
     const cooldownPercent =
-      max(0, cooldownRemaining) / skills[skillKey].cooldown;
+      max(0, cooldownRemaining) / skill.cooldown;
 
     // Get skill element and check for active state
     const skillDiv = select(`#skill${i}`);
