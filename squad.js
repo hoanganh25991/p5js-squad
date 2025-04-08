@@ -229,6 +229,7 @@ let skills = {
     active: false,
     endTime: 0,
     health: 500, // Barrier health
+    activeDuration: 120,
     maxBarriers: 5, // Maximum number of barriers allowed
     activeBarriers: 0, // Current number of active barriers
   },
@@ -7308,10 +7309,7 @@ function activateSkill(skillNameOrNumber) {
   const skillKey = `skill${skillNumber}`;
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
-  if (
-    !DEBUG_MODE &&
-    frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown
-  ) {
+  if (frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown) {
     // Skill on cooldown (only in non-debug mode)
     playUISound("error"); // Play error sound for cooldown
     return;
@@ -7319,6 +7317,9 @@ function activateSkill(skillNameOrNumber) {
 
   // Play skill activation sound
   playSkillSound(skillNumber);
+
+  // Set cooldown
+  skills[skillKey].lastUsed = frameCount;
 
   // Apply skill effect with accumulative power-ups
   switch (skillName) {
@@ -7358,9 +7359,14 @@ function activateSkill(skillNameOrNumber) {
       activateBarrierSkill();
       break;
   }
+}
 
-  // Set cooldown
-  skills[skillKey].lastUsed = frameCount;
+function updateSkillActivation(skill) {
+  skill.active = true;
+  skill.endTime = frameCount + skill.activeDuration;
+  setTimeout(() => {
+    skill.active = false;
+  }, (skill.activeDuration * 1000) / 60);
 }
 
 /**
@@ -7369,11 +7375,7 @@ function activateSkill(skillNameOrNumber) {
  * causing massive damage to enemies in a large area
  */
 function activateApocalypticDevastation() {
-  skills.skill8.active = true;
-  skills.skill8.endTime = frameCount + skills.skill8.activeDuration;
-  setTimeout(() => {
-    skills.skill8.active = false;
-  }, (skills.skill8.activeDuration * 1000) / 60);
+  updateSkillActivation(skills.skill8);
 
   // Get bomb drop point - farther ahead of the player for better visibility
   let bombCenter = { x: 0, y: 0, z: 0 };
@@ -7495,18 +7497,14 @@ function activateApocalypticDevastation() {
  * Places a wall that enemies target first, protecting the squad
  */
 function activateBarrierSkill() {
+  updateSkillActivation(skills.skill9);
+
   // Check if maximum number of barriers has been reached
   if (skills.skill9.activeBarriers >= skills.skill9.maxBarriers) {
     // Play error sound and show error message
     playUISound("error");
     return; // Exit the function without creating a barrier
   }
-
-  skills.skill9.active = true;
-  skills.skill9.endTime = frameCount + skills.skill9.cooldown;
-  setTimeout(() => {
-    skills.skill9.active = false;
-  }, skills.skill9.cooldown);
 
   // Calculate barrier parameters based on player stats
   const barrierHealth = skills.skill9.health + damageBoost * 20; // Barrier health enhanced by damage boost
@@ -8621,16 +8619,17 @@ function updateSkillBar() {
     const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
     const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
     const isSkillActive = i != 8 && skill.active;
-    const isAtomicBombActive = i == 8 && frameCount - skill.lastUsed < skill.activeDuration;
+    const isAtomicBombActive =
+      i == 8 && frameCount - skill.lastUsed < skill.activeDuration;
 
-      if (cooldownPercent <= 0) {
-        skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
-      }
-  
-      if (cooldownRemaining >= 0) {
-        skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-        select(`#skillName${i}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
-      }
+    if (cooldownPercent <= 0) {
+      skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
+    }
+
+    if (cooldownRemaining >= 0) {
+      skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
+      select(`#skillName${i}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
+    }
     if (isSkillActive) {
       // Get colors for current skill
       const colors = generateSkillColors(i);
@@ -8640,7 +8639,10 @@ function updateSkillBar() {
       const [r, g, b] = colors.primary;
 
       // Apply visual effects
-      skillDiv.style("background-color",`rgba(${r}, ${g}, ${b}, ${pulseIntensity})`);
+      skillDiv.style(
+        "background-color",
+        `rgba(${r}, ${g}, ${b}, ${pulseIntensity})`
+      );
       skillDiv.style("box-shadow", `0 0 10px rgba(${r}, ${g}, ${b}, 0.8)`);
       select(`#skillKey${i}`).style("color", colors.keyColor);
     } else if (isAtomicBombActive) {
@@ -9924,6 +9926,8 @@ function createExplosionEffect(position, size, life, color) {
  * Damages enemies in all directions simultaneously for a duration
  */
 function activateStarBlastSkill() {
+  updateSkillActivation(skills.skill1);
+
   // Performance check
   const isLowPerformance =
     isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
@@ -10178,6 +10182,7 @@ function createIceEffect(x, y, z) {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateMachineGunSkill() {
+  updateSkillActivation(skills.skill2);
   // Store the normal fire rate to restore later
   const normalFireRate = squadFireRate;
 
@@ -10229,6 +10234,8 @@ function activateMachineGunSkill() {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateShieldSkill() {
+  updateSkillActivation(skills.skill3);
+
   // Calculate shield parameters based on player stats
   const shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
   const shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
@@ -10282,11 +10289,7 @@ function activateShieldSkill() {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateFreezeSkill() {
-  skills.skill4.active = true;
-  skills.skill4.endTime = frameCount + skills.skill4.cooldown;
-  setTimeout(() => {
-    skills.skill4.active = false;
-  }, (skills.skill4.cooldown * 1000) / 60);
+  updateSkillActivation(skills.skill4);
 
   // OPTIMIZATION: Check device performance
   const freezeIsLowPerformance =
@@ -10557,11 +10560,7 @@ function applyFreezeEffectToEnemies(
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateRejuvenationSkill() {
-  skills.skill5.active = true;
-  skills.skill5.endTime = frameCount + skills.skill5.cooldown;
-  setTimeout(() => {
-    skills.skill5.active = false;
-  }, skills.skill5.cooldown);
+  updateSkillActivation(skills.skill5);
 
   // Calculate healing parameters based on player stats
   const initialHealAmount = 30 + damageBoost * 3; // Immediate healing
@@ -10703,11 +10702,7 @@ function createHealingShockwaves(center, radius) {
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateInfernalRageSkill() {
-  skills.skill6.active = true;
-  skills.skill6.endTime = frameCount + skills.skill6.cooldown;
-  setTimeout(() => {
-    skills.skill6.active = false;
-  }, (skills.skill6.cooldown * 1000) / 60);
+  updateSkillActivation(skills.skill6);
 
   // Calculate damage parameters based on player stats
   const damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
@@ -11082,6 +11077,7 @@ function resetDamageBoostAndCreateEndEffects(
  * Optimized implementation with reduced complexity and improved performance
  */
 function activateQuantumAccelerationSkill() {
+  updateSkillActivation(skills.skill7);
   // Calculate speed parameters based on player stats
   const baseSpeedBoost = 1.8; // 80% faster
   const additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost
