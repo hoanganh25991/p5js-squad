@@ -7040,907 +7040,27 @@ function activateSkill(skillNumber) {
       break;
 
     case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
-      // Store the normal fire rate to restore later
-      let normalFireRate = squadFireRate;
-
-      // Activate machine gun mode
-      skills.skill2.active = true;
-      skills.skill2.endTime = frameCount + skills.skill2.activeDuration;
-
-      // Set the much faster fire rate (machine gun speed)
-      squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
-
-      // Visual effect for all squad members
-      for (let member of squad) {
-        createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
-
-        // Create persistent effect around each squad member to show machine gun mode
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z,
-          type: "machineGun",
-          size: member.size * 1.2,
-          life: skills.skill2.activeDuration,
-          member: member, // reference to follow the member
-          color: [255, 255, 0], // Yellow for machine gun mode
-        });
-      }
-
-      // Schedule deactivation after duration
-      setTimeout(() => {
-        // Only restore fire rate if machine gun mode is still active
-        // (prevents conflicts with other skills that might have changed fire rate)
-        if (skills.skill2.active) {
-          squadFireRate = normalFireRate;
-          skills.skill2.active = false;
-        }
-      }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
+      activateMachineGunSkill();
       break;
 
     case 3: // Shield - protective barrier that follows the squad
-      let shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
-      let shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
-      let shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
-
-      // Activate shield mode
-      skills.skill3.active = true;
-      skills.skill3.endTime = frameCount + shieldDuration;
-
-      // Calculate the center point of the squad for the shield
-      let shieldCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        shieldCenter.x = totalX / squad.length;
-        shieldCenter.y = totalY / squad.length;
-        shieldCenter.z = totalZ / squad.length;
-      }
-
-      // Create a protective barrier effect that stays around the squad
-      effects.push({
-        x: shieldCenter.x,
-        y: shieldCenter.y,
-        z: shieldCenter.z,
-        type: "shield", // Changed to "shield" type for consistency with updateEnemies
-        size: shieldRadius,
-        life: shieldDuration,
-        color: [0, 200, 255, 100],
-        strength: shieldStrength, // Store shield strength for enemy repulsion
-        forceRenderDetail: true,
-      });
-
-      // Schedule deactivation after duration
-      setTimeout(() => {
-        skills.skill3.active = false;
-
-        // Final shield collapse effect when the skill ends
-        if (squad.length > 0) {
-          let finalCenter = { x: 0, y: 0, z: 0 };
-          let totalX = 0,
-            totalY = 0,
-            totalZ = 0;
-          for (let member of squad) {
-            totalX += member.x;
-            totalY += member.y;
-            totalZ += member.z;
-          }
-          finalCenter.x = totalX / squad.length;
-          finalCenter.y = totalY / squad.length;
-          finalCenter.z = totalZ / squad.length;
-
-          // Create shield collapse effect
-          effects.push({
-            x: finalCenter.x,
-            y: finalCenter.y,
-            z: finalCenter.z,
-            type: "shockwave",
-            size: shieldRadius * 0.8,
-            life: 45,
-            color: [0, 200, 255],
-            forceRenderDetail: true,
-          });
-        }
-      }, shieldDuration * (1000 / 60)); // Convert frames to ms
-
+      activateShieldSkill();
       break;
 
     case 4: // Freeze - ice effect that freezes enemies
-      // OPTIMIZATION: Check device performance
-      const freezeIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-      const freezeIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-      
-      // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
-      let visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
-      let enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
-      let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
-      let freezeRadius = 1500; // Reduced radius for better performance
-
-      // Activate freeze mode
-      skills.skill4.active = true;
-      skills.skill4.endTime = frameCount + visualEffectDuration;
-
-      // Calculate the center point of the squad for the freeze effect
-      let freezeCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        let totalX = 0, totalY = 0, totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        freezeCenter.x = totalX / squad.length;
-        freezeCenter.y = totalY / squad.length;
-        freezeCenter.z = totalZ / squad.length;
-      }
-
-      // OPTIMIZATION: Drastically simplify visual effects based on performance level
-      
-      // 1. Create a single shockwave instead of multiple on low performance devices
-      const shockwaveCount = freezeIsLowPerformance ? 1 : (freezeIsMediumPerformance ? 2 : 3);
-      
-      // Create just one immediate shockwave for low performance
-      effects.push({
-        x: freezeCenter.x,
-        y: freezeCenter.y,
-        z: freezeCenter.z,
-        type: "shockwave",
-        size: freezeRadius * 0.5,
-        life: 60,
-        color: [100, 200, 255], // Ice blue color
-        layer: 0,
-        forceRenderDetail: false,
-      });
-      
-      // Add additional shockwaves only for medium/high performance
-      if (!freezeIsLowPerformance) {
-        setTimeout(() => {
-          effects.push({
-            x: freezeCenter.x,
-            y: freezeCenter.y,
-            z: freezeCenter.z,
-            type: "shockwave",
-            size: freezeRadius * 0.7,
-            life: 50,
-            color: [100, 200, 255],
-            layer: 1,
-            forceRenderDetail: false,
-          });
-        }, 100);
-        
-        // Third shockwave only for high performance
-        if (!freezeIsMediumPerformance) {
-          setTimeout(() => {
-            effects.push({
-              x: freezeCenter.x,
-              y: freezeCenter.y,
-              z: freezeCenter.z,
-              type: "shockwave",
-              size: freezeRadius * 0.9,
-              life: 40,
-              color: [100, 200, 255],
-              layer: 2,
-              forceRenderDetail: false,
-            });
-          }, 200);
-        }
-      }
-
-      // 2. Create a single bridge frost effect - always include this as it's the main visual
-      effects.push({
-        x: freezeCenter.x,
-        y: freezeCenter.y,
-        z: 0, // At bridge level
-        type: "bridgeFrost",
-        size: freezeRadius,
-        life: visualEffectDuration,
-        color: [200, 240, 255, 150], // Light blue with transparency
-        forceRenderDetail: false,
-      });
-
-      // 3. OPTIMIZATION: Skip ice crystal formations on low performance devices
-      if (!freezeIsLowPerformance) {
-        // Create just a few ice crystals on medium performance
-        const crystalCount = freezeIsMediumPerformance ? 2 : 4;
-        
-        for (let i = 0; i < crystalCount; i++) {
-          const angle = random(TWO_PI);
-          const dist = random(100, 300);
-          const x = freezeCenter.x + cos(angle) * dist;
-          const y = freezeCenter.y + sin(angle) * dist;
-          
-          effects.push({
-            x: x,
-            y: y,
-            z: 0, // At bridge level
-            type: "iceCrystal",
-            size: random(40, 80),
-            life: visualEffectDuration - random(0, 30),
-            color: [200, 240, 255, 200],
-            growthTime: random(5, 15),
-            forceRenderDetail: false,
-          });
-        }
-      }
-
-      // 4. OPTIMIZATION: Apply freeze effect to ALL enemies but drastically reduce visuals
-      
-      // Sort enemies by distance to prioritize closest ones
-      const sortedEnemies = [...enemies].sort((a, b) => {
-        const dxA = a.x - freezeCenter.x;
-        const dyA = a.y - freezeCenter.y;
-        const distA = dxA * dxA + dyA * dyA;
-
-        const dxB = b.x - freezeCenter.x;
-        const dyB = b.y - freezeCenter.y;
-        const distB = dxB * dxB + dyB * dyB;
-
-        return distA - distB; // Sort by closest first
-      });
-
-      // OPTIMIZATION: Limit visual effects to just a few enemies
-      const maxEnemiesWithVisuals = freezeIsLowPerformance ? 
-        Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on low performance
-        (freezeIsMediumPerformance ? 
-          Math.min(5, sortedEnemies.length) : // Only 5 enemies get visuals on medium performance
-          Math.min(10, sortedEnemies.length)); // Only 10 enemies get visuals on high performance
-
-      // OPTIMIZATION: Apply gameplay effect to all enemies but batch the processing
-      // Process enemies in batches to avoid too many simultaneous timeouts
-      const batchSize = 10;
-      const batches = Math.ceil(sortedEnemies.length / batchSize);
-      
-      for (let batch = 0; batch < batches; batch++) {
-        const startIdx = batch * batchSize;
-        const endIdx = Math.min(startIdx + batchSize, sortedEnemies.length);
-        
-        setTimeout(() => {
-          for (let i = startIdx; i < endIdx; i++) {
-            const enemy = sortedEnemies[i];
-            
-            // Store original speed for restoration
-            if (!enemy.originalSpeed) {
-              enemy.originalSpeed = enemy.speed;
-            }
-            
-            // Apply freeze effect to enemy
-            if (!enemy.effects) enemy.effects = {};
-            enemy.effects.frozen = {
-              duration: enemyFreezeEffectDuration,
-              slowFactor: max(0.05, freezeStrength),
-              originalSpeed: enemy.originalSpeed || enemy.speed,
-            };
-            
-            // Apply slowdown
-            enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
-            
-            // Only create visual effects for a limited number of enemies
-            if (i < maxEnemiesWithVisuals) {
-              // Create a single visual effect for each visible enemy
-              createIceEffect(enemy.x, enemy.y, enemy.z);
-              
-              // Add a frost burst effect only for the closest enemies
-              if (i < maxEnemiesWithVisuals / 2) {
-                effects.push({
-                  x: enemy.x,
-                  y: enemy.y,
-                  z: enemy.z + 20,
-                  type: "frostBurst",
-                  size: 30,
-                  life: 20,
-                  color: [200, 240, 255],
-                });
-              }
-            }
-          }
-        }, batch * 50); // Stagger batches by 50ms
-      }
-
-      // 5. OPTIMIZATION: Skip additional visual effects on low performance devices
-      if (!freezeIsLowPerformance) {
-        // Create a central ice explosion
-        effects.push({
-          x: freezeCenter.x,
-          y: freezeCenter.y,
-          z: freezeCenter.z + 50,
-          type: "frostBurst",
-          size: 80,
-          life: 40,
-          color: [200, 240, 255],
-        });
-      }
-
-      // 6. Create a global frost effect (blue tint to the scene) - keep this as it's important for feedback
-      effects.push({
-        type: "globalFrost",
-        life: visualEffectDuration,
-        intensity: 0.6 + aoeBoost * 0.03,
-        forceRenderDetail: false,
-      });
-
-      // 7. Add a small screen shake effect for impact (reduced on low performance)
-      cameraShake = freezeIsLowPerformance ? 2 : 4;
-
-      // 8. Schedule deactivation after visual duration
-      setTimeout(() => {
-        skills.skill4.active = false;
-
-        // OPTIMIZATION: Simplified end effect
-        // Create just one final effect at the center
-        effects.push({
-          x: freezeCenter.x,
-          y: freezeCenter.y,
-          z: freezeCenter.z + 20,
-          type: "frostBurst",
-          size: 60,
-          life: 30,
-          color: [200, 240, 255],
-        });
-      }, visualEffectDuration * (1000 / 60)); // Convert frames to ms
-
+      activateFreezeSkill();
       break;
 
     case 5: // Rejuvenation Field - Advanced healing with regeneration over time
-      let initialHealAmount = 30 + damageBoost * 3; // Immediate healing
-      let regenAmount = 2 + Math.floor(damageBoost * 0.5); // Health regenerated per tick
-      let regenDuration = 60 * 3 + fireRateBoost * 30; // 5 seconds + 0.5s per fire rate boost
-      let regenInterval = 30; // Regenerate every 0.5 seconds
-      let healRadius = 150 + aoeBoost * 10; // Healing field radius
-
-      // Calculate the center of the squad
-      let healCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        healCenter.x = totalX / squad.length;
-        healCenter.y = totalY / squad.length;
-        healCenter.z = totalZ / squad.length;
-      }
-
-      // Create healing field effect
-      effects.push({
-        x: healCenter.x,
-        y: healCenter.y,
-        z: healCenter.z,
-        type: "healingField",
-        size: healRadius,
-        life: regenDuration,
-        color: [100, 255, 100, 150],
-        pulseRate: 0.05,
-        forceRenderDetail: true,
-      });
-
-      // Initial healing burst
-      for (let member of squad) {
-        member.health = min(SQUAD_HEALTH, member.health + initialHealAmount);
-
-        // Create healing effect on each squad member
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z + 20,
-          type: "healBurst",
-          size: 30,
-          life: 45,
-          color: [100, 255, 150],
-        });
-      }
-
-      // Create healing particles
-      for (let i = 0; i < 20; i++) {
-        const angle = random(TWO_PI);
-        const dist = random(50, healRadius);
-        effects.push({
-          x: healCenter.x + cos(angle) * dist,
-          y: healCenter.y + sin(angle) * dist,
-          z: random(20, 100),
-          type: "healParticle",
-          size: random(5, 15),
-          life: random(60, 120),
-          color: [100, 255, 150, 200],
-          velocity: { x: random(-1, 1), y: random(-1, 1), z: random(0.5, 2) },
-        });
-      }
-
-      // Setup regeneration over time
-      const totalTicks = Math.floor(regenDuration / regenInterval);
-      for (let i = 1; i <= totalTicks; i++) {
-        setTimeout(() => {
-          // Apply regeneration to all squad members
-          for (let member of squad) {
-            member.health = min(SQUAD_HEALTH, member.health + regenAmount);
-
-            // Small visual effect for each regen tick
-            if (random() > 0.7) {
-              // Only show effect sometimes to avoid too many particles
-              effects.push({
-                x: member.x + random(-10, 10),
-                y: member.y + random(-10, 10),
-                z: member.z + random(10, 30),
-                type: "healParticle",
-                size: random(3, 8),
-                life: 30,
-                color: [100, 255, 150, 150],
-                velocity: { x: 0, y: 0, z: 1 },
-              });
-            }
-          }
-        }, i * regenInterval * (1000 / 60)); // Convert frames to ms
-      }
-
-      // Create a healing shockwave
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: healCenter.x,
-            y: healCenter.y,
-            z: healCenter.z,
-            type: "shockwave",
-            size: healRadius * (0.5 + i * 0.25),
-            life: 60 - i * 10,
-            color: [100, 255, 150],
-            layer: i,
-            forceRenderDetail: true,
-          });
-        }, i * 150);
-      }
+      activateRejuvenationSkill();
       break;
 
     case 6: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
-      let damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
-      let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
-      let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
-      let damageBoostDuration = 60 + fireRateBoost * 60;
-
-      // Count active skills to adjust visual effects
-      const rageActiveSkillCount = Object.values(skills).filter(
-        (skill) => skill.active
-      ).length;
-
-      // Dynamically reduce effects when multiple skills are active
-      const rageEffectReduction = Math.max(
-        0.3,
-        1 - rageActiveSkillCount * 0.25
-      ); // Reduce by 25% per active skill, min 30%
-
-      // Calculate the center of the squad
-      let infernoSquadCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        infernoSquadCenter.x = totalX / squad.length;
-        infernoSquadCenter.y = totalY / squad.length;
-        infernoSquadCenter.z = totalZ / squad.length;
-      }
-
-      // Create inferno center ahead of the squad (on enemy side)
-      const infernoDistance = 800; // Distance ahead of squad
-      const infernoRadius = 400 + aoeBoost * 20; // Size of the inferno area
-      const infernoCenter = {
-        x: infernoSquadCenter.x,
-        y: infernoSquadCenter.y - infernoDistance, // Negative Y is forward (toward enemies)
-        z: infernoSquadCenter.z,
-      };
-
-      // Store original damage multiplier
-      let originalDamageMultiplier = {};
-
-      // Apply damage boost to each squad member (gameplay effect)
-      for (let member of squad) {
-        originalDamageMultiplier[member.id] = member.damageBoost || 1;
-        member.damageBoost = damageBoostTotalMultiplier;
-
-        // Enhanced bullet damage effect
-        member.bulletEffect = "fire";
-
-        // Just a small visual indicator on squad members (minimal)
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z + 20,
-          type: "flameBurst",
-          size: 30,
-          life: 45,
-          color: [255, 100, 0],
-        });
-      }
-
-      // Create initial massive explosion at inferno center - always include this as it's the main visual
-      effects.push({
-        x: infernoCenter.x,
-        y: infernoCenter.y,
-        z: infernoCenter.z,
-        type: "rageExplosion",
-        size: 200,
-        life: 90,
-        color: [255, 50, 0],
-        forceRenderDetail: false, // Never force render when optimizing
-      });
-
-      // Create expanding fire shockwaves - reduce count when multiple skills active
-      const rageShockwaveCount = rageActiveSkillCount > 1 ? 2 : 5; // Fewer shockwaves when skills active
-      for (let i = 0; i < rageShockwaveCount; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: infernoCenter.x,
-            y: infernoCenter.y,
-            z: infernoCenter.z,
-            type: "shockwave",
-            size: infernoRadius * (0.5 + i * 0.2),
-            life: 60 - i * 5,
-            color: [255, 50, 0],
-            layer: i,
-            forceRenderDetail: false, // Never force render when optimizing
-          });
-        }, i * 150);
-      }
-
-      // Create persistent inferno field effect - always include this as it's the main visual
-      effects.push({
-        x: infernoCenter.x,
-        y: infernoCenter.y,
-        z: 0, // At ground level
-        type: "infernoField",
-        size: infernoRadius,
-        life: damageBoostDuration,
-        color: [255, 50, 0, 150],
-        pulseRate: 0.05,
-        forceRenderDetail: false, // Never force render when optimizing
-      });
-
-      // Create burning bridge effect - multiple fire patches on the bridge
-      // Reduce count when multiple skills active
-      const firePatchCount = Math.floor(
-        (15 + Math.floor(aoeBoost / 2)) * rageEffectReduction
-      );
-      for (let i = 0; i < firePatchCount; i++) {
-        const angle = random(TWO_PI);
-        const dist = random(50, infernoRadius * 0.9);
-        const x = infernoCenter.x + cos(angle) * dist;
-        const y = infernoCenter.y + sin(angle) * dist;
-
-        effects.push({
-          x: x,
-          y: y,
-          z: 0, // At bridge level
-          type: "firePatch",
-          size: random(50, 100),
-          life: damageBoostDuration,
-          color: [255, 50, 0, 200],
-          pulseRate: random(0.03, 0.08),
-          forceRenderDetail: false, // Never force render when optimizing
-        });
-      }
-
-      // Add periodic flame bursts throughout the duration - reduce frequency when multiple skills active
-      const burstInterval = rageActiveSkillCount > 1 ? 120 : 60; // Every 1-2 seconds depending on active skills
-      const totalBursts = Math.floor(damageBoostDuration / burstInterval);
-
-      // Create interval to damage enemies in the inferno area
-      const burnDamage = 5 + damageBoost * 2; // Base damage per tick
-      const burnInterval = setInterval(() => {
-        // Check if effect is still active
-        if (frameCount > skills.skill6.lastUsed + damageBoostDuration) {
-          clearInterval(burnInterval);
-          return;
-        }
-
-        // Apply damage to enemies in the inferno area
-        // Sort enemies by distance to prioritize closest ones for visual effects
-        const enemiesInRange = enemies
-          .filter((enemy) => {
-            const dx = enemy.x - infernoCenter.x;
-            const dy = enemy.y - infernoCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance < infernoRadius;
-          })
-          .sort((a, b) => {
-            const dxA = a.x - infernoCenter.x;
-            const dyA = a.y - infernoCenter.y;
-            const distA = dxA * dxA + dyA * dyA;
-
-            const dxB = b.x - infernoCenter.x;
-            const dyB = b.y - infernoCenter.y;
-            const distB = dxB * dxB + dyB * dyB;
-
-            return distA - distB; // Sort by closest first
-          });
-
-        // Limit visual effects when multiple skills active
-        const maxEnemiesWithVisuals =
-          rageActiveSkillCount > 1
-            ? Math.floor(enemiesInRange.length * 0.3) // Only 30% of enemies get visuals when multiple skills active
-            : enemiesInRange.length;
-
-        for (let i = 0; i < enemiesInRange.length; i++) {
-          const enemy = enemiesInRange[i];
-          const dx = enemy.x - infernoCenter.x;
-          const dy = enemy.y - infernoCenter.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          // Apply burn damage with falloff based on distance
-          const damageMultiplier = 1 - (distance / infernoRadius) * 0.7; // At least 30% damage at edges
-          enemy.health -= burnDamage * damageMultiplier;
-
-          // Create burn effect on enemy - only for closest enemies when multiple skills active
-          if (
-            i < maxEnemiesWithVisuals &&
-            random() > (rageActiveSkillCount > 1 ? 0.7 : 0.5)
-          ) {
-            effects.push({
-              x: enemy.x,
-              y: enemy.y,
-              z: enemy.z + random(10, 30),
-              type: "flameBurst",
-              size: random(15, 25),
-              life: random(20, 40),
-              color: [255, 50 + random(0, 50), 0],
-            });
-          }
-        }
-      }, 500); // Check every 0.5 seconds
-
-      // Add random flame eruptions in the inferno area - reduce when multiple skills active
-      for (let i = 1; i <= totalBursts; i++) {
-        setTimeout(() => {
-          // Only create effects if skill is still active
-          if (frameCount < skills.skill6.lastUsed + damageBoostDuration) {
-            // Create fewer flame eruptions when multiple skills active
-            const eruptions =
-              rageActiveSkillCount > 1
-                ? Math.floor(random(1, 3)) // 1-2 eruptions when multiple skills active
-                : Math.floor(random(3, 6)); // 3-5 eruptions normally
-
-            for (let j = 0; j < eruptions; j++) {
-              const angle = random(TWO_PI);
-              const dist = random(0, infernoRadius * 0.9);
-              const x = infernoCenter.x + cos(angle) * dist;
-              const y = infernoCenter.y + sin(angle) * dist;
-
-              // Create flame eruption
-              effects.push({
-                x: x,
-                y: y,
-                z: 0, // Start at ground level
-                type: "flameEruption",
-                size: random(40, 80),
-                life: random(45, 75),
-                color: [255, 50 + random(0, 50), 0],
-                velocity: { x: 0, y: 0, z: random(2, 5) },
-              });
-
-              // Add floating damage symbols - only if not too many skills active
-              if (rageActiveSkillCount < 2 && random() > 0.7) {
-                effects.push({
-                  x: x + random(-20, 20),
-                  y: y + random(-20, 20),
-                  z: random(30, 70),
-                  type: "damageSymbol",
-                  size: random(15, 25),
-                  life: random(60, 90),
-                  color: [255, 50, 0, 200],
-                  velocity: {
-                    x: random(-0.5, 0.5),
-                    y: random(-0.5, 0.5),
-                    z: random(1, 2),
-                  },
-                });
-              }
-            }
-          }
-        }, i * burstInterval * (1000 / 60)); // Convert frames to ms
-      }
-
-      // Create a global fire effect (red tint to the scene) - always include this as it's important
-      effects.push({
-        type: "globalFire",
-        life: damageBoostDuration,
-        intensity: 0.3 + damageBoost * 0.02, // Stronger effect with damage boost
-        forceRenderDetail: false, // Never force render when optimizing
-      });
-
-      // Add screen shake for impact
-      cameraShake = 8;
-
-      // Reset after duration
-      setTimeout(() => {
-        // Clear interval (redundant safety check)
-        clearInterval(burnInterval);
-
-        // Reset damage multipliers
-        for (let member of squad) {
-          if (member && originalDamageMultiplier[member.id]) {
-            member.damageBoost = originalDamageMultiplier[member.id];
-          } else if (member) {
-            member.damageBoost = 1;
-          }
-
-          // Remove bullet effect
-          member.bulletEffect = null;
-        }
-
-        // Create final explosion when inferno dissipates
-        effects.push({
-          x: infernoCenter.x,
-          y: infernoCenter.y,
-          z: infernoCenter.z,
-          type: "rageExplosion",
-          size: 150,
-          life: 60,
-          color: [255, 100, 0],
-          forceRenderDetail: true,
-        });
-
-        // Add smoke aftermath
-        for (let i = 0; i < 10; i++) {
-          const angle = random(TWO_PI);
-          const dist = random(50, infernoRadius * 0.8);
-          const x = infernoCenter.x + cos(angle) * dist;
-          const y = infernoCenter.y + sin(angle) * dist;
-
-          effects.push({
-            x: x,
-            y: y,
-            z: random(10, 50),
-            type: "smoke",
-            size: random(50, 100),
-            life: random(120, 240),
-            color: [100, 100, 100, 150],
-            velocity: {
-              x: random(-0.2, 0.2),
-              y: random(-0.2, 0.2),
-              z: random(0.5, 1),
-            },
-          });
-        }
-      }, damageBoostDuration * (1000 / 60)); // Convert frames to ms
+      activateInfernalRageSkill();
       break;
 
     case 7: // Quantum Acceleration - Advanced speed boost with time dilation effects
-      let baseSpeedBoost = 1.8; // 80% faster
-      let additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost
-      let totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
-      let speedBoostDuration = 480 + fireRateBoost * 30; // 8s + 0.5s per fire rate
-
-      // Calculate the center of the squad (only once)
-      let accelCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        let totalX = 0, totalY = 0, totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        accelCenter.x = totalX / squad.length;
-        accelCenter.y = totalY / squad.length;
-        accelCenter.z = totalZ / squad.length;
-      }
-
-      // OPTIMIZATION: Reduce visual effects based on device
-      const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-      const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-
-      // Create a single initial effect instead of multiple
-      effects.push({
-        x: accelCenter.x,
-        y: accelCenter.y,
-        z: accelCenter.z,
-        type: "accelerationBurst",
-        size: 120,
-        life: 60,
-        color: [0, 200, 255],
-        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-      });
-
-      // OPTIMIZATION: Only create one shockwave on mobile, up to 2 on medium performance
-      const maxShockwaves = isLowPerformance ? 1 : (isMediumPerformance ? 2 : 3);
-      
-      // Create simplified shockwave (no setTimeout for better performance)
-      effects.push({
-        x: accelCenter.x,
-        y: accelCenter.y,
-        z: accelCenter.z,
-        type: "shockwave",
-        size: 200,
-        life: 45,
-        color: [0, 200, 255],
-        layer: 0,
-        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-      });
-
-      // Store old speed
-      let oldSpeed = squadSpeed;
-      squadSpeed *= totalSpeedMultiplier;
-
-      // OPTIMIZATION: Apply visual effects to limited number of squad members
-      const maxMembersWithEffects = isLowPerformance ? 3 : (isMediumPerformance ? 5 : squad.length);
-      const membersToShow = squad.slice(0, maxMembersWithEffects);
-      
-      // Apply effect to limited number of squad members
-      for (let member of membersToShow) {
-        // OPTIMIZATION: Only create one effect per member
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z,
-          type: "speedAura",
-          size: 30,
-          life: speedBoostDuration,
-          color: [0, 200, 255],
-          member: member, // Reference to follow the member
-          forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-        });
-      }
-
-      // OPTIMIZATION: Remove periodic bursts on mobile, reduce on medium
-      if (!isLowPerformance) {
-        // Add just a few periodic bursts (not every second)
-        const burstCount = isMediumPerformance ? 2 : 4;
-        const interval = speedBoostDuration / burstCount;
-        
-        for (let i = 1; i <= burstCount; i++) {
-          setTimeout(() => {
-            if (frameCount < skills.skill7.lastUsed + speedBoostDuration) {
-              // Create just one burst at squad center instead of for each member
-              effects.push({
-                x: accelCenter.x,
-                y: accelCenter.y,
-                z: accelCenter.z + 10,
-                type: "speedBurst",
-                size: 25,
-                life: 30,
-                color: [0, 200, 255],
-              });
-            }
-          }, i * interval * (1000 / 60));
-        }
-      }
-
-      // Create a global time dilation effect (cyan tint to the scene)
-      // Keep this as it's an important visual indicator of the skill
-      effects.push({
-        type: "globalTimeDilation",
-        life: speedBoostDuration,
-        intensity: 0.2 + fireRateBoost * 0.01,
-        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-      });
-
-      // Add screen shake for impact (reduced)
-      cameraShake = isLowPerformance ? 2 : 4;
-
-      // Reset after duration
-      setTimeout(() => {
-        squadSpeed = oldSpeed;
-
-        // OPTIMIZATION: Create just one final effect at squad center
-        effects.push({
-          x: accelCenter.x,
-          y: accelCenter.y,
-          z: accelCenter.z + 20,
-          type: "speedBurst",
-          size: 40,
-          life: 30,
-          color: [0, 200, 255],
-        });
-      }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
+      activateQuantumAccelerationSkill();
       break;
 
     case 8: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
@@ -10716,4 +9836,972 @@ function createIceEffect(x, y, z) {
     life: 20,
     color: iceColor,
   });
+}
+
+/**
+ * Activates the Machine Gun skill (Skill 2)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateMachineGunSkill() {
+  // Store the normal fire rate to restore later
+  const normalFireRate = squadFireRate;
+
+  // Activate machine gun mode
+  skills.skill2.active = true;
+  skills.skill2.endTime = frameCount + skills.skill2.activeDuration;
+
+  // Set the much faster fire rate (machine gun speed)
+  squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
+
+  // Apply visual effects based on performance level
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const maxMembersWithEffects = isLowPerformance ? 
+    Math.min(3, squad.length) : squad.length;
+  
+  // Apply effects to limited number of squad members for better performance
+  for (let i = 0; i < maxMembersWithEffects; i++) {
+    const member = squad[i];
+    createHitEffect(member.x, member.y, member.z, [255, 255, 0]);
+
+    // Create persistent effect around each squad member to show machine gun mode
+    effects.push({
+      x: member.x,
+      y: member.y,
+      z: member.z,
+      type: "machineGun",
+      size: member.size * 1.2,
+      life: skills.skill2.activeDuration,
+      member: member, // reference to follow the member
+      color: [255, 255, 0], // Yellow for machine gun mode
+    });
+  }
+
+  // Schedule deactivation after duration
+  setTimeout(() => {
+    // Only restore fire rate if machine gun mode is still active
+    // (prevents conflicts with other skills that might have changed fire rate)
+    if (skills.skill2.active) {
+      squadFireRate = normalFireRate;
+      skills.skill2.active = false;
+    }
+  }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Activates the Shield skill (Skill 3)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateShieldSkill() {
+  // Calculate shield parameters based on player stats
+  const shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
+  const shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
+  const shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
+
+  // Activate shield mode
+  skills.skill3.active = true;
+  skills.skill3.endTime = frameCount + shieldDuration;
+
+  // Calculate the center point of the squad for the shield (optimized)
+  const shieldCenter = calculateSquadCenter();
+
+  // Create a protective barrier effect that stays around the squad
+  effects.push({
+    x: shieldCenter.x,
+    y: shieldCenter.y,
+    z: shieldCenter.z,
+    type: "shield", // Changed to "shield" type for consistency with updateEnemies
+    size: shieldRadius,
+    life: shieldDuration,
+    color: [0, 200, 255, 100],
+    strength: shieldStrength, // Store shield strength for enemy repulsion
+    forceRenderDetail: true,
+  });
+
+  // Schedule deactivation after duration
+  setTimeout(() => {
+    skills.skill3.active = false;
+
+    // Final shield collapse effect when the skill ends
+    if (squad.length > 0) {
+      const finalCenter = calculateSquadCenter();
+
+      // Create shield collapse effect
+      effects.push({
+        x: finalCenter.x,
+        y: finalCenter.y,
+        z: finalCenter.z,
+        type: "shockwave",
+        size: shieldRadius * 0.8,
+        life: 45,
+        color: [0, 200, 255],
+        forceRenderDetail: true,
+      });
+    }
+  }, shieldDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Activates the Freeze skill (Skill 4)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateFreezeSkill() {
+  // OPTIMIZATION: Check device performance
+  const freezeIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const freezeIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+  
+  // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
+  const visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
+  const enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
+  const freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
+  const freezeRadius = 1500; // Reduced radius for better performance
+
+  // Activate freeze mode
+  skills.skill4.active = true;
+  skills.skill4.endTime = frameCount + visualEffectDuration;
+
+  // Calculate the center point of the squad for the freeze effect
+  const freezeCenter = calculateSquadCenter();
+
+  // Create visual effects based on performance level
+  createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDuration, freezeIsLowPerformance, freezeIsMediumPerformance);
+  
+  // Apply freeze effect to enemies
+  applyFreezeEffectToEnemies(freezeCenter, freezeRadius, enemyFreezeEffectDuration, freezeStrength, freezeIsLowPerformance, freezeIsMediumPerformance);
+
+  // Schedule deactivation after visual duration
+  setTimeout(() => {
+    skills.skill4.active = false;
+
+    // OPTIMIZATION: Simplified end effect
+    // Create just one final effect at the center
+    effects.push({
+      x: freezeCenter.x,
+      y: freezeCenter.y,
+      z: freezeCenter.z + 20,
+      type: "frostBurst",
+      size: 60,
+      life: 30,
+      color: [200, 240, 255],
+    });
+  }, visualEffectDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Helper function to create freeze visual effects
+ */
+function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDuration, isLowPerformance, isMediumPerformance) {
+  // 1. Create a single shockwave instead of multiple on low performance devices
+  effects.push({
+    x: freezeCenter.x,
+    y: freezeCenter.y,
+    z: freezeCenter.z,
+    type: "shockwave",
+    size: freezeRadius * 0.5,
+    life: 60,
+    color: [100, 200, 255], // Ice blue color
+    layer: 0,
+    forceRenderDetail: false,
+  });
+  
+  // Add additional shockwaves only for medium/high performance
+  if (!isLowPerformance) {
+    setTimeout(() => {
+      effects.push({
+        x: freezeCenter.x,
+        y: freezeCenter.y,
+        z: freezeCenter.z,
+        type: "shockwave",
+        size: freezeRadius * 0.7,
+        life: 50,
+        color: [100, 200, 255],
+        layer: 1,
+        forceRenderDetail: false,
+      });
+    }, 100);
+    
+    // Third shockwave only for high performance
+    if (!isMediumPerformance) {
+      setTimeout(() => {
+        effects.push({
+          x: freezeCenter.x,
+          y: freezeCenter.y,
+          z: freezeCenter.z,
+          type: "shockwave",
+          size: freezeRadius * 0.9,
+          life: 40,
+          color: [100, 200, 255],
+          layer: 2,
+          forceRenderDetail: false,
+        });
+      }, 200);
+    }
+  }
+
+  // 2. Create a single bridge frost effect - always include this as it's the main visual
+  effects.push({
+    x: freezeCenter.x,
+    y: freezeCenter.y,
+    z: 0, // At bridge level
+    type: "bridgeFrost",
+    size: freezeRadius,
+    life: visualEffectDuration,
+    color: [200, 240, 255, 150], // Light blue with transparency
+    forceRenderDetail: false,
+  });
+
+  // 3. OPTIMIZATION: Skip ice crystal formations on low performance devices
+  if (!isLowPerformance) {
+    // Create just a few ice crystals on medium performance
+    const crystalCount = isMediumPerformance ? 2 : 4;
+    
+    for (let i = 0; i < crystalCount; i++) {
+      const angle = random(TWO_PI);
+      const dist = random(100, 300);
+      const x = freezeCenter.x + cos(angle) * dist;
+      const y = freezeCenter.y + sin(angle) * dist;
+      
+      effects.push({
+        x: x,
+        y: y,
+        z: 0, // At bridge level
+        type: "iceCrystal",
+        size: random(40, 80),
+        life: visualEffectDuration - random(0, 30),
+        color: [200, 240, 255, 200],
+        growthTime: random(5, 15),
+        forceRenderDetail: false,
+      });
+    }
+  }
+
+  // Create a global frost effect (blue tint to the scene) - keep this as it's important for feedback
+  effects.push({
+    type: "globalFrost",
+    life: visualEffectDuration,
+    intensity: 0.6 + aoeBoost * 0.03,
+    forceRenderDetail: false,
+  });
+
+  // Add a small screen shake effect for impact (reduced on low performance)
+  cameraShake = isLowPerformance ? 2 : 4;
+}
+
+/**
+ * Helper function to apply freeze effect to enemies
+ */
+function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freezeStrength, isLowPerformance, isMediumPerformance) {
+  // Sort enemies by distance to prioritize closest ones
+  const sortedEnemies = [...enemies].sort((a, b) => {
+    const dxA = a.x - freezeCenter.x;
+    const dyA = a.y - freezeCenter.y;
+    const distA = dxA * dxA + dyA * dyA;
+
+    const dxB = b.x - freezeCenter.x;
+    const dyB = b.y - freezeCenter.y;
+    const distB = dxB * dxB + dyB * dyB;
+
+    return distA - distB; // Sort by closest first
+  });
+
+  // OPTIMIZATION: Limit visual effects to just a few enemies
+  const maxEnemiesWithVisuals = isLowPerformance ? 
+    Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on low performance
+    (isMediumPerformance ? 
+      Math.min(5, sortedEnemies.length) : // Only 5 enemies get visuals on medium performance
+      Math.min(10, sortedEnemies.length)); // Only 10 enemies get visuals on high performance
+
+  // OPTIMIZATION: Apply gameplay effect to all enemies but batch the processing
+  // Process enemies in batches to avoid too many simultaneous timeouts
+  const batchSize = 10;
+  const batches = Math.ceil(sortedEnemies.length / batchSize);
+  
+  for (let batch = 0; batch < batches; batch++) {
+    const startIdx = batch * batchSize;
+    const endIdx = Math.min(startIdx + batchSize, sortedEnemies.length);
+    
+    setTimeout(() => {
+      for (let i = startIdx; i < endIdx; i++) {
+        const enemy = sortedEnemies[i];
+        
+        // Store original speed for restoration
+        if (!enemy.originalSpeed) {
+          enemy.originalSpeed = enemy.speed;
+        }
+        
+        // Apply freeze effect to enemy
+        if (!enemy.effects) enemy.effects = {};
+        enemy.effects.frozen = {
+          duration: duration,
+          slowFactor: max(0.05, freezeStrength),
+          originalSpeed: enemy.originalSpeed || enemy.speed,
+        };
+        
+        // Apply slowdown
+        enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
+        
+        // Only create visual effects for a limited number of enemies
+        if (i < maxEnemiesWithVisuals) {
+          // Create a single visual effect for each visible enemy
+          createIceEffect(enemy.x, enemy.y, enemy.z);
+          
+          // Add a frost burst effect only for the closest enemies
+          if (i < maxEnemiesWithVisuals / 2) {
+            effects.push({
+              x: enemy.x,
+              y: enemy.y,
+              z: enemy.z + 20,
+              type: "frostBurst",
+              size: 30,
+              life: 20,
+              color: [200, 240, 255],
+            });
+          }
+        }
+      }
+    }, batch * 50); // Stagger batches by 50ms
+  }
+
+  // OPTIMIZATION: Skip additional visual effects on low performance devices
+  if (!isLowPerformance) {
+    // Create a central ice explosion
+    effects.push({
+      x: freezeCenter.x,
+      y: freezeCenter.y,
+      z: freezeCenter.z + 50,
+      type: "frostBurst",
+      size: 80,
+      life: 40,
+      color: [200, 240, 255],
+    });
+  }
+}
+
+/**
+ * Activates the Rejuvenation Field skill (Skill 5)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateRejuvenationSkill() {
+  // Calculate healing parameters based on player stats
+  const initialHealAmount = 30 + damageBoost * 3; // Immediate healing
+  const regenAmount = 2 + Math.floor(damageBoost * 0.5); // Health regenerated per tick
+  const regenDuration = 60 * 3 + fireRateBoost * 30; // 5 seconds + 0.5s per fire rate boost
+  const regenInterval = 30; // Regenerate every 0.5 seconds
+  const healRadius = 150 + aoeBoost * 10; // Healing field radius
+
+  // Calculate the center of the squad
+  const healCenter = calculateSquadCenter();
+
+  // Create healing field effect
+  createHealingFieldEffect(healCenter, healRadius, regenDuration);
+
+  // Apply initial healing and visual effects
+  applyInitialHealing(initialHealAmount);
+
+  // Setup regeneration over time
+  setupRegenerationOverTime(regenDuration, regenInterval, regenAmount);
+
+  // Create healing shockwaves
+  createHealingShockwaves(healCenter, healRadius);
+}
+
+/**
+ * Helper function to create healing field effect
+ */
+function createHealingFieldEffect(center, radius, duration) {
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    type: "healingField",
+    size: radius,
+    life: duration,
+    color: [100, 255, 100, 150],
+    pulseRate: 0.05,
+    forceRenderDetail: true,
+  });
+
+  // Create healing particles
+  const particleCount = isMobileDevice ? 10 : 20;
+  for (let i = 0; i < particleCount; i++) {
+    const angle = random(TWO_PI);
+    const dist = random(50, radius);
+    effects.push({
+      x: center.x + cos(angle) * dist,
+      y: center.y + sin(angle) * dist,
+      z: random(20, 100),
+      type: "healParticle",
+      size: random(5, 15),
+      life: random(60, 120),
+      color: [100, 255, 150, 200],
+      velocity: { x: random(-1, 1), y: random(-1, 1), z: random(0.5, 2) },
+    });
+  }
+}
+
+/**
+ * Helper function to apply initial healing to squad members
+ */
+function applyInitialHealing(healAmount) {
+  for (let member of squad) {
+    member.health = min(SQUAD_HEALTH, member.health + healAmount);
+
+    // Create healing effect on each squad member
+    effects.push({
+      x: member.x,
+      y: member.y,
+      z: member.z + 20,
+      type: "healBurst",
+      size: 30,
+      life: 45,
+      color: [100, 255, 150],
+    });
+  }
+}
+
+/**
+ * Helper function to setup regeneration over time
+ */
+function setupRegenerationOverTime(duration, interval, amount) {
+  const totalTicks = Math.floor(duration / interval);
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  
+  for (let i = 1; i <= totalTicks; i++) {
+    setTimeout(() => {
+      // Apply regeneration to all squad members
+      for (let member of squad) {
+        member.health = min(SQUAD_HEALTH, member.health + amount);
+
+        // Small visual effect for each regen tick - reduced on low performance devices
+        if (!isLowPerformance && random() > 0.7) {
+          // Only show effect sometimes to avoid too many particles
+          effects.push({
+            x: member.x + random(-10, 10),
+            y: member.y + random(-10, 10),
+            z: member.z + random(10, 30),
+            type: "healParticle",
+            size: random(3, 8),
+            life: 30,
+            color: [100, 255, 150, 150],
+            velocity: { x: 0, y: 0, z: 1 },
+          });
+        }
+      }
+    }, i * interval * (1000 / 60)); // Convert frames to ms
+  }
+}
+
+/**
+ * Helper function to create healing shockwaves
+ */
+function createHealingShockwaves(center, radius) {
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const shockwaveCount = isLowPerformance ? 1 : 3;
+  
+  for (let i = 0; i < shockwaveCount; i++) {
+    setTimeout(() => {
+      effects.push({
+        x: center.x,
+        y: center.y,
+        z: center.z,
+        type: "shockwave",
+        size: radius * (0.5 + i * 0.25),
+        life: 60 - i * 10,
+        color: [100, 255, 150],
+        layer: i,
+        forceRenderDetail: true,
+      });
+    }, i * 150);
+  }
+}
+
+/**
+ * Activates the Infernal Rage skill (Skill 6)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateInfernalRageSkill() {
+  // Calculate damage parameters based on player stats
+  const damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
+  const damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
+  const damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
+  const damageBoostDuration = 60 + fireRateBoost * 60;
+
+  // Count active skills to adjust visual effects
+  const rageActiveSkillCount = Object.values(skills).filter(
+    (skill) => skill.active
+  ).length;
+
+  // Dynamically reduce effects when multiple skills are active
+  const rageEffectReduction = Math.max(
+    0.3,
+    1 - rageActiveSkillCount * 0.25
+  ); // Reduce by 25% per active skill, min 30%
+
+  // Calculate the center of the squad
+  const infernoSquadCenter = calculateSquadCenter();
+
+  // Create inferno center ahead of the squad (on enemy side)
+  const infernoDistance = 800; // Distance ahead of squad
+  const infernoRadius = 400 + aoeBoost * 20; // Size of the inferno area
+  const infernoCenter = {
+    x: infernoSquadCenter.x,
+    y: infernoSquadCenter.y - infernoDistance, // Negative Y is forward (toward enemies)
+    z: infernoSquadCenter.z,
+  };
+
+  // Apply damage boost to squad members
+  const originalDamageMultiplier = applyDamageBoostToSquad(damageBoostTotalMultiplier);
+
+  // Create visual effects for the inferno
+  createInfernoVisualEffects(infernoCenter, infernoRadius, damageBoostDuration, rageActiveSkillCount, rageEffectReduction);
+
+  // Setup damage over time to enemies in the inferno area
+  const burnInterval = setupInfernoDamageOverTime(infernoCenter, infernoRadius, damageBoostDuration, rageActiveSkillCount);
+
+  // Reset after duration
+  setTimeout(() => {
+    // Clear interval (redundant safety check)
+    clearInterval(burnInterval);
+
+    // Reset damage multipliers and create end effects
+    resetDamageBoostAndCreateEndEffects(originalDamageMultiplier, infernoCenter, infernoRadius);
+  }, damageBoostDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Helper function to apply damage boost to squad members
+ */
+function applyDamageBoostToSquad(multiplier) {
+  const originalDamageMultiplier = {};
+
+  // Apply damage boost to each squad member (gameplay effect)
+  for (let member of squad) {
+    originalDamageMultiplier[member.id] = member.damageBoost || 1;
+    member.damageBoost = multiplier;
+
+    // Enhanced bullet damage effect
+    member.bulletEffect = "fire";
+
+    // Just a small visual indicator on squad members (minimal)
+    effects.push({
+      x: member.x,
+      y: member.y,
+      z: member.z + 20,
+      type: "flameBurst",
+      size: 30,
+      life: 45,
+      color: [255, 100, 0],
+    });
+  }
+
+  return originalDamageMultiplier;
+}
+
+/**
+ * Helper function to create visual effects for the inferno
+ */
+function createInfernoVisualEffects(center, radius, duration, activeSkillCount, effectReduction) {
+  // Create initial massive explosion at inferno center - always include this as it's the main visual
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    type: "rageExplosion",
+    size: 200,
+    life: 90,
+    color: [255, 50, 0],
+    forceRenderDetail: false, // Never force render when optimizing
+  });
+
+  // Create expanding fire shockwaves - reduce count when multiple skills active
+  const shockwaveCount = activeSkillCount > 1 ? 2 : 5; // Fewer shockwaves when skills active
+  for (let i = 0; i < shockwaveCount; i++) {
+    setTimeout(() => {
+      effects.push({
+        x: center.x,
+        y: center.y,
+        z: center.z,
+        type: "shockwave",
+        size: radius * (0.5 + i * 0.2),
+        life: 60 - i * 5,
+        color: [255, 50, 0],
+        layer: i,
+        forceRenderDetail: false, // Never force render when optimizing
+      });
+    }, i * 150);
+  }
+
+  // Create persistent inferno field effect - always include this as it's the main visual
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: 0, // At ground level
+    type: "infernoField",
+    size: radius,
+    life: duration,
+    color: [255, 50, 0, 150],
+    pulseRate: 0.05,
+    forceRenderDetail: false, // Never force render when optimizing
+  });
+
+  // Create burning bridge effect - multiple fire patches on the bridge
+  // Reduce count when multiple skills active
+  const firePatchCount = Math.floor(
+    (15 + Math.floor(aoeBoost / 2)) * effectReduction
+  );
+  for (let i = 0; i < firePatchCount; i++) {
+    const angle = random(TWO_PI);
+    const dist = random(50, radius * 0.9);
+    const x = center.x + cos(angle) * dist;
+    const y = center.y + sin(angle) * dist;
+
+    effects.push({
+      x: x,
+      y: y,
+      z: 0, // At bridge level
+      type: "firePatch",
+      size: random(50, 100),
+      life: duration,
+      color: [255, 50, 0, 200],
+      pulseRate: random(0.03, 0.08),
+      forceRenderDetail: false, // Never force render when optimizing
+    });
+  }
+
+  // Create a global fire effect (red tint to the scene) - always include this as it's important
+  effects.push({
+    type: "globalFire",
+    life: duration,
+    intensity: 0.3 + damageBoost * 0.02, // Stronger effect with damage boost
+    forceRenderDetail: false, // Never force render when optimizing
+  });
+
+  // Add screen shake for impact
+  cameraShake = 8;
+}
+
+/**
+ * Helper function to setup damage over time to enemies in the inferno area
+ */
+function setupInfernoDamageOverTime(center, radius, duration, activeSkillCount) {
+  const burnDamage = 5 + damageBoost * 2; // Base damage per tick
+  
+  // Create interval to damage enemies in the inferno area
+  const burnInterval = setInterval(() => {
+    // Check if effect is still active
+    if (frameCount > skills.skill6.lastUsed + duration) {
+      clearInterval(burnInterval);
+      return;
+    }
+
+    // Apply damage to enemies in the inferno area
+    // Sort enemies by distance to prioritize closest ones for visual effects
+    const enemiesInRange = enemies
+      .filter((enemy) => {
+        const dx = enemy.x - center.x;
+        const dy = enemy.y - center.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < radius;
+      })
+      .sort((a, b) => {
+        const dxA = a.x - center.x;
+        const dyA = a.y - center.y;
+        const distA = dxA * dxA + dyA * dyA;
+
+        const dxB = b.x - center.x;
+        const dyB = b.y - center.y;
+        const distB = dxB * dxB + dyB * dyB;
+
+        return distA - distB; // Sort by closest first
+      });
+
+    // Limit visual effects when multiple skills active
+    const maxEnemiesWithVisuals =
+      activeSkillCount > 1
+        ? Math.floor(enemiesInRange.length * 0.3) // Only 30% of enemies get visuals when multiple skills active
+        : enemiesInRange.length;
+
+    for (let i = 0; i < enemiesInRange.length; i++) {
+      const enemy = enemiesInRange[i];
+      const dx = enemy.x - center.x;
+      const dy = enemy.y - center.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Apply burn damage with falloff based on distance
+      const damageMultiplier = 1 - (distance / radius) * 0.7; // At least 30% damage at edges
+      enemy.health -= burnDamage * damageMultiplier;
+
+      // Create burn effect on enemy - only for closest enemies when multiple skills active
+      if (
+        i < maxEnemiesWithVisuals &&
+        random() > (activeSkillCount > 1 ? 0.7 : 0.5)
+      ) {
+        effects.push({
+          x: enemy.x,
+          y: enemy.y,
+          z: enemy.z + random(10, 30),
+          type: "flameBurst",
+          size: random(15, 25),
+          life: random(20, 40),
+          color: [255, 50 + random(0, 50), 0],
+        });
+      }
+    }
+  }, 500); // Check every 0.5 seconds
+
+  // Add periodic flame bursts throughout the duration - reduce frequency when multiple skills active
+  const burstInterval = activeSkillCount > 1 ? 120 : 60; // Every 1-2 seconds depending on active skills
+  const totalBursts = Math.floor(duration / burstInterval);
+
+  for (let i = 1; i <= totalBursts; i++) {
+    setTimeout(() => {
+      // Only create effects if skill is still active
+      if (frameCount < skills.skill6.lastUsed + duration) {
+        // Create fewer flame eruptions when multiple skills active
+        const eruptions =
+          activeSkillCount > 1
+            ? Math.floor(random(1, 3)) // 1-2 eruptions when multiple skills active
+            : Math.floor(random(3, 6)); // 3-5 eruptions normally
+
+        for (let j = 0; j < eruptions; j++) {
+          const angle = random(TWO_PI);
+          const dist = random(0, radius * 0.9);
+          const x = center.x + cos(angle) * dist;
+          const y = center.y + sin(angle) * dist;
+
+          // Create flame eruption
+          effects.push({
+            x: x,
+            y: y,
+            z: 0, // Start at ground level
+            type: "flameEruption",
+            size: random(40, 80),
+            life: random(45, 75),
+            color: [255, 50 + random(0, 50), 0],
+            velocity: { x: 0, y: 0, z: random(2, 5) },
+          });
+
+          // Add floating damage symbols - only if not too many skills active
+          if (activeSkillCount < 2 && random() > 0.7) {
+            effects.push({
+              x: x + random(-20, 20),
+              y: y + random(-20, 20),
+              z: random(30, 70),
+              type: "damageSymbol",
+              size: random(15, 25),
+              life: random(60, 90),
+              color: [255, 50, 0, 200],
+              velocity: {
+                x: random(-0.5, 0.5),
+                y: random(-0.5, 0.5),
+                z: random(1, 2),
+              },
+            });
+          }
+        }
+      }
+    }, i * burstInterval * (1000 / 60)); // Convert frames to ms
+  }
+
+  return burnInterval;
+}
+
+/**
+ * Helper function to reset damage boost and create end effects
+ */
+function resetDamageBoostAndCreateEndEffects(originalMultipliers, center, radius) {
+  // Reset damage multipliers
+  for (let member of squad) {
+    if (member && originalMultipliers[member.id]) {
+      member.damageBoost = originalMultipliers[member.id];
+    } else if (member) {
+      member.damageBoost = 1;
+    }
+
+    // Remove bullet effect
+    member.bulletEffect = null;
+  }
+
+  // Create final explosion when inferno dissipates
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    type: "rageExplosion",
+    size: 150,
+    life: 60,
+    color: [255, 100, 0],
+    forceRenderDetail: true,
+  });
+
+  // Add smoke aftermath
+  const smokeCount = isMobileDevice ? 5 : 10;
+  for (let i = 0; i < smokeCount; i++) {
+    const angle = random(TWO_PI);
+    const dist = random(50, radius * 0.8);
+    const x = center.x + cos(angle) * dist;
+    const y = center.y + sin(angle) * dist;
+
+    effects.push({
+      x: x,
+      y: y,
+      z: random(10, 50),
+      type: "smoke",
+      size: random(50, 100),
+      life: random(120, 240),
+      color: [100, 100, 100, 150],
+      velocity: {
+        x: random(-0.2, 0.2),
+        y: random(-0.2, 0.2),
+        z: random(0.5, 1),
+      },
+    });
+  }
+}
+
+/**
+ * Activates the Quantum Acceleration skill (Skill 7)
+ * Optimized implementation with reduced complexity and improved performance
+ */
+function activateQuantumAccelerationSkill() {
+  // Calculate speed parameters based on player stats
+  const baseSpeedBoost = 1.8; // 80% faster
+  const additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost
+  const totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
+  const speedBoostDuration = 480 + fireRateBoost * 30; // 8s + 0.5s per fire rate
+
+  // Calculate the center of the squad (only once)
+  const accelCenter = calculateSquadCenter();
+
+  // OPTIMIZATION: Reduce visual effects based on device
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+
+  // Create visual effects
+  createAccelerationVisualEffects(accelCenter, speedBoostDuration, isLowPerformance, isMediumPerformance);
+
+  // Store old speed and apply speed boost
+  const oldSpeed = squadSpeed;
+  squadSpeed *= totalSpeedMultiplier;
+
+  // Reset after duration
+  setTimeout(() => {
+    squadSpeed = oldSpeed;
+
+    // OPTIMIZATION: Create just one final effect at squad center
+    effects.push({
+      x: accelCenter.x,
+      y: accelCenter.y,
+      z: accelCenter.z + 20,
+      type: "speedBurst",
+      size: 40,
+      life: 30,
+      color: [0, 200, 255],
+    });
+  }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Helper function to create visual effects for acceleration
+ */
+function createAccelerationVisualEffects(center, duration, isLowPerformance, isMediumPerformance) {
+  // Create a single initial effect instead of multiple
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    type: "accelerationBurst",
+    size: 120,
+    life: 60,
+    color: [0, 200, 255],
+    forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+  });
+
+  // Create simplified shockwave (no setTimeout for better performance)
+  effects.push({
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    type: "shockwave",
+    size: 200,
+    life: 45,
+    color: [0, 200, 255],
+    layer: 0,
+    forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+  });
+
+  // OPTIMIZATION: Apply visual effects to limited number of squad members
+  const maxMembersWithEffects = isLowPerformance ? 3 : (isMediumPerformance ? 5 : squad.length);
+  const membersToShow = squad.slice(0, maxMembersWithEffects);
+  
+  // Apply effect to limited number of squad members
+  for (let member of membersToShow) {
+    // OPTIMIZATION: Only create one effect per member
+    effects.push({
+      x: member.x,
+      y: member.y,
+      z: member.z,
+      type: "speedAura",
+      size: 30,
+      life: duration,
+      color: [0, 200, 255],
+      member: member, // Reference to follow the member
+      forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+    });
+  }
+
+  // OPTIMIZATION: Remove periodic bursts on mobile, reduce on medium
+  if (!isLowPerformance) {
+    // Add just a few periodic bursts (not every second)
+    const burstCount = isMediumPerformance ? 2 : 4;
+    const interval = duration / burstCount;
+    
+    for (let i = 1; i <= burstCount; i++) {
+      setTimeout(() => {
+        if (frameCount < skills.skill7.lastUsed + duration) {
+          // Create just one burst at squad center instead of for each member
+          effects.push({
+            x: center.x,
+            y: center.y,
+            z: center.z + 10,
+            type: "speedBurst",
+            size: 25,
+            life: 30,
+            color: [0, 200, 255],
+          });
+        }
+      }, i * interval * (1000 / 60));
+    }
+  }
+
+  // Create a global time dilation effect (cyan tint to the scene)
+  // Keep this as it's an important visual indicator of the skill
+  effects.push({
+    type: "globalTimeDilation",
+    life: duration,
+    intensity: 0.2 + fireRateBoost * 0.01,
+    forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+  });
+
+  // Add screen shake for impact (reduced)
+  cameraShake = isLowPerformance ? 2 : 4;
+}
+
+/**
+ * Helper function to calculate the center point of the squad
+ * Used by multiple skills to avoid code duplication
+ */
+function calculateSquadCenter() {
+  const center = { x: 0, y: 0, z: 0 };
+  if (squad.length > 0) {
+    let totalX = 0, totalY = 0, totalZ = 0;
+    for (let member of squad) {
+      totalX += member.x;
+      totalY += member.y;
+      totalZ += member.z;
+    }
+    center.x = totalX / squad.length;
+    center.y = totalY / squad.length;
+    center.z = totalZ / squad.length;
+  }
+  return center;
 }
