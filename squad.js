@@ -1791,27 +1791,27 @@ function drawSkyAndMountains() {
     }
   }
   
-  // ===== CLOUDS =====
-  // Add clouds near the horizon
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 180);
+  // // ===== CLOUDS =====
+  // // Add clouds near the horizon
+  // if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+  //   fill(255, 255, 255, 180);
     
-    // Use noise for cloud positions
-    for (let i = 0; i < 12; i++) {
-      // Position clouds more toward the horizon
-      const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
-      const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
-      const cloudWidth = noise(i * 0.3) * 200 + 100;
-      const cloudHeight = 30 + noise(i) * 20;
+  //   // Use noise for cloud positions
+  //   for (let i = 0; i < 12; i++) {
+  //     // Position clouds more toward the horizon
+  //     const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
+  //     const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
+  //     const cloudWidth = noise(i * 0.3) * 200 + 100;
+  //     const cloudHeight = 30 + noise(i) * 20;
       
-      // Draw cloud as a series of ellipses
-      for (let j = 0; j < 5; j++) {
-        const offsetX = (j - 2) * cloudWidth/6;
-        const offsetY = sin(j * 0.5) * 5;
-        ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
-      }
-    }
-  }
+  //     // Draw cloud as a series of ellipses
+  //     for (let j = 0; j < 5; j++) {
+  //       const offsetX = (j - 2) * cloudWidth/6;
+  //       const offsetY = sin(j * 0.5) * 5;
+  //       ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
+  //     }
+  //   }
+  // }
   
   // ===== DISTANT MOUNTAINS =====
   // Draw mountain ranges at the horizon
@@ -6978,6 +6978,12 @@ function activateSkill(skillNumber) {
       let enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
       let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
       let freezeRadius = 1500; // Reduced radius for better performance
+      
+      // Count active skills to adjust visual effects
+      const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+      
+      // Dynamically reduce effects when multiple skills are active
+      const effectReduction = Math.max(0.3, 1 - (activeSkillCount * 0.25)); // Reduce by 25% per active skill, min 30%
 
       // Activate freeze mode
       skills.skill4.active = true;
@@ -7000,8 +7006,8 @@ function activateSkill(skillNumber) {
       }
 
       // Create a global freeze effect
-      // 1. Create a simplified freezing shockwave
-      const shockwaveCount = isMobileDevice ? 3 : 5; // Fewer rings on mobile
+      // 1. Create a simplified freezing shockwave - reduce count when multiple skills active
+      shockwaveCount = activeSkillCount > 1 ? 2 : (isMobileDevice ? 3 : 5); // Fewer rings when skills active
       for (let i = 0; i < shockwaveCount; i++) {
         setTimeout(() => {
           effects.push({
@@ -7013,12 +7019,12 @@ function activateSkill(skillNumber) {
             life: 60 - i * 5, // Shorter life for better performance
             color: [100, 200, 255], // Ice blue color
             layer: i,
-            forceRenderDetail: !isMobileDevice, // Only force render on desktop
+            forceRenderDetail: false, // Never force render when optimizing
           });
         }, i * 80); // Faster expansion
       }
 
-      // 2. Create a single bridge frost effect
+      // 2. Create a single bridge frost effect - always include this as it's the main visual
       effects.push({
         x: freezeCenter.x,
         y: freezeCenter.y,
@@ -7027,46 +7033,71 @@ function activateSkill(skillNumber) {
         size: freezeRadius,
         life: visualEffectDuration,
         color: [200, 240, 255, 150], // Light blue with transparency
-        forceRenderDetail: !isMobileDevice, // Only force render on desktop
+        forceRenderDetail: false, // Never force render when optimizing
       });
 
-      // 3. Create simplified ice crystal formations
-      // Adjust crystal count based on performance level
-      let crystalCount = isMobileDevice ? 10 : 20; // Significantly reduced count
+      // 3. Create simplified ice crystal formations - only if not too many skills active
+      if (activeSkillCount < 2) {
+        // Adjust crystal count based on performance level and active skills
+        const gridSize = 2; // Smaller grid for better performance
+        const gridSpacing = 300; // 300 units apart
+        
+        // Reduce grid size when multiple skills active
+        const effectiveGridSize = Math.floor(gridSize * effectReduction);
+        
+        // Only create crystals if we have a valid grid size
+        if (effectiveGridSize > 0) {
+          for (let gridX = -effectiveGridSize / 2; gridX <= effectiveGridSize / 2; gridX++) {
+            for (let gridY = -effectiveGridSize / 2; gridY <= effectiveGridSize / 2; gridY++) {
+              // Add some randomness to grid positions
+              const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
+              const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
 
-      // Create a simplified grid of ice crystals
-      const gridSize = isMobileDevice ? 2 : 3; // Smaller grid for better performance
-      const gridSpacing = 300; // 300 units apart
-
-      for (let gridX = -gridSize / 2; gridX <= gridSize / 2; gridX++) {
-        for (let gridY = -gridSize / 2; gridY <= gridSize / 2; gridY++) {
-          // Add some randomness to grid positions
-          const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
-          const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
-
-          // Create a single crystal at each grid point
-          effects.push({
-            x: x,
-            y: y,
-            z: 0, // Start at bridge level
-            type: "iceCrystal",
-            size: random(40, 80),
-            life: visualEffectDuration - random(0, 30),
-            color: [200, 240, 255, 200],
-            growthTime: random(5, 15), // Faster growth
-            forceRenderDetail: false, // Never force render for better performance
-          });
+              // Create a single crystal at each grid point
+              effects.push({
+                x: x,
+                y: y,
+                z: 0, // Start at bridge level
+                type: "iceCrystal",
+                size: random(40, 80),
+                life: visualEffectDuration - random(0, 30),
+                color: [200, 240, 255, 200],
+                growthTime: random(5, 15), // Faster growth
+                forceRenderDetail: false, // Never force render for better performance
+              });
+            }
+          }
         }
       }
 
       // 4. Apply freeze effect to ALL enemies regardless of distance
-      let enemiesFrozen = 0;
-
+      // This is the gameplay effect, so we keep it but optimize the visuals
+      
       // Create a faster "freeze wave" that moves outward
       const freezeWaveSpeed = 30; // Faster units per frame
       const maxFreezeDelay = 1000; // Reduced maximum delay in ms
+      
+      // Sort enemies by distance to prioritize closest ones
+      const sortedEnemies = [...enemies].sort((a, b) => {
+        const dxA = a.x - freezeCenter.x;
+        const dyA = a.y - freezeCenter.y;
+        const distA = dxA * dxA + dyA * dyA;
+        
+        const dxB = b.x - freezeCenter.x;
+        const dyB = b.y - freezeCenter.y;
+        const distB = dxB * dxB + dyB * dyB;
+        
+        return distA - distB; // Sort by closest first
+      });
+      
+      // Limit the number of enemies that get visual effects when multiple skills active
+      const maxEnemiesWithVisuals = activeSkillCount > 1 ? 
+        Math.floor(sortedEnemies.length * 0.5) : // Only 50% of enemies get visuals when multiple skills active
+        sortedEnemies.length;
 
-      for (let enemy of enemies) {
+      for (let i = 0; i < sortedEnemies.length; i++) {
+        const enemy = sortedEnemies[i];
+        
         // Calculate distance from freeze center
         const dx = enemy.x - freezeCenter.x;
         const dy = enemy.y - freezeCenter.y;
@@ -7097,74 +7128,83 @@ function activateSkill(skillNumber) {
             enemy.effects.frozen.originalSpeed *
             enemy.effects.frozen.slowFactor;
 
-          // Create ice effect on enemy
-          createIceEffect(enemy.x, enemy.y, enemy.z);
+          // Only create visual effects for a limited number of enemies when multiple skills active
+          if (i < maxEnemiesWithVisuals) {
+            // Create ice effect on enemy - simplified when multiple skills active
+            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.5) {
+              createIceEffect(enemy.x, enemy.y, enemy.z);
+            }
 
-          // Add a single ice crystal to the enemy
-          const offsetX = random(-20, 20);
-          const offsetY = random(-20, 20);
-          const offsetZ = random(0, 30);
+            // Add a single ice crystal to the enemy - only for closest enemies when multiple skills active
+            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.3) {
+              const offsetX = random(-20, 20);
+              const offsetY = random(-20, 20);
+              const offsetZ = random(0, 30);
 
-          effects.push({
-            x: enemy.x + offsetX,
-            y: enemy.y + offsetY,
-            z: enemy.z + offsetZ,
-            type: "iceCrystal",
-            size: random(10, 20),
-            life: min(visualEffectDuration, 60), // Short visual effect
-            color: [200, 240, 255, 200],
-            growthTime: random(5, 10),
-            enemy: enemy, // Reference to follow the enemy
-            offsetX: offsetX,
-            offsetY: offsetY,
-            offsetZ: offsetZ,
-            forceRenderDetail: false,
-          });
+              effects.push({
+                x: enemy.x + offsetX,
+                y: enemy.y + offsetY,
+                z: enemy.z + offsetZ,
+                type: "iceCrystal",
+                size: random(10, 20),
+                life: min(visualEffectDuration, 60), // Short visual effect
+                color: [200, 240, 255, 200],
+                growthTime: random(5, 10),
+                enemy: enemy, // Reference to follow the enemy
+                offsetX: offsetX,
+                offsetY: offsetY,
+                offsetZ: offsetZ,
+                forceRenderDetail: false,
+              });
+            }
 
-          // Add a frost burst effect
-          effects.push({
-            x: enemy.x,
-            y: enemy.y,
-            z: enemy.z + 20,
-            type: "frostBurst",
-            size: 30,
-            life: 20,
-            color: [200, 240, 255],
-          });
+            // Add a frost burst effect - only for closest enemies when multiple skills active
+            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.2) {
+              effects.push({
+                x: enemy.x,
+                y: enemy.y,
+                z: enemy.z + 20,
+                type: "frostBurst",
+                size: 30,
+                life: 20,
+                color: [200, 240, 255],
+              });
+            }
+          }
         }, freezeDelay);
-
-        enemiesFrozen++;
       }
 
-      // 5. Add simplified visual feedback for the freeze
-      // Create a central ice explosion
-      effects.push({
-        x: freezeCenter.x,
-        y: freezeCenter.y,
-        z: freezeCenter.z + 50,
-        type: "frostBurst",
-        size: 80,
-        life: 40,
-        color: [200, 240, 255],
-      });
-
-      // Add a few floating ice shards
-      const shardCount = isMobileDevice ? 5 : 10;
-      for (let i = 0; i < shardCount; i++) {
-        const angle = random(TWO_PI);
-        const dist = random(100, 300);
+      // 5. Add simplified visual feedback for the freeze - only if not too many skills active
+      if (activeSkillCount < 2) {
+        // Create a central ice explosion
         effects.push({
-          x: freezeCenter.x + cos(angle) * dist,
-          y: freezeCenter.y + sin(angle) * dist,
-          z: random(50, 150),
-          type: "iceCrystal",
-          size: random(15, 30),
-          life: random(60, 90),
-          color: [200, 240, 255, 180],
-          growthTime: 5,
-          rotationSpeed: random(-0.05, 0.05),
-          forceRenderDetail: false,
+          x: freezeCenter.x,
+          y: freezeCenter.y,
+          z: freezeCenter.z + 50,
+          type: "frostBurst",
+          size: 80,
+          life: 40,
+          color: [200, 240, 255],
         });
+
+        // Add a few floating ice shards - reduced when multiple skills active
+        const shardCount = Math.floor((isMobileDevice ? 5 : 10) * effectReduction);
+        for (let i = 0; i < shardCount; i++) {
+          const angle = random(TWO_PI);
+          const dist = random(100, 300);
+          effects.push({
+            x: freezeCenter.x + cos(angle) * dist,
+            y: freezeCenter.y + sin(angle) * dist,
+            z: random(50, 150),
+            type: "iceCrystal",
+            size: random(15, 30),
+            life: random(60, 90),
+            color: [200, 240, 255, 180],
+            growthTime: 5,
+            rotationSpeed: random(-0.05, 0.05),
+            forceRenderDetail: false,
+          });
+        }
       }
 
       // 6. Create a global frost effect (blue tint to the scene) - shorter duration
@@ -7338,6 +7378,12 @@ function activateSkill(skillNumber) {
       let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
       let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
       let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + fireRateBoost * 60; // 30s in debug mode, 10s + 1s per fire rate in normal mode
+      
+      // Count active skills to adjust visual effects
+      const rageActiveSkillCount = Object.values(skills).filter(skill => skill.active).length;
+      
+      // Dynamically reduce effects when multiple skills are active
+      const rageEffectReduction = Math.max(0.3, 1 - (rageActiveSkillCount * 0.25)); // Reduce by 25% per active skill, min 30%
 
       // Calculate the center of the squad
       let infernoSquadCenter = { x: 0, y: 0, z: 0 };
@@ -7387,7 +7433,7 @@ function activateSkill(skillNumber) {
         });
       }
 
-      // Create initial massive explosion at inferno center
+      // Create initial massive explosion at inferno center - always include this as it's the main visual
       effects.push({
         x: infernoCenter.x,
         y: infernoCenter.y,
@@ -7396,11 +7442,12 @@ function activateSkill(skillNumber) {
         size: 200,
         life: 90,
         color: [255, 50, 0],
-        forceRenderDetail: true,
+        forceRenderDetail: false, // Never force render when optimizing
       });
 
-      // Create expanding fire shockwaves
-      for (let i = 0; i < 5; i++) {
+      // Create expanding fire shockwaves - reduce count when multiple skills active
+      const rageShockwaveCount = rageActiveSkillCount > 1 ? 2 : 5; // Fewer shockwaves when skills active
+      for (let i = 0; i < rageShockwaveCount; i++) {
         setTimeout(() => {
           effects.push({
             x: infernoCenter.x,
@@ -7411,12 +7458,12 @@ function activateSkill(skillNumber) {
             life: 60 - i * 5,
             color: [255, 50, 0],
             layer: i,
-            forceRenderDetail: true,
+            forceRenderDetail: false, // Never force render when optimizing
           });
         }, i * 150);
       }
 
-      // Create persistent inferno field effect
+      // Create persistent inferno field effect - always include this as it's the main visual
       effects.push({
         x: infernoCenter.x,
         y: infernoCenter.y,
@@ -7426,11 +7473,12 @@ function activateSkill(skillNumber) {
         life: damageBoostDuration,
         color: [255, 50, 0, 150],
         pulseRate: 0.05,
-        forceRenderDetail: true,
+        forceRenderDetail: false, // Never force render when optimizing
       });
 
       // Create burning bridge effect - multiple fire patches on the bridge
-      const firePatchCount = 15 + Math.floor(aoeBoost / 2);
+      // Reduce count when multiple skills active
+      const firePatchCount = Math.floor((15 + Math.floor(aoeBoost / 2)) * rageEffectReduction);
       for (let i = 0; i < firePatchCount; i++) {
         const angle = random(TWO_PI);
         const dist = random(50, infernoRadius * 0.9);
@@ -7446,12 +7494,12 @@ function activateSkill(skillNumber) {
           life: damageBoostDuration,
           color: [255, 50, 0, 200],
           pulseRate: random(0.03, 0.08),
-          forceRenderDetail: true,
+          forceRenderDetail: false, // Never force render when optimizing
         });
       }
 
-      // Add periodic flame bursts throughout the duration
-      const burstInterval = 60; // Every second
+      // Add periodic flame bursts throughout the duration - reduce frequency when multiple skills active
+      const burstInterval = rageActiveSkillCount > 1 ? 120 : 60; // Every 1-2 seconds depending on active skills
       const totalBursts = Math.floor(damageBoostDuration / burstInterval);
 
       // Create interval to damage enemies in the inferno area
@@ -7464,39 +7512,64 @@ function activateSkill(skillNumber) {
         }
 
         // Apply damage to enemies in the inferno area
-        for (let enemy of enemies) {
+        // Sort enemies by distance to prioritize closest ones for visual effects
+        const enemiesInRange = enemies.filter(enemy => {
+          const dx = enemy.x - infernoCenter.x;
+          const dy = enemy.y - infernoCenter.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          return distance < infernoRadius;
+        }).sort((a, b) => {
+          const dxA = a.x - infernoCenter.x;
+          const dyA = a.y - infernoCenter.y;
+          const distA = dxA * dxA + dyA * dyA;
+          
+          const dxB = b.x - infernoCenter.x;
+          const dyB = b.y - infernoCenter.y;
+          const distB = dxB * dxB + dyB * dyB;
+          
+          return distA - distB; // Sort by closest first
+        });
+        
+        // Limit visual effects when multiple skills active
+        const maxEnemiesWithVisuals = rageActiveSkillCount > 1 ? 
+          Math.floor(enemiesInRange.length * 0.3) : // Only 30% of enemies get visuals when multiple skills active
+          enemiesInRange.length;
+
+        for (let i = 0; i < enemiesInRange.length; i++) {
+          const enemy = enemiesInRange[i];
           const dx = enemy.x - infernoCenter.x;
           const dy = enemy.y - infernoCenter.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < infernoRadius) {
-            // Apply burn damage with falloff based on distance
-            const damageMultiplier = 1 - (distance / infernoRadius) * 0.7; // At least 30% damage at edges
-            enemy.health -= burnDamage * damageMultiplier;
+          // Apply burn damage with falloff based on distance
+          const damageMultiplier = 1 - (distance / infernoRadius) * 0.7; // At least 30% damage at edges
+          enemy.health -= burnDamage * damageMultiplier;
 
-            // Create burn effect on enemy
-            if (random() > 0.5) {
-              effects.push({
-                x: enemy.x,
-                y: enemy.y,
-                z: enemy.z + random(10, 30),
-                type: "flameBurst",
-                size: random(15, 25),
-                life: random(20, 40),
-                color: [255, 50 + random(0, 50), 0],
-              });
-            }
+          // Create burn effect on enemy - only for closest enemies when multiple skills active
+          if ((i < maxEnemiesWithVisuals) && (random() > (rageActiveSkillCount > 1 ? 0.7 : 0.5))) {
+            effects.push({
+              x: enemy.x,
+              y: enemy.y,
+              z: enemy.z + random(10, 30),
+              type: "flameBurst",
+              size: random(15, 25),
+              life: random(20, 40),
+              color: [255, 50 + random(0, 50), 0],
+            });
           }
         }
       }, 500); // Check every 0.5 seconds
 
-      // Add random flame eruptions in the inferno area
+      // Add random flame eruptions in the inferno area - reduce when multiple skills active
       for (let i = 1; i <= totalBursts; i++) {
         setTimeout(() => {
           // Only create effects if skill is still active
           if (frameCount < skills.skill6.lastUsed + damageBoostDuration) {
-            // Create 3-5 flame eruptions per burst
-            const eruptions = random(3, 6);
+            // Create fewer flame eruptions when multiple skills active
+            const eruptions = rageActiveSkillCount > 1 ? 
+              Math.floor(random(1, 3)) : // 1-2 eruptions when multiple skills active
+              Math.floor(random(3, 6)); // 3-5 eruptions normally
+              
             for (let j = 0; j < eruptions; j++) {
               const angle = random(TWO_PI);
               const dist = random(0, infernoRadius * 0.9);
@@ -7515,8 +7588,8 @@ function activateSkill(skillNumber) {
                 velocity: { x: 0, y: 0, z: random(2, 5) },
               });
 
-              // Add floating damage symbols
-              if (random() > 0.7) {
+              // Add floating damage symbols - only if not too many skills active
+              if (rageActiveSkillCount < 2 && random() > 0.7) {
                 effects.push({
                   x: x + random(-20, 20),
                   y: y + random(-20, 20),
@@ -7537,12 +7610,12 @@ function activateSkill(skillNumber) {
         }, i * burstInterval * (1000 / 60)); // Convert frames to ms
       }
 
-      // Create a global fire effect (red tint to the scene)
+      // Create a global fire effect (red tint to the scene) - always include this as it's important
       effects.push({
         type: "globalFire",
         life: damageBoostDuration,
         intensity: 0.3 + damageBoost * 0.02, // Stronger effect with damage boost
-        forceRenderDetail: true,
+        forceRenderDetail: false, // Never force render when optimizing
       });
 
       // Add screen shake for impact
