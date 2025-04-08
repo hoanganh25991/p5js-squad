@@ -125,7 +125,7 @@ const ENEMIES_PER_ROW = 5 * 2; // Number of enemies per row when spawning
 // Projectiles
 let projectiles = [];
 const PROJECTILE_SPEED = 12 * 1.5; // Faster projectiles
-const PROJECTILE_SIZE = STANDARD_ENEMY_SIZE * 1.2;
+const PROJECTILE_SIZE = 30;
 
 // Visual effects
 let effects = [];
@@ -486,47 +486,47 @@ const PerformanceManager = {
 
   // Apply performance settings to WebGL context
   applyWebGLSettings: function () {
-    // Configure WebGL settings based on performance level
-    if (currentPerformanceLevel === PerformanceLevel.LOW) {
-      setAttributes("antialias", false);
-      setAttributes("perPixelLighting", false);
-      setAttributes("depth", false);
-      setAttributes("preserveDrawingBuffer", false);
-      setAttributes("alpha", false); // Disable alpha for better performance
-    } else if (currentPerformanceLevel === PerformanceLevel.MEDIUM) {
-      setAttributes("antialias", isMobileDevice ? false : true);
-      setAttributes("perPixelLighting", false);
-      setAttributes("preserveDrawingBuffer", false);
-      setAttributes("alpha", true);
-      if (isMobileDevice) {
-        setAttributes("depth", false);
-      } else {
-        setAttributes("depth", true);
-      }
-    } else {
-      setAttributes("antialias", true);
-      setAttributes("perPixelLighting", isMobileDevice ? false : true);
-      setAttributes("depth", true);
-      setAttributes("preserveDrawingBuffer", false);
-      setAttributes("alpha", true);
-    }
-
-    // Disable texture mipmapping to save memory
-    textureMode(NORMAL);
-
-    // Enable hardware acceleration hints
-    if (typeof _renderer !== "undefined" && _renderer.GL) {
-      const gl = _renderer.GL;
-      gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
-      gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
-
-      // Additional WebGL optimizations
-      if (isMobileDevice) {
-        // Disable depth testing for transparent objects on mobile
-        gl.disable(gl.DEPTH_TEST);
-        // Use simpler blending mode
+    try {
+      // Configure WebGL settings based on performance level
+      // Use a consistent set of attributes to avoid shader recompilation issues
+      const attributes = {
+        antialias: currentPerformanceLevel !== PerformanceLevel.LOW,
+        alpha: true,
+        depth: true,
+        preserveDrawingBuffer: false,
+        perPixelLighting: currentPerformanceLevel === PerformanceLevel.HIGH && !isMobileDevice
+      };
+      
+      // Apply all attributes at once to avoid partial state changes
+      setAttributes(attributes);
+      
+      // Disable texture mipmapping to save memory
+      textureMode(NORMAL);
+      
+      // Enable hardware acceleration hints if renderer is available
+      if (typeof _renderer !== "undefined" && _renderer.GL) {
+        const gl = _renderer.GL;
+        
+        // Use fastest hint for mipmaps and shader derivatives
+        gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
+        if (gl.FRAGMENT_SHADER_DERIVATIVE_HINT) {
+          gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
+        }
+        
+        // Set consistent blending mode
+        gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        
+        // Ensure depth test is enabled for 3D rendering
+        gl.enable(gl.DEPTH_TEST);
+        
+        // Set depth function to less than or equal for better z-fighting handling
+        gl.depthFunc(gl.LEQUAL);
       }
+      
+      console.log("WebGL settings applied for performance level:", currentPerformanceLevel);
+    } catch (e) {
+      console.error("Error applying WebGL settings:", e);
     }
   },
 
@@ -730,6 +730,33 @@ function setup() {
 
   // Set dynamic camera zoom based on screen dimensions
   cameraZoom = calculateDynamicCameraZoom();
+
+  // Add WebGL context lost/restored event handlers
+  const canvas = document.querySelector('canvas');
+  if (canvas) {
+    // Handle WebGL context loss
+    canvas.addEventListener('webglcontextlost', function(e) {
+      console.warn('WebGL context lost. Preventing default behavior.');
+      e.preventDefault(); // Allow context to be restored
+      
+      // Notify user of the issue
+      alert('Graphics context was lost. The game will try to recover automatically.');
+    }, false);
+    
+    // Handle WebGL context restoration
+    canvas.addEventListener('webglcontextrestored', function() {
+      console.log('WebGL context restored. Reinitializing...');
+      
+      // Reapply WebGL settings
+      PerformanceManager.applyWebGLSettings();
+      
+      // Reset perspective
+      perspective(PI / 4, width / height, 0.1, 5000);
+      
+      // Recalculate camera zoom
+      cameraZoom = calculateDynamicCameraZoom();
+    }, false);
+  }
 
   // Initialize GPU acceleration systems if supported
   if (PerformanceManager.canUseAdvancedFeatures()) {
@@ -2125,99 +2152,138 @@ function drawGame() {
 }
 
 function drawMainLane() {
-  // Draw the bridge (main lane) - extending from bottom to top of screen
-  push();
-  translate(0, 0, 0);
-
-  // Main bridge structure
-  fill(...BRIDGE_COLOR);
-  box(BRIDGE_WIDTH, BRIDGE_LENGTH, 10); // Using the updated bridge length to cover full screen
-
-  // Add bridge details if not on low performance mode
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    // Add bridge railings
+  try {
+    // Draw the bridge (main lane) - extending from bottom to top of screen
     push();
-    fill(120, 120, 120); // Slightly darker than bridge
+    translate(0, 0, 0);
 
-    // Left railing
-    translate(-BRIDGE_WIDTH / 2 + 10, 0, 15);
-    box(5, BRIDGE_LENGTH, 20);
-    pop();
-
-    // Right railing
-    push();
-    fill(120, 120, 120);
-    translate(BRIDGE_WIDTH / 2 - 10, 0, 15);
-    box(5, BRIDGE_LENGTH, 20);
-    pop();
-
-    // Add bridge supports/pillars
-    const pillarCount = 8;
-    const pillarSpacing = BRIDGE_LENGTH / pillarCount;
-
-    for (let i = 0; i < pillarCount; i++) {
-      const yPos = -BRIDGE_LENGTH / 2 + i * pillarSpacing + pillarSpacing / 2;
-
-      // Skip pillars too close to the wall
-      if (Math.abs(yPos - WALL_Y) < 100) continue;
-
-      // Left pillar
-      push();
-      fill(100, 100, 100);
-      translate(-BRIDGE_WIDTH / 2 + 20, yPos, -100);
-      box(20, 20, 200);
-      pop();
-
-      // Right pillar
-      push();
-      fill(100, 100, 100);
-      translate(BRIDGE_WIDTH / 2 - 20, yPos, -100);
-      box(20, 20, 200);
-      pop();
-
-      // Cross support
-      push();
-      fill(110, 110, 110);
-      translate(0, yPos, -50);
-      box(BRIDGE_WIDTH - 40, 10, 5);
-      pop();
+    // Main bridge structure - this is where WebGL errors often occur
+    try {
+      fill(...BRIDGE_COLOR);
+      box(BRIDGE_WIDTH, BRIDGE_LENGTH, 10); // Using the updated bridge length to cover full screen
+    } catch (e) {
+      console.warn("Error drawing main bridge:", e);
+      // Fallback to a simpler shape if box fails
+      fill(...BRIDGE_COLOR);
+      plane(BRIDGE_WIDTH, BRIDGE_LENGTH); // Use a plane as fallback
     }
 
-    // Add lane markings
-    stroke(255, 255, 255, 150);
-    strokeWeight(2);
+    // Add bridge details if not on low performance mode
+    if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+      // Add bridge railings
+      try {
+        // Left railing
+        push();
+        fill(120, 120, 120); // Slightly darker than bridge
+        translate(-BRIDGE_WIDTH / 2 + 10, 0, 15);
+        box(5, BRIDGE_LENGTH, 20);
+        pop();
 
-    // Center line
-    push();
-    translate(0, 0, 6);
-    line(0, -BRIDGE_LENGTH / 2, 0, BRIDGE_LENGTH / 2);
+        // Right railing
+        push();
+        fill(120, 120, 120);
+        translate(BRIDGE_WIDTH / 2 - 10, 0, 15);
+        box(5, BRIDGE_LENGTH, 20);
+        pop();
+      } catch (e) {
+        console.warn("Error drawing railings:", e);
+      }
+
+      // Add bridge supports/pillars
+      try {
+        const pillarCount = 8;
+        const pillarSpacing = BRIDGE_LENGTH / pillarCount;
+
+        for (let i = 0; i < pillarCount; i++) {
+          const yPos = -BRIDGE_LENGTH / 2 + i * pillarSpacing + pillarSpacing / 2;
+
+          // Skip pillars too close to the wall
+          if (Math.abs(yPos - WALL_Y) < 100) continue;
+
+          // Left pillar
+          push();
+          fill(100, 100, 100);
+          translate(-BRIDGE_WIDTH / 2 + 20, yPos, -100);
+          box(20, 20, 200);
+          pop();
+
+          // Right pillar
+          push();
+          fill(100, 100, 100);
+          translate(BRIDGE_WIDTH / 2 - 20, yPos, -100);
+          box(20, 20, 200);
+          pop();
+
+          // Cross support
+          push();
+          fill(110, 110, 110);
+          translate(0, yPos, -50);
+          box(BRIDGE_WIDTH - 40, 10, 5);
+          pop();
+        }
+      } catch (e) {
+        console.warn("Error drawing pillars:", e);
+      }
+
+      // Add lane markings
+      try {
+        stroke(255, 255, 255, 150);
+        strokeWeight(2);
+
+        // Center line
+        push();
+        translate(0, 0, 6);
+        line(0, -BRIDGE_LENGTH / 2, 0, BRIDGE_LENGTH / 2);
+        pop();
+
+        // Dashed lines
+        const dashCount = 30;
+        const dashLength = 20;
+        const dashSpacing = BRIDGE_LENGTH / dashCount;
+
+        for (let i = 0; i < dashCount; i++) {
+          const yPos = -BRIDGE_LENGTH / 2 + i * dashSpacing + dashSpacing / 2;
+
+          push();
+          translate(0, yPos, 6);
+          line(
+            -BRIDGE_WIDTH / 4,
+            -dashLength / 2,
+            -BRIDGE_WIDTH / 4,
+            dashLength / 2
+          );
+          line(BRIDGE_WIDTH / 4, -dashLength / 2, BRIDGE_WIDTH / 4, dashLength / 2);
+          pop();
+        }
+      } catch (e) {
+        console.warn("Error drawing lane markings:", e);
+      }
+    }
+
     pop();
 
-    // Dashed lines
-    const dashCount = 30;
-    const dashLength = 20;
-    const dashSpacing = BRIDGE_LENGTH / dashCount;
-
-    for (let i = 0; i < dashCount; i++) {
-      const yPos = -BRIDGE_LENGTH / 2 + i * dashSpacing + dashSpacing / 2;
-
-      push();
-      translate(0, yPos, 6);
-      line(
-        -BRIDGE_WIDTH / 4,
-        -dashLength / 2,
-        -BRIDGE_WIDTH / 4,
-        dashLength / 2
-      );
-      line(BRIDGE_WIDTH / 4, -dashLength / 2, BRIDGE_WIDTH / 4, dashLength / 2);
-      pop();
+    // Draw the wall and gate at the start of the bridge
+    try {
+      drawWallAndGate();
+    } catch (e) {
+      console.warn("Error drawing wall and gate:", e);
+    }
+  } catch (e) {
+    console.error("Critical error in drawMainLane:", e);
+    
+    // Attempt to recover WebGL context if possible
+    if (typeof _renderer !== "undefined" && _renderer.GL) {
+      try {
+        // Reset WebGL state
+        resetMatrix();
+        
+        // Reapply WebGL settings
+        PerformanceManager.applyWebGLSettings();
+      } catch (err) {
+        console.error("Failed to recover WebGL context:", err);
+      }
     }
   }
-
-  pop();
-
-  // Draw the wall and gate at the start of the bridge
-  drawWallAndGate();
 }
 
 function drawWallAndGate() {
@@ -8859,8 +8925,6 @@ function startGame() {
 
       // Log to console for debugging
       console.log("Game started, controls container should be visible");
-      console.log("D-pad element:", dPad);
-      console.log("Skill bar element:", skillBar);
     }
 
     // Reset memory warning
