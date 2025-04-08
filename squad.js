@@ -2511,8 +2511,43 @@ function drawHuman(size, isLeader) {
 }
 
 function drawEnemies() {
+  // Count active skills to adjust rendering detail
+  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+  
+  // Dynamically reduce detail when multiple skills are active
+  const skillDetailMultiplier = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
+  
+  // Adjust distance thresholds based on active skills
+  const farDistanceThreshold = activeSkillCount > 1 ? 600 * 600 : 800 * 800;
+  const mediumDistanceThreshold = activeSkillCount > 1 ? 300 * 300 : 400 * 400;
+  
+  // Limit the number of enemies to render when multiple skills are active
+  const maxEnemiesToRender = activeSkillCount > 1 ? 
+    Math.floor(enemies.length * skillDetailMultiplier) : 
+    enemies.length;
+  
+  // Sort enemies by distance for better culling
+  const sortedEnemies = [...enemies];
+  
+  if (squad.length > 0 && activeSkillCount > 1) {
+    const mainMember = squad[0];
+    sortedEnemies.sort((a, b) => {
+      const dxA = a.x - mainMember.x;
+      const dyA = a.y - mainMember.y;
+      const distA = dxA * dxA + dyA * dyA;
+      
+      const dxB = b.x - mainMember.x;
+      const dyB = b.y - mainMember.y;
+      const distB = dxB * dxB + dyB * dyB;
+      
+      return distA - distB; // Sort by closest first
+    });
+  }
+  
   // Draw enemies with distance-based LOD (Level of Detail)
-  for (let enemy of enemies) {
+  for (let i = 0; i < Math.min(maxEnemiesToRender, sortedEnemies.length); i++) {
+    const enemy = sortedEnemies[i];
+    
     // Find distance to camera/player for LOD calculations
     let distToCamera = 0;
     if (squad.length > 0) {
@@ -2521,12 +2556,17 @@ function drawEnemies() {
       const dy = enemy.y - mainMember.y;
       distToCamera = dx * dx + dy * dy; // Squared distance - no need for sqrt
     }
+    
+    // Skip very distant enemies when multiple skills are active
+    if (activeSkillCount > 1 && distToCamera > farDistanceThreshold) {
+      continue;
+    }
 
     push();
     translate(enemy.x, enemy.y, enemy.z + enemy.size / 2);
 
     // Apply distance-based LOD
-    if (distToCamera > 800 * 800) {
+    if (distToCamera > farDistanceThreshold) {
       // Very distant enemies - ultra simplified rendering
       fill(...ENEMY_COLORS[enemy.type]);
       sphere(enemy.size / 2);
@@ -2547,7 +2587,7 @@ function drawEnemies() {
       cone(enemy.size / 2, enemy.size);
     } else {
       // Standard enemies - simplify for medium distances
-      if (distToCamera > 400 * 400) {
+      if (distToCamera > mediumDistanceThreshold) {
         // Medium distance - use simpler shape
         sphere(enemy.size / 2);
       } else {
@@ -2556,9 +2596,9 @@ function drawEnemies() {
       }
     }
 
-    // Only draw health bars for enemies within reasonable distance
-    if (distToCamera < 600 * 600) {
-      // Draw health bar above enemy
+    // Only draw health bars for enemies within reasonable distance and when not too many skills active
+    if (distToCamera < 600 * 600 && (activeSkillCount < 2 || enemy.type.includes("boss"))) {
+      // Draw health bar above enemy - only for bosses when multiple skills active
       const maxHealth = getEnemyMaxHealth(enemy.type);
       const healthPercentage = enemy.health / maxHealth;
 
@@ -2566,18 +2606,26 @@ function drawEnemies() {
       const healthBarWidth = enemy.size * 1.2;
       const healthBarHeight = 5;
 
-      // Background of health bar
-      fill(100, 100, 100);
-      box(healthBarWidth, healthBarHeight, 2);
+      // Use simpler rendering for health bars when skills active
+      if (activeSkillCount > 0 && !enemy.type.includes("boss")) {
+        // Simplified health bar for non-boss enemies - just the health part, no background
+        fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
+        box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+      } else {
+        // Full health bar for bosses or when no skills active
+        // Background of health bar
+        fill(100, 100, 100);
+        box(healthBarWidth, healthBarHeight, 2);
 
-      // Health indicator
-      fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
-      translate(
-        -(healthBarWidth - healthBarWidth * healthPercentage) / 2,
-        0,
-        1
-      );
-      box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+        // Health indicator
+        fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
+        translate(
+          -(healthBarWidth - healthBarWidth * healthPercentage) / 2,
+          0,
+          1
+        );
+        box(healthBarWidth * healthPercentage, healthBarHeight, 3);
+      }
     }
 
     pop();
@@ -2585,6 +2633,16 @@ function drawEnemies() {
 }
 
 function drawProjectiles() {
+  // Count active skills to adjust rendering detail
+  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+  
+  // Dynamically reduce detail when multiple skills are active
+  const skillDetailMultiplier = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
+  
+  // Adjust distance thresholds based on active skills
+  const farDistanceThreshold = activeSkillCount > 1 ? 600 * 600 : 800 * 800;
+  const mediumDistanceThreshold = activeSkillCount > 1 ? 300 * 300 : 400 * 400;
+  
   // Draw projectiles with performance optimizations
   for (let proj of projectiles) {
     // Distance-based Level of Detail
@@ -2594,6 +2652,11 @@ function drawProjectiles() {
       const dx = proj.x - mainMember.x;
       const dy = proj.y - mainMember.y;
       distToCamera = dx * dx + dy * dy; // Squared distance
+    }
+    
+    // Skip rendering very distant projectiles when multiple skills are active
+    if (activeSkillCount > 1 && distToCamera > farDistanceThreshold) {
+      continue;
     }
 
     push();
