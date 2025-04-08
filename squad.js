@@ -54,7 +54,8 @@ const POWER_UP_LANE_WIDTH = 150;
 // Camera settings
 const CAMERA_OFFSET_X = -(POWER_UP_LANE_WIDTH / 2);
 const CAMERA_OFFSET_Y = -600; // Even more significantly adjusted to show the squad at the bottom of the screen
-const CAMERA_OFFSET_Z = 270; // Much further increased zoom distance to see the entire bridge
+const CAMERA_OFFSET_Z = 270; // Base zoom distance for reference (will be adjusted dynamically)
+const CAMERA_ZOOM_HEIGHT_RATIO = 0.45; // Ratio of zoom to screen height
 const SQUAD_Y = -200;
 const WALL_Y = SQUAD_Y + 100;
 const ENEMY_FIGHT_DISTANCE_THRESHOLD = 500;
@@ -109,7 +110,7 @@ let damageBoost = DEBUG_MODE ? 10 : 0; // Increases damage (starts with some in 
 let aoeBoost = DEBUG_MODE ? 10 : 0; // Increases area of effect (starts with some in debug mode)
 let cameraOffsetX = CAMERA_OFFSET_X;
 let cameraOffsetY = CAMERA_OFFSET_Y;
-let cameraZoom = CAMERA_OFFSET_Z;
+let cameraZoom = CAMERA_OFFSET_Z; // Will be set dynamically in setup
 
 // Enemy properties
 let enemies = [];
@@ -600,6 +601,50 @@ function setup() {
   // Detect if we're on a mobile device
   isMobileDevice = PerformanceManager.detectMobileDevice();
   console.log("Mobile device detected:", isMobileDevice);
+  
+  // Add orientation change listener for mobile devices
+  if (isMobileDevice) {
+    // Use multiple methods to detect orientation changes for better cross-browser support
+    
+    // Method 1: matchMedia (modern browsers)
+    if (window.matchMedia) {
+      window.matchMedia("(orientation: portrait)").addEventListener("change", handleOrientationChange);
+    }
+    
+    // Method 2: orientationchange event (older mobile browsers)
+    window.addEventListener("orientationchange", handleOrientationChange);
+    
+    // Method 3: resize event as fallback (will catch orientation changes too)
+    window.addEventListener("resize", debounce(handleOrientationChange, 250));
+  }
+  
+  // Function to handle orientation changes
+  function handleOrientationChange() {
+    // Multiple timeouts to ensure we catch the correct dimensions after orientation change
+    // Some browsers update dimensions at different times
+    updateCameraZoomWithDelay(100);
+    updateCameraZoomWithDelay(300);
+    updateCameraZoomWithDelay(500);
+  }
+  
+  // Helper function to update camera zoom with delay
+  function updateCameraZoomWithDelay(delay) {
+    setTimeout(() => {
+      cameraZoom = calculateDynamicCameraZoom();
+      console.log(`Orientation update (${delay}ms): zoom=${cameraZoom.toFixed(2)}`);
+    }, delay);
+  }
+  
+  // Debounce function to limit how often a function can be called
+  function debounce(func, wait) {
+    let timeout;
+    return function() {
+      const context = this;
+      const args = arguments;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+  }
 
   // Detect GPU capabilities
   PerformanceManager.detectGPUCapabilities();
@@ -618,6 +663,9 @@ function setup() {
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
   perspective(PI / 4, width / height, 0.1, 5000);
+  
+  // Set dynamic camera zoom based on screen dimensions
+  cameraZoom = calculateDynamicCameraZoom();
 
   // Initialize GPU acceleration systems if supported
   if (PerformanceManager.canUseAdvancedFeatures()) {
@@ -8115,7 +8163,7 @@ function startGame() {
     // Reset camera
     cameraOffsetX = CAMERA_OFFSET_X;
     cameraOffsetY = CAMERA_OFFSET_Y;
-    cameraZoom = CAMERA_OFFSET_Z;
+    cameraZoom = calculateDynamicCameraZoom();
 
     // Hide menu
     menuContainer.style("display", "none");
@@ -9186,7 +9234,7 @@ function resetGame() {
   // Reset camera to show the entire bridge
   cameraOffsetX = CAMERA_OFFSET_X;
   cameraOffsetY = CAMERA_OFFSET_Y;
-  cameraZoom = CAMERA_OFFSET_Z;
+  cameraZoom = calculateDynamicCameraZoom();
 }
 
 function applyEffects() {
@@ -9424,6 +9472,94 @@ function createPlasmaEffect(x, y, z) {
   createEffect("plasma", x, y, z, null, 20);
 }
 
+// Calculate dynamic camera zoom based on screen dimensions
+function calculateDynamicCameraZoom() {
+  // Base the zoom on the screen height to ensure the wall is visible
+  const baseZoom = CAMERA_OFFSET_Z;
+  const minHeight = 500; // Minimum height reference
+  const idealRatio = 16/9; // Ideal aspect ratio
+  
+  // Get current aspect ratio and orientation
+  const currentRatio = windowWidth / windowHeight;
+  const isLandscape = windowWidth > windowHeight;
+  
+  // Calculate zoom based on screen height and orientation
+  let dynamicZoom;
+  
+  // For landscape orientation on mobile, use a more aggressive zoom factor
+  if (isLandscape && isMobileDevice) {
+    // For landscape mobile, we need a much higher zoom factor to see the bridge
+    // Start with a base factor that's significantly higher
+    const landscapeFactor = 2.2; // Very high zoom for landscape mobile
+    
+    // Calculate zoom based on height - shorter heights need more zoom
+    if (windowHeight < 400) {
+      // Extremely short height (like iPhone SE in landscape)
+      dynamicZoom = baseZoom * (landscapeFactor * 1.6);
+    } else if (windowHeight < 500) {
+      // Very short height (most phones in landscape)
+      dynamicZoom = baseZoom * (landscapeFactor * 1.4);
+    } else if (windowHeight < 600) {
+      // Moderately short height (larger phones in landscape)
+      dynamicZoom = baseZoom * (landscapeFactor * 1.2);
+    } else {
+      // Taller height (tablets in landscape)
+      dynamicZoom = baseZoom * landscapeFactor;
+    }
+    
+    // Additional adjustment for very wide screens
+    if (currentRatio > 2.0) {
+      // Extra wide screen, increase zoom further
+      dynamicZoom *= 1.2;
+    }
+  } 
+  // For portrait orientation on mobile
+  else if (!isLandscape && isMobileDevice) {
+    // For portrait mobile, calculate based on height
+    if (windowHeight < minHeight) {
+      // Very small heights (unlikely in portrait)
+      const heightFactor = minHeight / windowHeight;
+      dynamicZoom = baseZoom * heightFactor;
+    } else {
+      // Normal portrait mode - use height ratio with a minimum
+      dynamicZoom = Math.max(baseZoom, windowHeight * CAMERA_ZOOM_HEIGHT_RATIO);
+      
+      // For very tall and narrow screens, reduce zoom slightly
+      if (currentRatio < 0.5) {
+        dynamicZoom *= 0.9;
+      }
+    }
+  }
+  // For desktop/non-mobile devices
+  else {
+    if (windowHeight < minHeight) {
+      // Small desktop window
+      const heightFactor = minHeight / windowHeight;
+      dynamicZoom = baseZoom * heightFactor;
+    } else {
+      // Normal desktop window
+      dynamicZoom = Math.max(baseZoom, windowHeight * CAMERA_ZOOM_HEIGHT_RATIO);
+      
+      // Adjust for extreme aspect ratios on desktop
+      if (currentRatio > idealRatio * 1.5) {
+        // Very wide screen - increase zoom
+        dynamicZoom *= 1.2;
+      } else if (currentRatio < idealRatio * 0.6) {
+        // Very tall screen - decrease zoom slightly
+        dynamicZoom *= 0.9;
+      }
+    }
+  }
+  
+  // Ensure we have a minimum zoom level to always see the bridge
+  const minimumRequiredZoom = 400; // Absolute minimum zoom to see the bridge
+  dynamicZoom = Math.max(dynamicZoom, minimumRequiredZoom);
+  
+  console.log(`Screen: ${windowWidth}x${windowHeight}, Ratio: ${currentRatio.toFixed(2)}, Landscape: ${isLandscape}, Zoom: ${dynamicZoom.toFixed(2)}`);
+  
+  return dynamicZoom;
+}
+
 // Window resize handling
 function windowResized() {
   // Resize the canvas
@@ -9431,6 +9567,9 @@ function windowResized() {
 
   // Update perspective for the new aspect ratio
   perspective(PI / 4, width / height, 0.1, 5000);
+  
+  // Update camera zoom based on new dimensions
+  cameraZoom = calculateDynamicCameraZoom();
 
   // Remove existing UI elements to prevent duplicates
   if (controlsContainer) controlsContainer.remove();
