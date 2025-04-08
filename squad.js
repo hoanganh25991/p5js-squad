@@ -8204,7 +8204,7 @@ function createPauseElement() {
   pauseContainer = createDiv("");
   pauseContainer.id("pause-button");
   pauseContainer.class("control-button");
-  pauseContainer.style("background-color", "rgba(50, 50, 50, 0.8)");
+  pauseContainer.style("background-color", "rgba(50, 50, 50, 0.27)");
   pauseContainer.style("border-radius", "5px");
   pauseContainer.style("padding", "10px");
   pauseContainer.style("width", "40px");
@@ -8230,7 +8230,7 @@ function createResumeElement() {
   resumeContainer = createDiv("");
   resumeContainer.id("resume-button");
   resumeContainer.class("control-button");
-  resumeContainer.style("background-color", "rgba(50, 50, 50, 0.8)");
+  resumeContainer.style("background-color", "rgba(50, 50, 50, 0.27)");
   resumeContainer.style("border-radius", "5px");
   resumeContainer.style("padding", "10px");
   resumeContainer.style("width", "40px");
@@ -8252,7 +8252,7 @@ function createSoundElement() {
   soundContainer = createDiv("");
   soundContainer.id("sound-button");
   soundContainer.class("control-button");
-  soundContainer.style("background-color", "rgba(50, 50, 50, 0.8)");
+  soundContainer.style("background-color", "rgba(50, 50, 50, 0.27)");
   soundContainer.style("border-radius", "5px");
   soundContainer.style("padding", "10px");
   soundContainer.style("width", "40px");
@@ -8454,7 +8454,7 @@ function createSkillBarElement() {
     skillDiv.style("position", "relative");
     skillDiv.style("height", skillButtonSize + "px");
     skillDiv.style("width", skillButtonSize + "px");
-    skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
+    skillDiv.style("background-color", "rgba(50, 50, 50, 0.27)");
     skillDiv.style("border-radius", "10px");
     skillDiv.style("cursor", "pointer");
     skillDiv.style("transition", "transform 0.1s, background-color 0.2s");
@@ -8492,7 +8492,7 @@ function createSkillBarElement() {
         // Reset visual state after a short delay
         setTimeout(() => {
           this.style("transform", "scale(1.0)");
-          this.style("background-color", "rgba(50, 50, 50, 0.8)");
+          this.style("background-color", "rgba(50, 50, 50, 0.27)");
         }, 150);
       }
     });
@@ -8510,7 +8510,7 @@ function createSkillBarElement() {
         // Reset visual state after a short delay
         setTimeout(() => {
           this.style("transform", "scale(1.0)");
-          this.style("background-color", "rgba(50, 50, 50, 0.8)");
+          this.style("background-color", "rgba(50, 50, 50, 0.27)");
         }, 150);
 
         return false; // Prevent default touch behavior
@@ -8602,9 +8602,6 @@ function updateSkillBar() {
         select(`#skillName${i}`).html(
           `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
         );
-
-        // Skill key should appear in bright yellow/gold
-        select(`#skillKey${i}`).style("color", "rgba(255, 215, 0, 1.0)");
       } else if (isShieldActive) {
         // Pulsing blue background for active shield skill
         const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
@@ -8680,7 +8677,7 @@ function updateSkillBar() {
         select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
       } else {
         // Reset to normal appearance
-        skillDiv.style("background-color", "rgba(50, 50, 50, 0.8)");
+        skillDiv.style("background-color", "rgba(50, 50, 50, 0.27)");
         skillDiv.style("box-shadow", "none");
         skillDiv.style("transform", "scale(1.0)");
 
@@ -8882,7 +8879,7 @@ function createDirectionalPadElement() {
   upButton.style("left", centerOffset + "px");
   upButton.style("width", buttonSize + "px");
   upButton.style("height", buttonSize + "px");
-  upButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  upButton.style("background-color", "rgba(50, 50, 50, 0.27)");
   upButton.style("color", "white");
   upButton.style("font-size", fontSize + "px");
   upButton.style("display", "flex");
@@ -8904,7 +8901,7 @@ function createDirectionalPadElement() {
   downButton.style("left", centerOffset + "px");
   downButton.style("width", buttonSize + "px");
   downButton.style("height", buttonSize + "px");
-  downButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  downButton.style("background-color", "rgba(50, 50, 50, 0.27)");
   downButton.style("color", "white");
   downButton.style("font-size", fontSize + "px");
   downButton.style("display", "flex");
@@ -8926,7 +8923,7 @@ function createDirectionalPadElement() {
   leftButton.style("left", edgeOffset + "px");
   leftButton.style("width", buttonSize + "px");
   leftButton.style("height", buttonSize + "px");
-  leftButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  leftButton.style("background-color", "rgba(50, 50, 50, 0.27)");
   leftButton.style("color", "white");
   leftButton.style("font-size", fontSize + "px");
   leftButton.style("display", "flex");
@@ -8948,7 +8945,7 @@ function createDirectionalPadElement() {
   rightButton.style("right", edgeOffset + "px");
   rightButton.style("width", buttonSize + "px");
   rightButton.style("height", buttonSize + "px");
-  rightButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+  rightButton.style("background-color", "rgba(50, 50, 50, 0.27)");
   rightButton.style("color", "white");
   rightButton.style("font-size", fontSize + "px");
   rightButton.style("display", "flex");
@@ -9535,10 +9532,10 @@ function setupDirectionalButton(button, direction, visualButton = null) {
     // Reset visual state
     if (visualButton) {
       visualButton.style("transform", "scale(1.0)");
-      visualButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+      visualButton.style("background-color", "rgba(50, 50, 50, 0.27)");
     } else {
       this.style("transform", "scale(1.0)");
-      this.style("background-color", "rgba(50, 50, 50, 0.8)");
+      this.style("background-color", "rgba(50, 50, 50, 0.27)");
     }
   });
 
@@ -9566,10 +9563,10 @@ function setupDirectionalButton(button, direction, visualButton = null) {
     // Reset visual state
     if (visualButton) {
       visualButton.style("transform", "scale(1.0)");
-      visualButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+      visualButton.style("background-color", "rgba(50, 50, 50, 0.27)");
     } else {
       this.style("transform", "scale(1.0)");
-      this.style("background-color", "rgba(50, 50, 50, 0.8)");
+      this.style("background-color", "rgba(50, 50, 50, 0.27)");
     }
 
     return false; // Prevent default
