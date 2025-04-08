@@ -304,7 +304,7 @@ function setup() {
   // Auto-start the game (no need to press enter)
   gameStartTime = frameCount;
 
-  // Create all UI elements
+  // Create all UI elements from ui.js module
   initializeUI();
 
   // Clean up memory
@@ -843,13 +843,8 @@ function draw() {
     }
   }
 
-  // DOM
-  drawMenu();
-  drawPauseContainer();
-  drawResumeContainer();
-  drawGameOverContainer();
-  drawSoundToggleButton(); // Update the sound toggle button visibility
-  updateDirectionalPad(); // Update the directional pad visibility and state
+  // DOM - Use updateUI from ui.js instead of individual draw functions
+  updateHUD();
 
   // Periodically try to clear memory
   if (frameCount % 900 === 0) {
@@ -8097,51 +8092,7 @@ function updateHUD() {
   }
 }
 
-function getSkillKey(skillNumber) {
-  switch (skillNumber) {
-    case 1:
-      return "A";
-    case 2:
-      return "S";
-    case 3:
-      return "D";
-    case 4:
-      return "F";
-    case 5:
-      return "Q";
-    case 6:
-      return "W";
-    case 7:
-      return "E";
-    case 8:
-      return "R";
-    default:
-      return "";
-  }
-}
-
-function getSkillName(skillNumber) {
-  switch (skillNumber) {
-    case 1:
-      return "Star Blast";
-    case 2:
-      return "Machine Gun";
-    case 3:
-      return "Shield";
-    case 4:
-      return "Freeze";
-    case 5:
-      return "Rejuvenation";
-    case 6:
-      return "Infernal Rage";
-    case 7:
-      return "Quantum Accel";
-    case 8:
-      return "Apocalypse";
-    default:
-      return "";
-  }
-}
+// getSkillKey and getSkillName functions are now in ui.js
 
 // Input handlers
 function keyPressed() {
@@ -8155,8 +8106,8 @@ function keyPressed() {
   }
 
   // Toggle pause with Escape key
-  if (key === "p" || key === "P") {
-    if (gameState === "playing") {
+  if (key === "p" || key === "P") { // Use the updateUI function from ui.js
+  if (gameState === "playing") {
       // Start or restart game
       pauseGame();
       gameState = "paused";
