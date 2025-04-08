@@ -449,6 +449,11 @@ function getEffectMultiplier() {
   return PerformanceManager.getEffectMultiplier();
 }
 
+// Check if GPU acceleration is enabled
+function isGPUAccelerationEnabled() {
+  return gpuAccelerationEnabled;
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
@@ -478,29 +483,84 @@ function setup() {
   if (PerformanceManager.canUseAdvancedFeatures()) {
     console.log("Initializing GPU acceleration features");
     
-    // Initialize GPU-based particle system
-    try {
-      initGPUParticles();
-      console.log("GPU Particle system initialized");
-    } catch (e) {
-      console.warn("Could not initialize GPU particles:", e);
+    // Use the centralized GPU acceleration initialization
+    if (typeof initGPUAcceleration === 'function') {
+      const gpuInitialized = initGPUAcceleration();
+      if (gpuInitialized) {
+        console.log("GPU acceleration successfully initialized");
+        gpuAccelerationEnabled = true;
+      } else {
+        console.warn("GPU acceleration initialization failed, falling back to CPU");
+        gpuAccelerationEnabled = false;
+      }
+    } else {
+      console.warn("GPU acceleration module not found, using individual initializations");
+      
+      // Track successful initializations
+      let particlesInitialized = false;
+      let rendererInitialized = false;
+      let collisionInitialized = false;
+      
+      // Fallback to individual initializations
+      // Initialize GPU-based particle system
+      try {
+        if (typeof initGPUParticles === 'function') {
+          initGPUParticles();
+          console.log("GPU Particle system initialized");
+          particlesInitialized = true;
+        }
+      } catch (e) {
+        console.warn("Could not initialize GPU particles:", e);
+      }
+      
+      // Initialize GPU-based renderer for effects
+      try {
+        if (typeof initGPURenderer === 'function') {
+          initGPURenderer();
+          console.log("GPU Renderer initialized");
+          rendererInitialized = true;
+        }
+      } catch (e) {
+        console.warn("Could not initialize GPU renderer:", e);
+      }
+      
+      // Initialize spatial partitioning for collision detection
+      try {
+        if (typeof initCollisionSystem === 'function') {
+          initCollisionSystem();
+          console.log("Collision system initialized");
+          collisionInitialized = true;
+        }
+      } catch (e) {
+        console.warn("Could not initialize collision system:", e);
+      }
+      
+      // Consider GPU acceleration enabled if at least one system was initialized
+      gpuAccelerationEnabled = particlesInitialized || rendererInitialized || collisionInitialized;
+      console.log("GPU acceleration status:", gpuAccelerationEnabled ? "Enabled" : "Disabled");
     }
+  } else {
+    console.log("Advanced GPU features not available, using CPU rendering");
+    gpuAccelerationEnabled = false;
     
-    // Initialize GPU-based renderer for effects
+    // Initialize basic collision system even without GPU acceleration
     try {
-      initGPURenderer();
-      console.log("GPU Renderer initialized");
+      if (typeof initCollisionSystem === 'function') {
+        initCollisionSystem();
+        console.log("Basic collision system initialized");
+      }
     } catch (e) {
-      console.warn("Could not initialize GPU renderer:", e);
+      console.warn("Could not initialize collision system:", e);
     }
   }
   
-  // Initialize spatial partitioning for collision detection
-  try {
-    initCollisionSystem();
-    console.log("Collision system initialized");
-  } catch (e) {
-    console.warn("Could not initialize collision system:", e);
+  // Optimize WebGL context for performance if available
+  if (typeof optimizeWebGLContext === 'function') {
+    try {
+      optimizeWebGLContext();
+    } catch (e) {
+      console.warn("Could not optimize WebGL context:", e);
+    }
   }
 
   // Auto-start the game (no need to press enter)
@@ -788,35 +848,20 @@ function checkMemoryUsage() {
 }
 
 // Create UI for performance settings
+// Global variable for our custom pause/resume button
+let pauseResumeButton;
+
 function createPerformanceSettingsUI() {
   try {
-    // First, remove any existing button to avoid duplicates
-    const existingBtn = select("#pause-resume-button");
-    if (existingBtn) {
-      existingBtn.remove();
+    // If the button already exists, just update it
+    if (pauseResumeButton) {
+      updatePauseResumeButton();
+      return;
     }
     
     // Create a static pause/resume button as a placeholder
     // This will be updated dynamically based on game state in updatePauseResumeButton
-    let buttonText = "⏸️";
-    let buttonAction = pauseGame;
-    let buttonVisibility = "visible";
-    
-    if (gameState === GameState.PLAYING) {
-      // Pause button when game is playing
-      buttonText = "⏸️";
-      buttonAction = pauseGame;
-    } else if (gameState === GameState.PAUSED) {
-      // Resume button when game is paused
-      buttonText = "▶️";
-      buttonAction = resumeGame;
-    } else {
-      // Hidden button for other states
-      buttonVisibility = "hidden";
-    }
-    
-    // Create the button with appropriate settings
-    createStyledButton(buttonText, width - 180, 20, {
+    pauseResumeButton = createStyledButton("⏸️", width - 180, 20, {
       id: "pause-resume-button",
       styles: {
         borderRadius: "50%",
@@ -826,10 +871,20 @@ function createPerformanceSettingsUI() {
         padding: "0",
         textAlign: "center",
         lineHeight: "40px",
-        visibility: buttonVisibility
+        visibility: "hidden" // Initially hidden, will be shown by updatePauseResumeButton
       },
-      onClick: buttonAction
+      onClick: () => {
+        // This will be updated by updatePauseResumeButton
+        if (gameState === GameState.PLAYING) {
+          pauseGame();
+        } else {
+          resumeGame();
+        }
+      }
     });
+    
+    // Update the button to show the correct state
+    updatePauseResumeButton();
     
     console.log("Created pause/resume button with state:", gameState);
   } catch (e) {
@@ -862,11 +917,8 @@ function updatePerformanceMetrics() {
 // Function to update the pause/resume button based on game state
 function updatePauseResumeButton() {
   try {
-    // Get the existing button
-    const pauseResumeBtn = select("#pause-resume-button");
-    
     // If button doesn't exist, create it
-    if (!pauseResumeBtn) {
+    if (!pauseResumeButton) {
       createPerformanceSettingsUI();
       return;
     }
@@ -874,30 +926,32 @@ function updatePauseResumeButton() {
     // Update button based on game state
     if (gameState === GameState.PLAYING) {
       // Show pause button
-      pauseResumeBtn.html("⏸️");
-      pauseResumeBtn.style("visibility", "visible");
+      pauseResumeButton.html("⏸️");
+      pauseResumeButton.style("visibility", "visible");
       
       // Update click handler
-      pauseResumeBtn.mousePressed(() => {
+      pauseResumeButton.mousePressed(() => {
         pauseGame();
       });
     } else if (gameState === GameState.PAUSED) {
       // Show resume button
-      pauseResumeBtn.html("▶️");
-      pauseResumeBtn.style("visibility", "visible");
+      pauseResumeButton.html("▶️");
+      pauseResumeButton.style("visibility", "visible");
       
       // Update click handler
-      pauseResumeBtn.mousePressed(() => {
+      pauseResumeButton.mousePressed(() => {
         resumeGame();
       });
     } else {
       // Hide button for menu and game over states
-      pauseResumeBtn.style("visibility", "hidden");
+      pauseResumeButton.style("visibility", "hidden");
     }
   } catch (e) {
     console.warn("Error updating pause/resume button:", e);
     // If there was an error, try to recreate the button
     try {
+      // Reset the button variable so it will be recreated
+      pauseResumeButton = null;
       createPerformanceSettingsUI();
     } catch (e2) {
       console.error("Failed to recreate pause/resume button:", e2);
@@ -7508,14 +7562,12 @@ function pauseGame() {
   
   // For backward compatibility, also update the old UI elements if they exist
   try {
-    if (typeof createResumeElement === 'function') {
-      // Remove old pause button if it exists
-      if (pauseContainer && typeof pauseContainer.remove === 'function') {
-        pauseContainer.remove();
-      }
-      
-      // Create resume button
-      createResumeElement();
+    // Show/hide the appropriate buttons
+    if (pauseContainer) {
+      pauseContainer.style("display", "none");
+    }
+    if (resumeContainer) {
+      resumeContainer.style("display", "flex");
     }
   } catch (e) {
     console.warn("Error updating legacy UI elements:", e);
@@ -7536,14 +7588,12 @@ function resumeGame() {
   
   // For backward compatibility, also update the old UI elements if they exist
   try {
-    if (typeof createPauseElement === 'function') {
-      // Remove old resume button if it exists
-      if (resumeContainer && typeof resumeContainer.remove === 'function') {
-        resumeContainer.remove();
-      }
-      
-      // Create pause button
-      createPauseElement();
+    // Show/hide the appropriate buttons
+    if (resumeContainer) {
+      resumeContainer.style("display", "none");
+    }
+    if (pauseContainer) {
+      pauseContainer.style("display", "flex");
     }
   } catch (e) {
     console.warn("Error updating legacy UI elements:", e);
@@ -7723,9 +7773,6 @@ function updateTechnicalBoard() {
     const renderer = PerformanceManager.gpuInfo.renderer;
     // Get vendor information
     const vendor = PerformanceManager.gpuInfo.vendor || 'Unknown Vendor';
-    
-    // Create a simple GPU info for the main technical board
-    gpuInfoText = `<div>GPU: ${PerformanceManager.gpuInfo.renderer.split(' ')[0]} (Tier ${PerformanceManager.gpuTier})</div>`;
     
     // Create detailed GPU breakdown for the separate section
     gpuBreakdownText = `<div id="gpu-breakdown" style="background-color: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; max-width: 300px;">`;
@@ -8012,14 +8059,21 @@ function createControlsContainer() {
   controlsContainer.style("align-items", "center");
   controlsContainer.style("z-index", "1000");
   
-  // Create pause button (only shown during gameplay)
+  // Create both pause and resume buttons
+  createPauseElement();
+  createResumeElement();
+  
+  // Show the appropriate button based on game state
   if (gameState === GameState.PLAYING) {
-    createPauseElement();
+    pauseContainer.style("display", "flex");
+    resumeContainer.style("display", "none");
   } else if (gameState === GameState.PAUSED) {
-    createResumeElement();
+    pauseContainer.style("display", "none");
+    resumeContainer.style("display", "flex");
   } else {
-    // Default to pause button for other states
-    createPauseElement();
+    // Default to pause button for other states, but hide both in menu/game over
+    pauseContainer.style("display", "none");
+    resumeContainer.style("display", "none");
   }
   
   // Create sound button
@@ -8060,9 +8114,6 @@ function createPauseElement() {
 }
 
 function createResumeElement() {
-  // Remove pause button first
-  pauseContainer.remove();
-  
   // Create resume button element
   resumeContainer = createDiv("");
   resumeContainer.id("resume-button");
@@ -8073,7 +8124,7 @@ function createResumeElement() {
   resumeContainer.style("width", "40px");
   resumeContainer.style("height", "40px");
   resumeContainer.style("cursor", "pointer");
-  resumeContainer.style("display", "flex");
+  resumeContainer.style("display", "none"); // Initially hidden
   resumeContainer.style("align-items", "center");
   resumeContainer.style("justify-content", "center");
   resumeContainer.html(`
@@ -8081,7 +8132,7 @@ function createResumeElement() {
   `);
   resumeContainer.mousePressed(resumeGame);
   
-  // Add to controls container at the same position as pause button
+  // Add to controls container
   controlsContainer.child(resumeContainer);
 }
 
