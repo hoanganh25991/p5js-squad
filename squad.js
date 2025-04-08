@@ -1036,8 +1036,11 @@ function checkMemoryUsage() {
 }
 
 // Create UI for performance settings
-// Global variable for our custom pause/resume button
+// Global variables for our custom buttons
 let pauseResumeButton;
+let techBoardButton;
+let techBoardVisible = false; // Default is hidden
+let lastFpsUpdate = 0; // Track when we last updated the FPS display
 
 function createPerformanceSettingsUI() {
   try {
@@ -1071,8 +1074,31 @@ function createPerformanceSettingsUI() {
       }
     });
     
-    // Update the button to show the correct state
+    // Create a tech board toggle button with the same style
+    techBoardButton = createStyledButton("60", width - 150, 20, {
+      id: "tech-board-button",
+      styles: {
+        borderRadius: "50%",
+        width: "40px",
+        height: "40px",
+        fontSize: "16px",
+        padding: "0",
+        textAlign: "center",
+        lineHeight: "40px",
+        visibility: "hidden", // Initially hidden, will be shown by updatePauseResumeButton
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        transition: "background-color 0.3s ease"
+      },
+      onClick: () => {
+        // Toggle tech board visibility
+        techBoardVisible = !techBoardVisible;
+        updateTechBoardVisibility();
+      }
+    });
+    
+    // Update the buttons to show the correct state
     updatePauseResumeButton();
+    updateTechBoardButton();
     
     console.log("Created pause/resume button with state:", gameState);
   } catch (e) {
@@ -1133,6 +1159,11 @@ function updatePauseResumeButton() {
       pauseResumeButton.mousePressed(() => {
         pauseGame();
       });
+      
+      // Also show tech board button when playing
+      if (techBoardButton) {
+        techBoardButton.style("visibility", "visible");
+      }
     } else if (gameState === GameState.PAUSED) {
       // Show resume button
       pauseResumeButton.html("▶️");
@@ -1142,9 +1173,19 @@ function updatePauseResumeButton() {
       pauseResumeButton.mousePressed(() => {
         resumeGame();
       });
+      
+      // Also show tech board button when paused
+      if (techBoardButton) {
+        techBoardButton.style("visibility", "visible");
+      }
     } else {
       // Hide button for menu and game over states
       pauseResumeButton.style("visibility", "hidden");
+      
+      // Also hide tech board button
+      if (techBoardButton) {
+        techBoardButton.style("visibility", "hidden");
+      }
     }
   } catch (e) {
     console.warn("Error updating pause/resume button:", e);
@@ -1156,6 +1197,59 @@ function updatePauseResumeButton() {
     } catch (e2) {
       console.error("Failed to recreate pause/resume button:", e2);
     }
+  }
+}
+
+// Function to update the tech board button with current FPS
+function updateTechBoardButton() {
+  try {
+    // If button doesn't exist, create it
+    if (!techBoardButton) {
+      createPerformanceSettingsUI();
+      return;
+    }
+    
+    // Only update FPS display every few frames for better performance
+    if (frameCount - lastFpsUpdate < 15) { // Update every 15 frames (about 4 times per second at 60fps)
+      return;
+    }
+    
+    lastFpsUpdate = frameCount;
+    
+    // Get current FPS
+    const avgFPS = Math.floor(fpsHistory.length > 0 ? 
+      fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length : 
+      frameRate());
+    
+    // Update button text with FPS
+    techBoardButton.html(avgFPS);
+    
+    // Flash the background when updated
+    techBoardButton.style("background-color", "rgba(0, 100, 255, 0.8)");
+    
+    // Reset the background color after a short delay
+    setTimeout(() => {
+      if (techBoardButton) {
+        techBoardButton.style("background-color", "rgba(0, 0, 0, 0.6)");
+      }
+    }, 200);
+  } catch (e) {
+    console.warn("Error updating tech board button:", e);
+  }
+}
+
+// Function to update the tech board visibility
+function updateTechBoardVisibility() {
+  try {
+    if (!techBoard) return;
+    
+    if (techBoardVisible) {
+      techBoard.style("display", "block");
+    } else {
+      techBoard.style("display", "none");
+    }
+  } catch (e) {
+    console.warn("Error updating tech board visibility:", e);
   }
 }
 
@@ -7872,6 +7966,11 @@ function createTechnicalBoardElements() {
   techBoard.style("z-index", "1000");
   techBoard.style("text-align", "right");
   techBoard.style("use-select", "none");
+  
+  // Set initial visibility based on techBoardVisible flag
+  if (!techBoardVisible) {
+    techBoard.style("display", "none");
+  }
 }
 
 // FPS smoothing for more stable display
