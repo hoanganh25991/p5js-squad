@@ -199,6 +199,14 @@ let skills = {
   skill6: { cooldown: 600, lastUsed: 0 },
   skill7: { cooldown: 600, lastUsed: 0 },
   skill8: { cooldown: 600, lastUsed: 0 },
+  skill9: {
+    cooldown: 450,
+    lastUsed: 0,
+    active: false,
+    activeDuration: 600, // Barrier duration (10 seconds = 600 frames at 60fps)
+    endTime: 0,
+    health: 500, // Barrier health
+  },
 };
 
 let squadLeader = {
@@ -7072,6 +7080,10 @@ function activateSkill(skillNameOrNumber) {
     case SkillName.APOCALYPTIC_DEVASTATION: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
       activateApocalypticDevastation();
       break;
+      
+    case SkillName.BARRIER: // Barrier - Places a wall that enemies target first
+      activateBarrierSkill();
+      break;
   }
 
   // Set cooldown
@@ -8752,6 +8764,8 @@ function keyPressed() {
       activateSkill(SkillName.QUANTUM_ACCELERATION);
     } else if (key === "r" || key === "R") {
       activateSkill(SkillName.APOCALYPTIC_DEVASTATION);
+    } else if (key === "b" || key === "B") {
+      activateSkill(SkillName.BARRIER);
     }
   }
 }
