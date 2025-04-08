@@ -8378,6 +8378,11 @@ function updateStatusBoard() {
 
   lastStatusUpdateTime = frameCount;
 
+  // Calculate time elapsed
+  const elapsedSeconds = Math.floor((millis() - startTime) / 1000);
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+
   // Calculate average health
   const avgHealth =
     squad.length > 0
@@ -8390,6 +8395,7 @@ function updateStatusBoard() {
   statusBoard.style("padding", "10px");
   statusBoard.html(`
     <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
+    <div>Time: ${minutes}m ${seconds}s</div>
     <div>Wave: ${currentWave}</div>
     <!-- <div>Score: ${score}</div> -->
     <div>Squad: ${squad.length}/${SQUAD_SIZE}</div>
