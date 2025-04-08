@@ -1576,18 +1576,24 @@ const MAX_EFFECTS = 500; // Maximum visual effects
 
 // Function to limit effects based on performance level
 function limitEffects() {
-  // Get maximum effects based on performance level
+  // Count active skills to adjust effect limits
+  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+  
+  // Dynamically reduce effects when multiple skills are active
+  const skillMultiplier = Math.max(0.5, 1 - (activeSkillCount * 0.15)); // Reduce by 15% per active skill, min 50%
+  
+  // Get maximum effects based on performance level and active skills
   const maxEffects = isMobileDevice
     ? currentPerformanceLevel === PerformanceLevel.LOW
-      ? 50  // Much more aggressive limit for low-end mobile
+      ? Math.floor(50 * skillMultiplier)  // Much more aggressive limit for low-end mobile
       : currentPerformanceLevel === PerformanceLevel.MEDIUM
-      ? 100 // Reduced for medium mobile
-      : 150 // Reduced for high-end mobile too
+      ? Math.floor(100 * skillMultiplier) // Reduced for medium mobile
+      : Math.floor(150 * skillMultiplier) // Reduced for high-end mobile too
     : currentPerformanceLevel === PerformanceLevel.LOW
-    ? 150
+    ? Math.floor(150 * skillMultiplier)
     : currentPerformanceLevel === PerformanceLevel.MEDIUM
-    ? 250
-    : MAX_EFFECTS;
+    ? Math.floor(250 * skillMultiplier)
+    : Math.floor(MAX_EFFECTS * skillMultiplier);
 
   // If we have too many effects, remove the oldest ones
   if (effects.length > maxEffects) {
@@ -2789,24 +2795,30 @@ function drawProjectiles() {
 function drawEffects() {
   // Get performance-based multipliers
   const effectMultiplier = getEffectMultiplier();
+  
+  // Count active skills to adjust rendering
+  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+  
+  // Dynamically reduce effects when multiple skills are active
+  const skillMultiplier = Math.max(0.4, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 40%
 
   // Determine if we should use high-detail effects
   const useHighDetail = currentPerformanceLevel === "high";
   const useMediumDetail = currentPerformanceLevel === "medium";
   const useLowDetail = currentPerformanceLevel === "low";
 
-  // Limit the number of effects to render based on performance level
+  // Limit the number of effects to render based on performance level and active skills
   const maxEffectsToRender = isMobileDevice
     ? useLowDetail
-      ? 50
+      ? Math.floor(50 * skillMultiplier)
       : useMediumDetail
-      ? 100
-      : 150
+      ? Math.floor(100 * skillMultiplier)
+      : Math.floor(150 * skillMultiplier)
     : useLowDetail
-    ? 100
+    ? Math.floor(100 * skillMultiplier)
     : useMediumDetail
-    ? 200
-    : 300;
+    ? Math.floor(200 * skillMultiplier)
+    : Math.floor(300 * skillMultiplier);
 
   // Sort effects by priority (certain effect types are more important)
   const priorityEffects = effects.filter(
@@ -2902,11 +2914,15 @@ function drawEffects() {
     } else {
       performanceFactor = useLowDetail ? 0.5 : useMediumDetail ? 0.8 : 1.0;
     }
-
+    
+    // Further reduce particles when multiple skills are active
+    const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
+    const skillFactor = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
+    
     // Calculate final particle count
     const baseParticleCount = 10;
     const particleCount = Math.ceil(
-      lifeFactor * performanceFactor * baseParticleCount
+      lifeFactor * performanceFactor * skillFactor * baseParticleCount
     );
 
     if (effect.type === "explosion") {
