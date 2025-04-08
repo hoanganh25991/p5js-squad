@@ -1722,101 +1722,164 @@ function updateGame() {
 
 // Draw the sky, mountains, and environment
 function drawSkyAndMountains() {
+  // Save the current WebGL state
   push();
-
-  // Reset the camera transformations to draw the sky as a background
-  // This ensures the sky is always behind everything else
+  
+  // Completely reset the matrix to draw in 2D screen space
   resetMatrix();
-
-  // Create a gradient sky from dark blue to light blue
-  // We'll use a series of rectangles with different colors
+  
+  // Switch to 2D rendering mode for the background
+  ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
+  
+  // Get WebGL context and disable depth testing temporarily
+  const gl = drawingContext;
+  const depthTest = gl.isEnabled(gl.DEPTH_TEST);
+  gl.disable(gl.DEPTH_TEST);
+  
+  // Move far back in Z space to ensure background is behind everything
+  translate(0, 0, -5000);
+  
+  noStroke(); // No stroke for all background elements
+  
+  // Extra size to ensure coverage beyond screen edges
+  const extraSize = 500;
+  
+  // ===== SKY GRADIENT =====
+  // Create a horizon-oriented gradient (lighter at horizon, darker at top)
+  // This creates a more realistic sky appearance for a bridge going toward the horizon
   const skyColors = [
-    [20, 30, 80],    // Dark blue (night sky at top)
-    [40, 60, 120],   // Medium blue
-    [70, 130, 180],  // Steel blue
-    [135, 206, 235], // Sky blue (day sky at horizon)
+    [25, 25, 112],   // Midnight blue (top of sky)
+    [65, 105, 225],  // Royal blue (upper sky)
+    [135, 206, 235], // Sky blue (mid sky)
+    [240, 248, 255]  // Alice blue (horizon)
   ];
-
-  noStroke();
-
-  // Draw the sky gradient
+  
+  // Draw the sky gradient from top to horizon
   for (let i = 0; i < skyColors.length; i++) {
-    const y1 = map(i, 0, skyColors.length, 0, height);
-    const y2 = map(i + 1, 0, skyColors.length, 0, height);
-
+    const y1 = map(i, 0, skyColors.length, -extraSize, height * 0.5);
+    const y2 = map(i + 1, 0, skyColors.length, -extraSize, height * 0.5);
+    
     fill(skyColors[i]);
-    rect(0, y1, width, y2 - y1);
+    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
   }
-
-  // Add stars in the night sky (top portion)
+  
+  // ===== STARS =====
+  // Add stars in the upper portion of the sky
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 200);
-    for (let i = 0; i < 100; i++) {
-      const starSize = random(1, 3);
-      const x = random(width);
-      const y = random(height/3); // Only in top third of sky
-
+    fill(255, 255, 255, 150);
+    for (let i = 0; i < 80; i++) {
+      const starSize = random(1, 2.5);
+      const x = random(-extraSize, width + extraSize);
+      const y = random(-extraSize, height * 0.3); // Only in upper portion of sky
+      
       // Make stars twinkle
       if (frameCount % 30 === 0 && random() > 0.7) {
-        ellipse(x, y, starSize * 2, starSize * 2);
+        ellipse(x, y, starSize * 1.5, starSize * 1.5);
       } else {
         ellipse(x, y, starSize, starSize);
       }
     }
   }
-
-  // Add clouds if not on low performance mode
+  
+  // ===== CLOUDS =====
+  // Add clouds near the horizon
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 150);
-
+    fill(255, 255, 255, 180);
+    
     // Use noise for cloud positions
-    for (let i = 0; i < 10; i++) {
-      const cloudX = (noise(i * 0.5, frameCount * 0.001) * width * 1.5) - width * 0.25;
-      const cloudY = height * 0.3 + i * 20;
+    for (let i = 0; i < 12; i++) {
+      // Position clouds more toward the horizon
+      const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
+      const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
       const cloudWidth = noise(i * 0.3) * 200 + 100;
-      const cloudHeight = 40 + noise(i) * 30;
-
+      const cloudHeight = 30 + noise(i) * 20;
+      
       // Draw cloud as a series of ellipses
       for (let j = 0; j < 5; j++) {
         const offsetX = (j - 2) * cloudWidth/6;
-        const offsetY = sin(j * 0.5) * 10;
+        const offsetY = sin(j * 0.5) * 5;
         ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
       }
     }
   }
-
-  // Draw distant mountains
-  fill(50, 70, 90); // Dark blue-gray for distant mountains
+  
+  // ===== DISTANT MOUNTAINS =====
+  // Draw mountain ranges at the horizon
+  // First mountain range (furthest)
+  fill(70, 80, 120); // Distant purple-blue mountains
   beginShape();
-  vertex(0, height * 0.65);
-
-  // Create a mountain range using noise
-  for (let x = 0; x < width; x += 20) {
-    const mountainHeight = noise(x * 0.005, frameCount * 0.0005) * height * 0.2;
-    vertex(x, height * 0.65 - mountainHeight);
+  vertex(-extraSize, height * 0.5); // Start at horizon
+  
+  // Create a jagged mountain range using noise
+  for (let x = -extraSize; x < width + extraSize; x += 20) {
+    const mountainHeight = noise(x * 0.002, frameCount * 0.0001) * height * 0.15;
+    vertex(x, height * 0.5 - mountainHeight);
   }
-
-  vertex(width, height * 0.65);
+  
+  vertex(width + extraSize, height * 0.5);
   endShape(CLOSE);
-
-  // Draw closer mountains
-  fill(70, 90, 110); // Lighter blue-gray for closer mountains
+  
+  // Second mountain range (closer)
+  fill(90, 100, 140); // Slightly lighter blue mountains
   beginShape();
-  vertex(0, height * 0.7);
-
-  // Create a second mountain range
-  for (let x = 0; x < width; x += 15) {
-    const mountainHeight = noise(x * 0.01 + 100, frameCount * 0.0003) * height * 0.15;
-    vertex(x, height * 0.7 - mountainHeight);
+  vertex(-extraSize, height * 0.5);
+  
+  for (let x = -extraSize; x < width + extraSize; x += 15) {
+    const mountainHeight = noise(x * 0.003 + 100, frameCount * 0.0002) * height * 0.1;
+    vertex(x, height * 0.5 - mountainHeight);
   }
-
-  vertex(width, height * 0.7);
+  
+  vertex(width + extraSize, height * 0.5);
   endShape(CLOSE);
-
-  // Draw ground/horizon
-  fill(100, 120, 140); // Grayish blue for the ground
-  rect(0, height * 0.7, width, height * 0.3);
-
+  
+  // ===== OCEAN/WATER =====
+  // Draw water below the horizon (for a bridge over water)
+  // Water gradient from horizon to bottom
+  const waterColors = [
+    [100, 149, 237], // Cornflower blue (near horizon)
+    [65, 105, 225],  // Royal blue (mid water)
+    [25, 25, 112]    // Midnight blue (deep water)
+  ];
+  
+  // Draw water gradient
+  for (let i = 0; i < waterColors.length; i++) {
+    const y1 = map(i, 0, waterColors.length, height * 0.5, height + extraSize);
+    const y2 = map(i + 1, 0, waterColors.length, height * 0.5, height + extraSize);
+    
+    fill(waterColors[i]);
+    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
+  }
+  
+  // ===== WATER REFLECTIONS =====
+  // Add subtle water reflections if not on low performance
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    // Draw subtle horizontal reflection lines
+    stroke(255, 255, 255, 20);
+    strokeWeight(1);
+    
+    for (let y = height * 0.55; y < height; y += 15) {
+      const reflectionWidth = map(y, height * 0.55, height, width * 0.5, width * 0.8);
+      const xStart = width/2 - reflectionWidth/2;
+      const xEnd = width/2 + reflectionWidth/2;
+      
+      // Wavy reflection lines
+      beginShape();
+      for (let x = xStart; x <= xEnd; x += 10) {
+        const waveHeight = sin((x + frameCount) * 0.05) * 2;
+        vertex(x, y + waveHeight);
+      }
+      endShape();
+    }
+    
+    noStroke();
+  }
+  
+  // Re-enable depth testing if it was enabled before
+  if (depthTest) {
+    gl.enable(gl.DEPTH_TEST);
+  }
+  
+  // Restore the previous state
   pop();
 }
 
