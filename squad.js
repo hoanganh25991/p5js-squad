@@ -1890,143 +1890,121 @@ function updateGame() {
 
 // Draw the sky, mountains, and environment
 function drawSkyAndMountains() {
-  // OPTIMIZATION: Skip detailed background on low performance devices
-  const skyIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const skyIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-  
-  try {
-    // Save the current WebGL state
-    push();
+  // Save the current WebGL state
+  push();
 
-    // Completely reset the matrix to draw in 2D screen space
-    resetMatrix();
+  // Completely reset the matrix to draw in 2D screen space
+  resetMatrix();
 
-    // Switch to 2D rendering mode for the background
-    ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
+  // Switch to 2D rendering mode for the background
+  ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
 
-    // Get WebGL context and disable depth testing temporarily
-    const gl = drawingContext;
-    const depthTest = gl.isEnabled(gl.DEPTH_TEST);
-    gl.disable(gl.DEPTH_TEST);
+  // Get WebGL context and disable depth testing temporarily
+  const gl = drawingContext;
+  const depthTest = gl.isEnabled(gl.DEPTH_TEST);
+  gl.disable(gl.DEPTH_TEST);
 
-    // Move far back in Z space to ensure background is behind everything
-    translate(0, 0, -5000);
+  // Move far back in Z space to ensure background is behind everything
+  translate(0, 0, -5000);
 
-    noStroke(); // No stroke for all background elements
+  noStroke(); // No stroke for all background elements
 
-    // OPTIMIZATION: Reduce extra size on mobile
-    const extraSize = skyIsLowPerformance ? width * 0.5 : Math.max(1000, width);
+  // Extra size to ensure coverage beyond screen edges
+  // Increased to ensure full coverage on larger screens
+  const extraSize = Math.max(1000, width); // Use at least 1000px or the full width, whichever is larger
 
-    // ===== SKY GRADIENT =====
-    // OPTIMIZATION: Reduce number of gradient steps on low performance devices
-    const skyColors = [
-      [25, 25, 112], // Midnight blue (top of sky)
-      [65, 105, 225], // Royal blue (upper sky)
-      [135, 206, 235], // Sky blue (mid sky)
-      [240, 248, 255], // Alice blue (horizon)
-    ];
+  // ===== SKY GRADIENT =====
+  // Create a horizon-oriented gradient (lighter at horizon, darker at top)
+  // This creates a more realistic sky appearance for a bridge going toward the horizon
+  const skyColors = [
+    [25, 25, 112], // Midnight blue (top of sky)
+    [65, 105, 225], // Royal blue (upper sky)
+    [135, 206, 235], // Sky blue (mid sky)
+    [240, 248, 255], // Alice blue (horizon)
+  ];
 
-    // OPTIMIZATION: Use fewer gradient steps on low performance devices
-    const gradientSteps = skyIsLowPerformance ? 2 : skyColors.length;
-    
-    // Draw the sky gradient from top to horizon with fewer steps on mobile
-    for (let i = 0; i < gradientSteps; i++) {
-      // Map the reduced steps to the full color array
-      const colorIndex = Math.floor(i * (skyColors.length / gradientSteps));
-      const nextColorIndex = Math.floor((i + 1) * (skyColors.length / gradientSteps)) % skyColors.length;
-      
-      const y1 = map(i, 0, gradientSteps, -extraSize, height * 0.5);
-      const y2 = map(i + 1, 0, gradientSteps, -extraSize, height * 0.5);
+  // Draw the sky gradient from top to horizon
+  for (let i = 0; i < skyColors.length; i++) {
+    const y1 = map(i, 0, skyColors.length, -extraSize, height * 0.5);
+    const y2 = map(i + 1, 0, skyColors.length, -extraSize, height * 0.5);
 
-      fill(skyColors[colorIndex]);
-      rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
-    }
-
-    // ===== DISTANT MOUNTAINS =====
-    // OPTIMIZATION: Skip mountains on low performance devices, simplify on medium
-    if (!skyIsLowPerformance) {
-      // First mountain range (furthest)
-      fill(70, 80, 120); // Distant purple-blue mountains
-      beginShape();
-      vertex(-extraSize, height * 0.5); // Start at horizon
-
-      // OPTIMIZATION: Increase step size on medium performance
-      const mountainStep = skyIsMediumPerformance ? 40 : 20;
-      
-      // Create a jagged mountain range using noise
-      // OPTIMIZATION: Use static noise value instead of frameCount on medium performance
-      const noiseOffset = skyIsMediumPerformance ? 0 : frameCount * 0.0001;
-      
-      for (let x = -extraSize; x < width + extraSize; x += mountainStep) {
-        const mountainHeight = noise(x * 0.002, noiseOffset) * height * 0.15;
-        vertex(x, height * 0.5 - mountainHeight);
-      }
-
-      vertex(width + extraSize, height * 0.5);
-      endShape(CLOSE);
-
-      // Second mountain range only on high performance
-      if (!skyIsMediumPerformance) {
-        fill(90, 100, 140); // Slightly lighter blue mountains
-        beginShape();
-        vertex(-extraSize, height * 0.5);
-
-        for (let x = -extraSize; x < width + extraSize; x += 30) { // Increased step size
-          const mountainHeight = noise(x * 0.003 + 100, noiseOffset) * height * 0.1;
-          vertex(x, height * 0.5 - mountainHeight);
-        }
-
-        vertex(width + extraSize, height * 0.5);
-        endShape(CLOSE);
-      }
-    }
-
-    // ===== OCEAN/WATER =====
-    // OPTIMIZATION: Reduce water gradient steps on low performance devices
-    const waterColors = [
-      [100, 149, 237], // Cornflower blue (near horizon)
-      [65, 105, 225], // Royal blue (mid water)
-      [25, 25, 112], // Midnight blue (deep water)
-    ];
-
-    // OPTIMIZATION: Use fewer gradient steps on low performance devices
-    const waterSteps = skyIsLowPerformance ? 1 : waterColors.length;
-    
-    // Draw water gradient with fewer steps on mobile
-    for (let i = 0; i < waterSteps; i++) {
-      // Map the reduced steps to the full color array
-      const colorIndex = Math.floor(i * (waterColors.length / waterSteps));
-      
-      const y1 = map(i, 0, waterSteps, height * 0.5, height + extraSize);
-      const y2 = map(i + 1, 0, waterSteps, height * 0.5, height + extraSize);
-
-      fill(waterColors[colorIndex]);
-      rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
-    }
-
-    // Re-enable depth testing if it was enabled before
-    if (depthTest) {
-      gl.enable(gl.DEPTH_TEST);
-    }
-
-    // Restore the previous state
-    pop();
-  } catch (e) {
-    // Fallback to a simple background if there's an error
-    console.error("Error in drawSkyAndMountains:", e);
-    background(25, 25, 112); // Simple dark blue background as fallback
+    fill(skyColors[i]);
+    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
   }
+
+  // ===== DISTANT MOUNTAINS =====
+  // Draw mountain ranges at the horizon
+  // First mountain range (furthest)
+  fill(70, 80, 120); // Distant purple-blue mountains
+  beginShape();
+  vertex(-extraSize, height * 0.5); // Start at horizon
+
+  // Create a jagged mountain range using noise
+  for (let x = -extraSize; x < width + extraSize; x += 20) {
+    const mountainHeight =
+      noise(x * 0.002, frameCount * 0.0001) * height * 0.15;
+    vertex(x, height * 0.5 - mountainHeight);
+  }
+
+  vertex(width + extraSize, height * 0.5);
+  endShape(CLOSE);
+
+  // Second mountain range (closer)
+  fill(90, 100, 140); // Slightly lighter blue mountains
+  beginShape();
+  vertex(-extraSize, height * 0.5);
+
+  for (let x = -extraSize; x < width + extraSize; x += 15) {
+    const mountainHeight =
+      noise(x * 0.003 + 100, frameCount * 0.0002) * height * 0.1;
+    vertex(x, height * 0.5 - mountainHeight);
+  }
+
+  vertex(width + extraSize, height * 0.5);
+  endShape(CLOSE);
+
+  // ===== OCEAN/WATER =====
+  // Draw water below the horizon (for a bridge over water)
+  // Water gradient from horizon to bottom
+  const waterColors = [
+    [100, 149, 237], // Cornflower blue (near horizon)
+    [65, 105, 225], // Royal blue (mid water)
+    [25, 25, 112], // Midnight blue (deep water)
+  ];
+
+  // Draw water gradient
+  for (let i = 0; i < waterColors.length; i++) {
+    const y1 = map(i, 0, waterColors.length, height * 0.5, height + extraSize);
+    const y2 = map(
+      i + 1,
+      0,
+      waterColors.length,
+      height * 0.5,
+      height + extraSize
+    );
+
+    fill(waterColors[i]);
+    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
+  }
+
+  // Re-enable depth testing if it was enabled before
+  if (depthTest) {
+    gl.enable(gl.DEPTH_TEST);
+  }
+
+  // Restore the previous state
+  pop();
 }
 
 // Function to draw clouds that appear on top of the bridge at the horizon
 function drawSkyOverlay() {
-  // OPTIMIZATION: Skip clouds on low/medium performance devices completely
-  if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW || 
-      currentPerformanceLevel === PerformanceLevel.MEDIUM) {
-    return; // Skip drawing clouds on all mobile and low/medium performance devices
-  }
-  
   try {
+    // Check if we're in mobile landscape mode - if so, skip drawing clouds
+    // This is a workaround for the WebGL context issue in mobile landscape
+    if (isMobileDevice && windowWidth > windowHeight) {
+      return; // Skip drawing clouds in mobile landscape mode
+    }
+    
     // Save the current WebGL state
     push();
 
@@ -2034,52 +2012,56 @@ function drawSkyOverlay() {
       // Completely reset the matrix to draw in 2D screen space
       resetMatrix();
 
-      // Switch to 2D rendering mode with error handling
+      // Switch to 2D rendering mode - use try/catch to handle potential WebGL errors
       try {
         ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
       } catch (e) {
         console.warn("Error setting ortho projection:", e);
-        pop();
-        return;
+        // If ortho fails, try to use a simpler approach
+        resetMatrix();
       }
 
       // Move in front of everything
       translate(0, 0, 1000);
+
       noStroke();
 
-      // OPTIMIZATION: Reduce extra size
-      const extraSize = width;
+      // Extra size to ensure coverage beyond screen edges
+      const extraSize = Math.max(1000, width);
 
-      // OPTIMIZATION: Draw fewer clouds (3 instead of 6)
-      const cloudCount = 3;
-      
-      // Use a static noise offset instead of frameCount for better performance
-      const noiseOffset = 0.5;
-      
-      // Draw simplified clouds
-      for (let i = 0; i < cloudCount; i++) {
-        // Position clouds near the horizon
-        const cloudX = noise(i * 0.5, noiseOffset) * (width + extraSize) - extraSize/2;
+      // ===== CLOUDS OVERLAY =====
+      // Add clouds that appear on top of the bridge near the horizon
+      // Use noise for cloud positions
+      for (let i = 0; i < 6; i++) {
+        // Reduced number of clouds
+        // Position clouds near the horizon (middle of screen)
+        const cloudX =
+          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
+
+        // Position clouds slightly above the horizon line for better visibility of the bridge/wall
+        // Adjust based on device - higher on mobile to show more of the bridge
         const cloudY = 420; // Slightly above center of screen in ortho mode
-        const cloudWidth = noise(i * 0.3) * 200 + 100;
-        const cloudHeight = 30 + noise(i) * 20;
 
-        // OPTIMIZATION: Draw each cloud with fewer ellipses (3 instead of 5)
-        for (let j = 0; j < 3; j++) {
+        const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
+        const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
+
+        // Draw cloud as a series of overlapping ellipses
+        for (let j = 0; j < 5; j++) {
           try {
-            const offsetX = ((j - 1) * cloudWidth) / 4;
-            const offsetY = sin(j * 0.5) * 4;
+            const offsetX = ((j - 2) * cloudWidth) / 6;
+            const offsetY = sin(j * 0.5) * 6;
 
-            // Make clouds more transparent
-            fill(255, 255, 255, 80);
+            // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
+            fill(255, 255, 255, map(j, 0, 4, 80, 120));
             
-            // Check WebGL context before drawing
-            if (drawingContext && !drawingContext.isContextLost()) {
+            // Use try/catch for each ellipse to prevent errors from stopping the entire function
+            try {
               ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+            } catch (e) {
+              console.warn("Error drawing cloud ellipse:", e);
             }
           } catch (e) {
-            // Just skip this ellipse on error
-            console.warn("Error drawing cloud ellipse:", e);
+            console.warn("Error in cloud calculation:", e);
           }
         }
       }
@@ -2087,12 +2069,13 @@ function drawSkyOverlay() {
       console.error("Error in sky overlay rendering:", e);
     }
     
-    // Restore the previous state
+    // Always try to restore the previous state
     pop();
   } catch (e) {
     console.error("Critical error in drawSkyOverlay:", e);
   }
 }
+
 
 function drawGame() {
   try {
