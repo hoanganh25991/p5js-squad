@@ -2433,20 +2433,33 @@ function drawPowerUpLane() {
     // Use a slightly different fill color for better contrast
     fill(...POWER_UP_LANE_COLOR);
 
-    // Draw the base power-up lane - use try/catch to handle potential WebGL errors
-    try {
-      box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
-    } catch (e) {
-      console.warn("Error drawing power-up lane box:", e);
-      // Fallback to a simpler shape if box fails
+    // Check if we're on a mobile device or low performance mode
+    // and use simpler rendering to avoid WebGL issues
+    if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW) {
+      // Use rect() instead of box() for better compatibility
       push();
+      rectMode(CENTER);
       translate(0, 0, 0);
-      plane(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
+      rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
       pop();
+    } else {
+      // For desktop/high-performance devices, try the 3D version with fallback
+      try {
+        box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
+      } catch (e) {
+        console.warn("Error drawing power-up lane box:", e);
+        // Fallback to a simpler shape if box fails
+        push();
+        translate(0, 0, 0);
+        rectMode(CENTER);
+        rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
+        pop();
+      }
     }
 
     // Add lane markers/decorations for better visual guidance
-    const laneMarkers = 30; // Further increased number of lane markers for the even longer bridge
+    // Reduce number of markers on mobile for better performance
+    const laneMarkers = isMobileDevice ? 15 : 30;
     const stepSize = BRIDGE_LENGTH / laneMarkers;
 
     // Draw lane markers
@@ -2456,11 +2469,19 @@ function drawPowerUpLane() {
       translate(0, yPos, 5); // Position slightly above the lane
       fill(180, 220, 255, 150); // Lighter blue with transparency
       
-      try {
-        box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
-      } catch (e) {
-        // Fallback to a simpler shape if box fails
-        plane(POWER_UP_LANE_WIDTH - 20, 5);
+      if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW) {
+        // Use rect() for mobile devices
+        rectMode(CENTER);
+        rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
+      } else {
+        // For desktop, try 3D with fallback
+        try {
+          box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
+        } catch (e) {
+          // Fallback to a simpler shape if box fails
+          rectMode(CENTER);
+          rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
+        }
       }
       
       pop();
