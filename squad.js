@@ -6,7 +6,7 @@ const GameState = {
   MENU: "menu",
   PLAYING: "playing",
   PAUSED: "paused",
-  GAME_OVER: "gameOver"
+  GAME_OVER: "gameOver",
 };
 
 let gameState = GameState.MENU;
@@ -22,7 +22,7 @@ const PerformanceLevel = {
   LOW: "low",
   MEDIUM: "medium",
   HIGH: "high",
-  AUTO: "auto"
+  AUTO: "auto",
 };
 
 let isMobileDevice = false;
@@ -238,74 +238,80 @@ const PerformanceManager = {
   frameRateLimited: false, // Track if we've limited the frame rate
   lastFPSAdjustment: 0, // Last time we adjusted the frame rate
   benchmarkComplete: false, // Flag to track if initial benchmark is complete
-  
+
   // Detect GPU capabilities
-  detectGPUCapabilities: function() {
+  detectGPUCapabilities: function () {
     try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      
+      const canvas = document.createElement("canvas");
+      const gl =
+        canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+
       if (!gl) {
-        console.warn('WebGL not supported');
+        console.warn("WebGL not supported");
         return false;
       }
-      
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+
+      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
       if (debugInfo) {
         const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
         const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-        
+
         this.gpuInfo = {
           vendor: vendor,
           renderer: renderer,
           maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
           maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS),
-          extensions: gl.getSupportedExtensions()
+          extensions: gl.getSupportedExtensions(),
         };
-        
+
         // Determine GPU tier based on renderer string
         const rendererLower = renderer.toLowerCase();
-        
+
         // Check for high-end GPUs
-        if (rendererLower.includes('nvidia') && !rendererLower.includes('mobile') ||
-            rendererLower.includes('amd') && !rendererLower.includes('mobile') ||
-            rendererLower.includes('metal') || // Apple Metal GPU
-            rendererLower.includes('apple') || // Apple GPU
-            rendererLower.includes('intel') && (
-              rendererLower.includes('iris') || 
-              rendererLower.includes('hd 6') || 
-              rendererLower.includes('uhd')
-            )) {
+        if (
+          (rendererLower.includes("nvidia") &&
+            !rendererLower.includes("mobile")) ||
+          (rendererLower.includes("amd") &&
+            !rendererLower.includes("mobile")) ||
+          rendererLower.includes("metal") || // Apple Metal GPU
+          rendererLower.includes("apple") || // Apple GPU
+          (rendererLower.includes("intel") &&
+            (rendererLower.includes("iris") ||
+              rendererLower.includes("hd 6") ||
+              rendererLower.includes("uhd")))
+        ) {
           this.gpuTier = 3; // High-end
         }
         // Check for mid-range GPUs
-        else if (rendererLower.includes('intel') || 
-                 rendererLower.includes('mali-t') ||
-                 rendererLower.includes('adreno 6') ||
-                 // Add more mid-range mobile GPUs
-                 rendererLower.includes('mali-g') ||
-                 rendererLower.includes('adreno 5') ||
-                 rendererLower.includes('apple a12') ||
-                 rendererLower.includes('apple a13')) {
+        else if (
+          rendererLower.includes("intel") ||
+          rendererLower.includes("mali-t") ||
+          rendererLower.includes("adreno 6") ||
+          // Add more mid-range mobile GPUs
+          rendererLower.includes("mali-g") ||
+          rendererLower.includes("adreno 5") ||
+          rendererLower.includes("apple a12") ||
+          rendererLower.includes("apple a13")
+        ) {
           this.gpuTier = 2; // Mid-range
         }
         // Everything else is considered low-end
         else {
           this.gpuTier = 1; // Low-end
         }
-        
-        console.log('GPU Tier:', this.gpuTier);
+
+        console.log("GPU Tier:", this.gpuTier);
         return true;
       }
     } catch (e) {
-      console.warn('Error detecting GPU:', e);
+      console.warn("Error detecting GPU:", e);
     }
-    
+
     return false;
   },
 
   // Detect if the device is mobile
-  detectMobileDevice: function() {
+  detectMobileDevice: function () {
     // Check if the device has touch capability
     const hasTouchScreen =
       "ontouchstart" in window ||
@@ -327,28 +333,28 @@ const PerformanceManager = {
   },
 
   // Calculate average FPS from history
-  getAverageFPS: function() {
+  getAverageFPS: function () {
     if (fpsHistory.length === 0) return 60; // Default to 60 if no history
     return fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
   },
-  
+
   // Get stable FPS (removing outliers)
-  getStableFPS: function() {
+  getStableFPS: function () {
     if (fpsHistory.length < 5) return this.getAverageFPS();
-    
+
     // Sort FPS values
     const sortedFPS = [...fpsHistory].sort((a, b) => a - b);
-    
+
     // Remove top and bottom 10% to eliminate outliers
     const cutoff = Math.floor(sortedFPS.length * 0.1);
     const stableFPS = sortedFPS.slice(cutoff, sortedFPS.length - cutoff);
-    
+
     // Calculate average of remaining values
     return stableFPS.reduce((sum, fps) => sum + fps, 0) / stableFPS.length;
   },
 
   // Set performance level based on device, GPU and FPS
-  setPerformanceLevel: function() {
+  setPerformanceLevel: function () {
     if (performanceMode !== PerformanceLevel.AUTO) {
       currentPerformanceLevel = performanceMode;
       return;
@@ -366,7 +372,7 @@ const PerformanceManager = {
     if (isMobileDevice) {
       // Start with medium as default for mobile
       currentPerformanceLevel = PerformanceLevel.MEDIUM;
-      
+
       // If we have GPU info, use it to refine our decision
       if (this.gpuTier === 3) {
         // High-end mobile GPU can handle medium settings
@@ -380,12 +386,15 @@ const PerformanceManager = {
       if (fpsHistory.length >= 10) {
         if (stableFPS < 45) {
           currentPerformanceLevel = PerformanceLevel.LOW;
-        } else if (stableFPS > 55 && currentPerformanceLevel === PerformanceLevel.LOW) {
+        } else if (
+          stableFPS > 55 &&
+          currentPerformanceLevel === PerformanceLevel.LOW
+        ) {
           // If we're getting good performance on LOW, try upgrading to MEDIUM
           currentPerformanceLevel = PerformanceLevel.MEDIUM;
         }
       }
-      
+
       // Set target FPS based on device capabilities
       // For mobile, we aim for stable 60 FPS on high-end, 45-60 on mid-range
       if (this.gpuTier === 3) {
@@ -399,7 +408,7 @@ const PerformanceManager = {
       // On desktop, start with high performance
       currentPerformanceLevel = PerformanceLevel.HIGH;
       this.targetFPS = 60; // Desktop always targets 60 FPS
-      
+
       // If we have GPU info, use it to refine our decision
       if (this.gpuTier === 1) {
         // Low-end desktop GPU should use medium settings
@@ -418,18 +427,23 @@ const PerformanceManager = {
 
     // Apply frame rate limiting if needed
     this.applyFrameRateLimiting();
-    
-    console.log("Performance level set to:", currentPerformanceLevel, "Target FPS:", this.targetFPS);
+
+    console.log(
+      "Performance level set to:",
+      currentPerformanceLevel,
+      "Target FPS:",
+      this.targetFPS
+    );
   },
-  
+
   // Apply frame rate limiting based on device capabilities
-  applyFrameRateLimiting: function() {
+  applyFrameRateLimiting: function () {
     // Only adjust frame rate every 5 seconds to avoid constant changes
     const now = millis();
     if (now - this.lastFPSAdjustment < 5000 && this.frameRateLimited) return;
-    
+
     this.lastFPSAdjustment = now;
-    
+
     // If we're on a mobile device, limit the frame rate to our target
     if (isMobileDevice) {
       frameRate(this.targetFPS);
@@ -442,7 +456,7 @@ const PerformanceManager = {
   },
 
   // Get multipliers for effect counts based on performance level
-  getEffectMultiplier: function() {
+  getEffectMultiplier: function () {
     // More aggressive reduction for mobile
     if (isMobileDevice) {
       switch (currentPerformanceLevel) {
@@ -471,7 +485,7 @@ const PerformanceManager = {
   },
 
   // Apply performance settings to WebGL context
-  applyWebGLSettings: function() {
+  applyWebGLSettings: function () {
     // Configure WebGL settings based on performance level
     if (currentPerformanceLevel === PerformanceLevel.LOW) {
       setAttributes("antialias", false);
@@ -499,13 +513,13 @@ const PerformanceManager = {
 
     // Disable texture mipmapping to save memory
     textureMode(NORMAL);
-    
+
     // Enable hardware acceleration hints
-    if (typeof _renderer !== 'undefined' && _renderer.GL) {
+    if (typeof _renderer !== "undefined" && _renderer.GL) {
       const gl = _renderer.GL;
       gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
       gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
-      
+
       // Additional WebGL optimizations
       if (isMobileDevice) {
         // Disable depth testing for transparent objects on mobile
@@ -515,21 +529,21 @@ const PerformanceManager = {
       }
     }
   },
-  
+
   // Run a quick benchmark to determine optimal settings
-  runBenchmark: function() {
+  runBenchmark: function () {
     if (this.benchmarkComplete) return;
-    
+
     console.log("Running performance benchmark...");
-    
+
     // Clear FPS history to start fresh
     fpsHistory = [];
-    
+
     // Set a timer to evaluate performance after 3 seconds
     setTimeout(() => {
       const benchmarkFPS = this.getStableFPS();
       console.log("Benchmark FPS:", benchmarkFPS);
-      
+
       // Set initial performance level based on benchmark
       if (benchmarkFPS < 30) {
         currentPerformanceLevel = PerformanceLevel.LOW;
@@ -541,23 +555,28 @@ const PerformanceManager = {
         currentPerformanceLevel = PerformanceLevel.HIGH;
         this.targetFPS = 60;
       }
-      
+
       // Apply settings
       this.applyWebGLSettings();
       this.applyFrameRateLimiting();
-      
-      console.log("Benchmark complete. Performance level:", currentPerformanceLevel);
+
+      console.log(
+        "Benchmark complete. Performance level:",
+        currentPerformanceLevel
+      );
       this.benchmarkComplete = true;
     }, 3000);
   },
-  
+
   // Check if we can use advanced GPU features
-  canUseAdvancedFeatures: function() {
-    return this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW;
+  canUseAdvancedFeatures: function () {
+    return (
+      this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW
+    );
   },
-  
+
   // Get distance for object culling based on performance level
-  getCullingDistance: function() {
+  getCullingDistance: function () {
     if (isMobileDevice) {
       switch (currentPerformanceLevel) {
         case PerformanceLevel.LOW:
@@ -572,7 +591,7 @@ const PerformanceManager = {
     } else {
       return 5000; // Desktop can render further
     }
-  }
+  },
 };
 
 // Wrapper functions for backward compatibility
@@ -599,23 +618,25 @@ function setup() {
   // Detect if we're on a mobile device
   isMobileDevice = PerformanceManager.detectMobileDevice();
   console.log("Mobile device detected:", isMobileDevice);
-  
+
   // Add orientation change listener for mobile devices
   if (isMobileDevice) {
     // Use multiple methods to detect orientation changes for better cross-browser support
-    
+
     // Method 1: matchMedia (modern browsers)
     if (window.matchMedia) {
-      window.matchMedia("(orientation: portrait)").addEventListener("change", handleOrientationChange);
+      window
+        .matchMedia("(orientation: portrait)")
+        .addEventListener("change", handleOrientationChange);
     }
-    
+
     // Method 2: orientationchange event (older mobile browsers)
     window.addEventListener("orientationchange", handleOrientationChange);
-    
+
     // Method 3: resize event as fallback (will catch orientation changes too)
     window.addEventListener("resize", debounce(handleOrientationChange, 250));
   }
-  
+
   // Function to handle orientation changes
   function handleOrientationChange() {
     // Multiple timeouts to ensure we catch the correct dimensions after orientation change
@@ -624,19 +645,21 @@ function setup() {
     updateCameraZoomWithDelay(300);
     updateCameraZoomWithDelay(500);
   }
-  
+
   // Helper function to update camera zoom with delay
   function updateCameraZoomWithDelay(delay) {
     setTimeout(() => {
       cameraZoom = calculateDynamicCameraZoom();
-      console.log(`Orientation update (${delay}ms): zoom=${cameraZoom.toFixed(2)}`);
+      console.log(
+        `Orientation update (${delay}ms): zoom=${cameraZoom.toFixed(2)}`
+      );
     }, delay);
   }
-  
+
   // Debounce function to limit how often a function can be called
   function debounce(func, wait) {
     let timeout;
-    return function() {
+    return function () {
       const context = this;
       const args = arguments;
       clearTimeout(timeout);
@@ -646,7 +669,7 @@ function setup() {
 
   // Detect GPU capabilities
   PerformanceManager.detectGPUCapabilities();
-  
+
   // Set initial performance level
   PerformanceManager.setPerformanceLevel();
 
@@ -661,36 +684,40 @@ function setup() {
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
   perspective(PI / 4, width / height, 0.1, 5000);
-  
+
   // Set dynamic camera zoom based on screen dimensions
   cameraZoom = calculateDynamicCameraZoom();
 
   // Initialize GPU acceleration systems if supported
   if (PerformanceManager.canUseAdvancedFeatures()) {
     console.log("Initializing GPU acceleration features");
-    
+
     // Use the centralized GPU acceleration initialization
-    if (typeof initGPUAcceleration === 'function') {
+    if (typeof initGPUAcceleration === "function") {
       const gpuInitialized = initGPUAcceleration();
       if (gpuInitialized) {
         console.log("GPU acceleration successfully initialized");
         gpuAccelerationEnabled = true;
       } else {
-        console.warn("GPU acceleration initialization failed, falling back to CPU");
+        console.warn(
+          "GPU acceleration initialization failed, falling back to CPU"
+        );
         gpuAccelerationEnabled = false;
       }
     } else {
-      console.warn("GPU acceleration module not found, using individual initializations");
-      
+      console.warn(
+        "GPU acceleration module not found, using individual initializations"
+      );
+
       // Track successful initializations
       let particlesInitialized = false;
       let rendererInitialized = false;
       let collisionInitialized = false;
-      
+
       // Fallback to individual initializations
       // Initialize GPU-based particle system
       try {
-        if (typeof initGPUParticles === 'function') {
+        if (typeof initGPUParticles === "function") {
           initGPUParticles();
           console.log("GPU Particle system initialized");
           particlesInitialized = true;
@@ -698,10 +725,10 @@ function setup() {
       } catch (e) {
         console.warn("Could not initialize GPU particles:", e);
       }
-      
+
       // Initialize GPU-based renderer for effects
       try {
-        if (typeof initGPURenderer === 'function') {
+        if (typeof initGPURenderer === "function") {
           initGPURenderer();
           console.log("GPU Renderer initialized");
           rendererInitialized = true;
@@ -709,10 +736,10 @@ function setup() {
       } catch (e) {
         console.warn("Could not initialize GPU renderer:", e);
       }
-      
+
       // Initialize spatial partitioning for collision detection
       try {
-        if (typeof initCollisionSystem === 'function') {
+        if (typeof initCollisionSystem === "function") {
           initCollisionSystem();
           console.log("Collision system initialized");
           collisionInitialized = true;
@@ -720,18 +747,22 @@ function setup() {
       } catch (e) {
         console.warn("Could not initialize collision system:", e);
       }
-      
+
       // Consider GPU acceleration enabled if at least one system was initialized
-      gpuAccelerationEnabled = particlesInitialized || rendererInitialized || collisionInitialized;
-      console.log("GPU acceleration status:", gpuAccelerationEnabled ? "Enabled" : "Disabled");
+      gpuAccelerationEnabled =
+        particlesInitialized || rendererInitialized || collisionInitialized;
+      console.log(
+        "GPU acceleration status:",
+        gpuAccelerationEnabled ? "Enabled" : "Disabled"
+      );
     }
   } else {
     console.log("Advanced GPU features not available, using CPU rendering");
     gpuAccelerationEnabled = false;
-    
+
     // Initialize basic collision system even without GPU acceleration
     try {
-      if (typeof initCollisionSystem === 'function') {
+      if (typeof initCollisionSystem === "function") {
         initCollisionSystem();
         console.log("Basic collision system initialized");
       }
@@ -739,9 +770,9 @@ function setup() {
       console.warn("Could not initialize collision system:", e);
     }
   }
-  
+
   // Optimize WebGL context for performance if available
-  if (typeof optimizeWebGLContext === 'function') {
+  if (typeof optimizeWebGLContext === "function") {
     try {
       optimizeWebGLContext();
     } catch (e) {
@@ -813,7 +844,7 @@ const MemoryManager = {
   lastWarningTime: 0,
 
   // Create memory warning overlay if needed
-  createWarningOverlay: function() {
+  createWarningOverlay: function () {
     if (this.warningOverlay) return;
 
     if (window.performance && window.performance.memory) {
@@ -821,21 +852,26 @@ const MemoryManager = {
         styles: {
           backgroundColor: "rgba(255, 0, 0, 0.7)",
           textAlign: "center",
-          display: "none"
-        }
+          display: "none",
+        },
       });
     }
   },
 
   // Check memory usage and show warning if needed
-  checkMemoryUsage: function() {
+  checkMemoryUsage: function () {
     this.createWarningOverlay();
 
-    if (!this.warningOverlay || !window.performance || !window.performance.memory) {
+    if (
+      !this.warningOverlay ||
+      !window.performance ||
+      !window.performance.memory
+    ) {
       return;
     }
 
-    const currentMemory = window.performance.memory.usedJSHeapSize / (1024 * 1024);
+    const currentMemory =
+      window.performance.memory.usedJSHeapSize / (1024 * 1024);
 
     // Show warning if memory usage is too high
     if (currentMemory > 800 && !this.warningShown) {
@@ -859,7 +895,7 @@ const MemoryManager = {
   },
 
   // Perform emergency cleanup when memory is too high
-  performEmergencyCleanup: function() {
+  performEmergencyCleanup: function () {
     projectiles = [];
     projectilePool = [];
     effects = [];
@@ -877,7 +913,7 @@ const MemoryManager = {
         // Ignore if gc is not available
       }
     }
-  }
+  },
 };
 
 // Sound toggle button
@@ -895,7 +931,7 @@ function applyCommonStyles(element, styles = {}) {
     zIndex: "2000",
     position: "fixed",
     display: "block",
-    visibility: "visible"
+    visibility: "visible",
   };
 
   // Merge default styles with provided styles
@@ -904,7 +940,7 @@ function applyCommonStyles(element, styles = {}) {
   // Apply all styles
   Object.entries(finalStyles).forEach(([property, value]) => {
     // Convert camelCase to kebab-case for CSS properties
-    const cssProperty = property.replace(/([A-Z])/g, '-$1').toLowerCase();
+    const cssProperty = property.replace(/([A-Z])/g, "-$1").toLowerCase();
     element.style(cssProperty, value);
   });
 
@@ -921,7 +957,7 @@ function createStyledButton(label, x, y, options = {}) {
     padding: "8px 12px",
     cursor: "pointer",
     fontSize: "14px",
-    ...options.styles
+    ...options.styles,
   };
 
   applyCommonStyles(button, buttonStyles);
@@ -947,7 +983,7 @@ function createStyledContainer(x, y, width, options = {}) {
   const containerStyles = {
     width: width + "px",
     padding: "10px",
-    ...options.styles
+    ...options.styles,
   };
 
   applyCommonStyles(container, containerStyles);
@@ -972,9 +1008,9 @@ function createSoundToggleButton() {
       fontSize: "20px",
       padding: "0",
       textAlign: "center",
-      lineHeight: "40px"
+      lineHeight: "40px",
     },
-    onClick: toggleSoundState
+    onClick: toggleSoundState,
   });
 
   // Function to handle sound toggle
@@ -1047,7 +1083,7 @@ function createPerformanceSettingsUI() {
       updatePauseResumeButton();
       return;
     }
-    
+
     // Create a static pause/resume button as a placeholder
     // This will be updated dynamically based on game state in updatePauseResumeButton
     pauseResumeButton = createStyledButton("⏸️", width - 100, 20, {
@@ -1060,7 +1096,7 @@ function createPerformanceSettingsUI() {
         padding: "0",
         textAlign: "center",
         lineHeight: "40px",
-        visibility: "hidden" // Initially hidden, will be shown by updatePauseResumeButton
+        visibility: "hidden", // Initially hidden, will be shown by updatePauseResumeButton
       },
       onClick: () => {
         // This will be updated by updatePauseResumeButton
@@ -1069,9 +1105,9 @@ function createPerformanceSettingsUI() {
         } else {
           resumeGame();
         }
-      }
+      },
     });
-    
+
     // Create a tech board toggle button with the same style
     techBoardButton = createStyledButton("60", width - 150, 20, {
       id: "tech-board-button",
@@ -1088,19 +1124,19 @@ function createPerformanceSettingsUI() {
         backgroundColor: "rgba(0, 0, 0, 0.8)", // Darker background for better contrast
         color: "#4CAF50", // Default to green
         transition: "all 0.3s ease", // Transition for all properties
-        boxShadow: "0 2px 5px rgba(0,0,0,0.3)" // Add shadow for depth
+        boxShadow: "0 2px 5px rgba(0,0,0,0.3)", // Add shadow for depth
       },
       onClick: () => {
         // Toggle tech board visibility
         techBoardVisible = !techBoardVisible;
         updateTechBoardVisibility();
-      }
+      },
     });
-    
+
     // Update the buttons to show the correct state
     updatePauseResumeButton();
     updateTechBoardButton();
-    
+
     console.log("Created pause/resume button with state:", gameState);
   } catch (e) {
     console.error("Error creating pause/resume button:", e);
@@ -1122,21 +1158,28 @@ function updatePerformanceMetrics() {
   // Check if we need to adjust performance level
   if (frameCount - lastPerformanceCheck > performanceCheckInterval) {
     // Run initial benchmark if not done yet
-    if (!PerformanceManager.benchmarkComplete && frameCount > 180) { // Wait 3 seconds before benchmarking
+    if (!PerformanceManager.benchmarkComplete && frameCount > 180) {
+      // Wait 3 seconds before benchmarking
       PerformanceManager.runBenchmark();
     }
-    
+
     // Adjust performance settings based on current metrics
     PerformanceManager.setPerformanceLevel();
     lastPerformanceCheck = frameCount;
-    
+
     // Log performance metrics for debugging
     if (DEBUG_MODE) {
-      console.log(`FPS: ${Math.round(PerformanceManager.getStableFPS())}, Target: ${PerformanceManager.targetFPS}, Level: ${currentPerformanceLevel}`);
-      console.log(`Objects: Enemies: ${enemies.length}, Projectiles: ${projectiles.length}, Effects: ${effects.length}`);
+      console.log(
+        `FPS: ${Math.round(PerformanceManager.getStableFPS())}, Target: ${
+          PerformanceManager.targetFPS
+        }, Level: ${currentPerformanceLevel}`
+      );
+      console.log(
+        `Objects: Enemies: ${enemies.length}, Projectiles: ${projectiles.length}, Effects: ${effects.length}`
+      );
     }
   }
-  
+
   // Update pause/resume button based on current game state
   updatePauseResumeButton();
 }
@@ -1149,18 +1192,18 @@ function updatePauseResumeButton() {
       createPerformanceSettingsUI();
       return;
     }
-    
+
     // Update button based on game state
     if (gameState === GameState.PLAYING) {
       // Show pause button
       pauseResumeButton.html("⏸️");
       pauseResumeButton.style("visibility", "visible");
-      
+
       // Update click handler
       pauseResumeButton.mousePressed(() => {
         pauseGame();
       });
-      
+
       // Also show tech board button when playing
       if (techBoardButton) {
         techBoardButton.style("visibility", "visible");
@@ -1169,12 +1212,12 @@ function updatePauseResumeButton() {
       // Show resume button
       pauseResumeButton.html("▶️");
       pauseResumeButton.style("visibility", "visible");
-      
+
       // Update click handler
       pauseResumeButton.mousePressed(() => {
         resumeGame();
       });
-      
+
       // Also show tech board button when paused
       if (techBoardButton) {
         techBoardButton.style("visibility", "visible");
@@ -1182,7 +1225,7 @@ function updatePauseResumeButton() {
     } else {
       // Hide button for menu and game over states
       pauseResumeButton.style("visibility", "hidden");
-      
+
       // Also hide tech board button
       if (techBoardButton) {
         techBoardButton.style("visibility", "hidden");
@@ -1209,23 +1252,26 @@ function updateTechBoardButton() {
       createPerformanceSettingsUI();
       return;
     }
-    
+
     // Only update FPS display every few frames for better performance
-    if (frameCount - lastFpsUpdate < 15) { // Update every 15 frames (about 4 times per second at 60fps)
+    if (frameCount - lastFpsUpdate < 15) {
+      // Update every 15 frames (about 4 times per second at 60fps)
       return;
     }
-    
+
     lastFpsUpdate = frameCount;
-    
+
     // Get current FPS
-    const avgFPS = Math.floor(fpsHistory.length > 0 ? 
-      fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length : 
-      frameRate());
-    
+    const avgFPS = Math.floor(
+      fpsHistory.length > 0
+        ? fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length
+        : frameRate()
+    );
+
     // Determine color based on FPS
     let fpsColor;
     let bgColor;
-    
+
     if (avgFPS >= 50) {
       // Good performance - green
       fpsColor = "#4CAF50"; // Bright green
@@ -1239,17 +1285,17 @@ function updateTechBoardButton() {
       fpsColor = "#F44336"; // Material red
       bgColor = "rgba(50, 0, 0, 0.8)"; // Dark red background
     }
-    
+
     // Update button text with FPS
     techBoardButton.html(avgFPS);
-    
+
     // Set the text color based on performance
     techBoardButton.style("color", fpsColor);
-    
+
     // Flash the background when updated
     techBoardButton.style("background-color", "rgba(255, 255, 255, 0.3)");
     techBoardButton.style("transform", "scale(1.1)");
-    
+
     // Reset the background color and scale after a short delay
     setTimeout(() => {
       if (techBoardButton) {
@@ -1266,7 +1312,7 @@ function updateTechBoardButton() {
 function updateTechBoardVisibility() {
   try {
     if (!techBoard) return;
-    
+
     if (techBoardVisible) {
       techBoard.style("display", "block");
     } else {
@@ -1517,7 +1563,7 @@ function draw() {
 
   // 3D
   drawGame();
-  
+
   // Draw the sky overlay on top of the game elements
   drawSkyOverlay();
 
@@ -1575,15 +1621,17 @@ const MAX_EFFECTS = 500; // Maximum visual effects
 // Function to limit effects based on performance level
 function limitEffects() {
   // Count active skills to adjust effect limits
-  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-  
+  const activeSkillCount = Object.values(skills).filter(
+    (skill) => skill.active
+  ).length;
+
   // Dynamically reduce effects when multiple skills are active
-  const skillMultiplier = Math.max(0.5, 1 - (activeSkillCount * 0.15)); // Reduce by 15% per active skill, min 50%
-  
+  const skillMultiplier = Math.max(0.5, 1 - activeSkillCount * 0.15); // Reduce by 15% per active skill, min 50%
+
   // Get maximum effects based on performance level and active skills
   const maxEffects = isMobileDevice
     ? currentPerformanceLevel === PerformanceLevel.LOW
-      ? Math.floor(50 * skillMultiplier)  // Much more aggressive limit for low-end mobile
+      ? Math.floor(50 * skillMultiplier) // Much more aggressive limit for low-end mobile
       : currentPerformanceLevel === PerformanceLevel.MEDIUM
       ? Math.floor(100 * skillMultiplier) // Reduced for medium mobile
       : Math.floor(150 * skillMultiplier) // Reduced for high-end mobile too
@@ -1731,98 +1779,106 @@ function updateGame() {
 function drawSkyAndMountains() {
   // Save the current WebGL state
   push();
-  
+
   // Completely reset the matrix to draw in 2D screen space
   resetMatrix();
-  
+
   // Switch to 2D rendering mode for the background
-  ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
-  
+  ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
+
   // Get WebGL context and disable depth testing temporarily
   const gl = drawingContext;
   const depthTest = gl.isEnabled(gl.DEPTH_TEST);
   gl.disable(gl.DEPTH_TEST);
-  
+
   // Move far back in Z space to ensure background is behind everything
   translate(0, 0, -5000);
-  
+
   noStroke(); // No stroke for all background elements
-  
+
   // Extra size to ensure coverage beyond screen edges
   // Increased to ensure full coverage on larger screens
   const extraSize = Math.max(1000, width); // Use at least 1000px or the full width, whichever is larger
-  
+
   // ===== SKY GRADIENT =====
   // Create a horizon-oriented gradient (lighter at horizon, darker at top)
   // This creates a more realistic sky appearance for a bridge going toward the horizon
   const skyColors = [
-    [25, 25, 112],   // Midnight blue (top of sky)
-    [65, 105, 225],  // Royal blue (upper sky)
+    [25, 25, 112], // Midnight blue (top of sky)
+    [65, 105, 225], // Royal blue (upper sky)
     [135, 206, 235], // Sky blue (mid sky)
-    [240, 248, 255]  // Alice blue (horizon)
+    [240, 248, 255], // Alice blue (horizon)
   ];
-  
+
   // Draw the sky gradient from top to horizon
   for (let i = 0; i < skyColors.length; i++) {
     const y1 = map(i, 0, skyColors.length, -extraSize, height * 0.5);
     const y2 = map(i + 1, 0, skyColors.length, -extraSize, height * 0.5);
-    
+
     fill(skyColors[i]);
-    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
+    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
   }
-  
+
   // ===== DISTANT MOUNTAINS =====
   // Draw mountain ranges at the horizon
   // First mountain range (furthest)
   fill(70, 80, 120); // Distant purple-blue mountains
   beginShape();
   vertex(-extraSize, height * 0.5); // Start at horizon
-  
+
   // Create a jagged mountain range using noise
   for (let x = -extraSize; x < width + extraSize; x += 20) {
-    const mountainHeight = noise(x * 0.002, frameCount * 0.0001) * height * 0.15;
+    const mountainHeight =
+      noise(x * 0.002, frameCount * 0.0001) * height * 0.15;
     vertex(x, height * 0.5 - mountainHeight);
   }
-  
+
   vertex(width + extraSize, height * 0.5);
   endShape(CLOSE);
-  
+
   // Second mountain range (closer)
   fill(90, 100, 140); // Slightly lighter blue mountains
   beginShape();
   vertex(-extraSize, height * 0.5);
-  
+
   for (let x = -extraSize; x < width + extraSize; x += 15) {
-    const mountainHeight = noise(x * 0.003 + 100, frameCount * 0.0002) * height * 0.1;
+    const mountainHeight =
+      noise(x * 0.003 + 100, frameCount * 0.0002) * height * 0.1;
     vertex(x, height * 0.5 - mountainHeight);
   }
-  
+
   vertex(width + extraSize, height * 0.5);
   endShape(CLOSE);
-  
+
   // ===== OCEAN/WATER =====
   // Draw water below the horizon (for a bridge over water)
   // Water gradient from horizon to bottom
   const waterColors = [
     [100, 149, 237], // Cornflower blue (near horizon)
-    [65, 105, 225],  // Royal blue (mid water)
-    [25, 25, 112]    // Midnight blue (deep water)
+    [65, 105, 225], // Royal blue (mid water)
+    [25, 25, 112], // Midnight blue (deep water)
   ];
-  
+
   // Draw water gradient
   for (let i = 0; i < waterColors.length; i++) {
     const y1 = map(i, 0, waterColors.length, height * 0.5, height + extraSize);
-    const y2 = map(i + 1, 0, waterColors.length, height * 0.5, height + extraSize);
-    
+    const y2 = map(
+      i + 1,
+      0,
+      waterColors.length,
+      height * 0.5,
+      height + extraSize
+    );
+
     fill(waterColors[i]);
-    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
+    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
   }
-  
+
   // Re-enable depth testing if it was enabled before
   if (depthTest) {
     gl.enable(gl.DEPTH_TEST);
   }
-  
+
   // Restore the previous state
   pop();
 }
@@ -1831,64 +1887,48 @@ function drawSkyAndMountains() {
 function drawSkyOverlay() {
   // Save the current WebGL state
   push();
-  
+
   // Completely reset the matrix to draw in 2D screen space
   resetMatrix();
-  
+
   // Switch to 2D rendering mode
-  ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
-  
+  ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
+
   // Move in front of everything
-  translate(0, 0, 4000);
-  
+  translate(0, 0, 1000);
+
   noStroke();
-  
+
   // Extra size to ensure coverage beyond screen edges
   const extraSize = Math.max(1000, width);
-  
+
   // ===== CLOUDS OVERLAY =====
   // Add clouds that appear on top of the bridge near the horizon
   // Use noise for cloud positions
-  for (let i = 0; i < 6; i++) { // Reduced number of clouds
+  for (let i = 0; i < 6; i++) {
+    // Reduced number of clouds
     // Position clouds near the horizon (middle of screen)
-    const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
-    
+    const cloudX =
+      noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
+
     // Position clouds slightly above the horizon line for better visibility of the bridge/wall
     // Adjust based on device - higher on mobile to show more of the bridge
-    const horizonOffset = isMobileDevice ? -40 : -20; // Move clouds up from center
-    const cloudY = horizonOffset; // Slightly above center of screen in ortho mode
-    
+    const cloudY = 420; // Slightly above center of screen in ortho mode
+
     const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
     const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
-    
+
     // Draw cloud as a series of overlapping ellipses
     for (let j = 0; j < 5; j++) {
-      const offsetX = (j - 2) * cloudWidth/6;
+      const offsetX = ((j - 2) * cloudWidth) / 6;
       const offsetY = sin(j * 0.5) * 6;
-      
+
       // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
       fill(255, 255, 255, map(j, 0, 4, 80, 120));
-      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
+      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
     }
   }
-  
-  // Add a very subtle sky gradient at the top that fades quickly
-  const skyOverlayColors = [
-    [25, 25, 112, 70],    // Midnight blue with very low opacity (top)
-    [65, 105, 225, 50],   // Royal blue with very low opacity
-    [135, 206, 235, 30],  // Sky blue with extremely low opacity
-    [240, 248, 255, 0]    // Fully transparent
-  ];
-  
-  // Draw a subtle gradient just at the very top
-  for (let i = 0; i < skyOverlayColors.length; i++) {
-    const y1 = map(i, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.12);
-    const y2 = map(i + 1, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.12);
-    
-    fill(skyOverlayColors[i]);
-    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
-  }
-  
+
   // Restore the previous state
   pop();
 }
@@ -1925,14 +1965,14 @@ function drawMainLane() {
     fill(120, 120, 120); // Slightly darker than bridge
 
     // Left railing
-    translate(-BRIDGE_WIDTH/2 + 10, 0, 15);
+    translate(-BRIDGE_WIDTH / 2 + 10, 0, 15);
     box(5, BRIDGE_LENGTH, 20);
     pop();
 
     // Right railing
     push();
     fill(120, 120, 120);
-    translate(BRIDGE_WIDTH/2 - 10, 0, 15);
+    translate(BRIDGE_WIDTH / 2 - 10, 0, 15);
     box(5, BRIDGE_LENGTH, 20);
     pop();
 
@@ -1941,7 +1981,7 @@ function drawMainLane() {
     const pillarSpacing = BRIDGE_LENGTH / pillarCount;
 
     for (let i = 0; i < pillarCount; i++) {
-      const yPos = -BRIDGE_LENGTH/2 + i * pillarSpacing + pillarSpacing/2;
+      const yPos = -BRIDGE_LENGTH / 2 + i * pillarSpacing + pillarSpacing / 2;
 
       // Skip pillars too close to the wall
       if (Math.abs(yPos - WALL_Y) < 100) continue;
@@ -1949,14 +1989,14 @@ function drawMainLane() {
       // Left pillar
       push();
       fill(100, 100, 100);
-      translate(-BRIDGE_WIDTH/2 + 20, yPos, -100);
+      translate(-BRIDGE_WIDTH / 2 + 20, yPos, -100);
       box(20, 20, 200);
       pop();
 
       // Right pillar
       push();
       fill(100, 100, 100);
-      translate(BRIDGE_WIDTH/2 - 20, yPos, -100);
+      translate(BRIDGE_WIDTH / 2 - 20, yPos, -100);
       box(20, 20, 200);
       pop();
 
@@ -1975,7 +2015,7 @@ function drawMainLane() {
     // Center line
     push();
     translate(0, 0, 6);
-    line(0, -BRIDGE_LENGTH/2, 0, BRIDGE_LENGTH/2);
+    line(0, -BRIDGE_LENGTH / 2, 0, BRIDGE_LENGTH / 2);
     pop();
 
     // Dashed lines
@@ -1984,12 +2024,17 @@ function drawMainLane() {
     const dashSpacing = BRIDGE_LENGTH / dashCount;
 
     for (let i = 0; i < dashCount; i++) {
-      const yPos = -BRIDGE_LENGTH/2 + i * dashSpacing + dashSpacing/2;
+      const yPos = -BRIDGE_LENGTH / 2 + i * dashSpacing + dashSpacing / 2;
 
       push();
       translate(0, yPos, 6);
-      line(-BRIDGE_WIDTH/4, -dashLength/2, -BRIDGE_WIDTH/4, dashLength/2);
-      line(BRIDGE_WIDTH/4, -dashLength/2, BRIDGE_WIDTH/4, dashLength/2);
+      line(
+        -BRIDGE_WIDTH / 4,
+        -dashLength / 2,
+        -BRIDGE_WIDTH / 4,
+        dashLength / 2
+      );
+      line(BRIDGE_WIDTH / 4, -dashLength / 2, BRIDGE_WIDTH / 4, dashLength / 2);
       pop();
     }
   }
@@ -2008,9 +2053,9 @@ function drawWallAndGate() {
 
   // Add wall foundation/base
   push();
-  translate(0, wallY, -WALL_HEIGHT/4);
+  translate(0, wallY, -WALL_HEIGHT / 4);
   fill(80, 80, 80); // Darker gray for foundation
-  box(BRIDGE_WIDTH + 60, WALL_THICKNESS + 20, WALL_HEIGHT/2);
+  box(BRIDGE_WIDTH + 60, WALL_THICKNESS + 20, WALL_HEIGHT / 2);
   pop();
 
   // Wall color - stone gray with texture effect
@@ -2031,19 +2076,20 @@ function drawWallAndGate() {
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
     // Add stone texture by drawing small boxes on the wall surface
     push();
-    translate(0, WALL_THICKNESS/2 + 1, 0);
+    translate(0, WALL_THICKNESS / 2 + 1, 0);
 
     const stoneRows = 8;
     const stoneCols = 10;
-    const stoneWidth = ((BRIDGE_WIDTH - GATE_WIDTH) / 2) / stoneCols;
+    const stoneWidth = (BRIDGE_WIDTH - GATE_WIDTH) / 2 / stoneCols;
     const stoneHeight = WALL_HEIGHT / stoneRows;
 
     for (let row = 0; row < stoneRows; row++) {
       for (let col = 0; col < stoneCols; col++) {
         // Alternate stone pattern for each row
-        const offsetX = row % 2 === 0 ? 0 : stoneWidth/2;
-        const x = -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
-        const y = -WALL_HEIGHT/2 + row * stoneHeight + stoneHeight/2;
+        const offsetX = row % 2 === 0 ? 0 : stoneWidth / 2;
+        const x =
+          -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
+        const y = -WALL_HEIGHT / 2 + row * stoneHeight + stoneHeight / 2;
 
         // Random stone color variation
         const colorVar = random(-10, 10);
@@ -2075,19 +2121,20 @@ function drawWallAndGate() {
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
     // Add stone texture by drawing small boxes on the wall surface
     push();
-    translate(0, WALL_THICKNESS/2 + 1, 0);
+    translate(0, WALL_THICKNESS / 2 + 1, 0);
 
     const stoneRows = 8;
     const stoneCols = 10;
-    const stoneWidth = ((BRIDGE_WIDTH - GATE_WIDTH) / 2) / stoneCols;
+    const stoneWidth = (BRIDGE_WIDTH - GATE_WIDTH) / 2 / stoneCols;
     const stoneHeight = WALL_HEIGHT / stoneRows;
 
     for (let row = 0; row < stoneRows; row++) {
       for (let col = 0; col < stoneCols; col++) {
         // Alternate stone pattern for each row
-        const offsetX = row % 2 === 0 ? 0 : stoneWidth/2;
-        const x = -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
-        const y = -WALL_HEIGHT/2 + row * stoneHeight + stoneHeight/2;
+        const offsetX = row % 2 === 0 ? 0 : stoneWidth / 2;
+        const x =
+          -((BRIDGE_WIDTH - GATE_WIDTH) / 4) + col * stoneWidth + offsetX;
+        const y = -WALL_HEIGHT / 2 + row * stoneHeight + stoneHeight / 2;
 
         // Random stone color variation
         const colorVar = random(-10, 10);
@@ -2141,28 +2188,28 @@ function drawWallAndGate() {
 
   // Corner reinforcements
   push();
-  translate(-GATE_WIDTH/2 + 10, 0, -GATE_HEIGHT/2 + 10);
+  translate(-GATE_WIDTH / 2 + 10, 0, -GATE_HEIGHT / 2 + 10);
   box(20, WALL_THICKNESS + 6, 20);
   pop();
 
   push();
-  translate(GATE_WIDTH/2 - 10, 0, -GATE_HEIGHT/2 + 10);
+  translate(GATE_WIDTH / 2 - 10, 0, -GATE_HEIGHT / 2 + 10);
   box(20, WALL_THICKNESS + 6, 20);
   pop();
 
   push();
-  translate(-GATE_WIDTH/2 + 10, 0, GATE_HEIGHT/2 - 10);
+  translate(-GATE_WIDTH / 2 + 10, 0, GATE_HEIGHT / 2 - 10);
   box(20, WALL_THICKNESS + 6, 20);
   pop();
 
   push();
-  translate(GATE_WIDTH/2 - 10, 0, GATE_HEIGHT/2 - 10);
+  translate(GATE_WIDTH / 2 - 10, 0, GATE_HEIGHT / 2 - 10);
   box(20, WALL_THICKNESS + 6, 20);
   pop();
 
   // Add gate handles
   push();
-  translate(0, WALL_THICKNESS/2 + 5, 0);
+  translate(0, WALL_THICKNESS / 2 + 5, 0);
   fill(40, 40, 40);
   torus(15, 3);
   pop();
@@ -2224,24 +2271,24 @@ function drawWallAndGate() {
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
     // Left tower
     push();
-    translate(-BRIDGE_WIDTH/2 - 30, wallY, WALL_HEIGHT/2);
+    translate(-BRIDGE_WIDTH / 2 - 30, wallY, WALL_HEIGHT / 2);
     fill(90, 90, 90);
     cylinder(40, WALL_HEIGHT);
 
     // Tower top
-    translate(0, 0, WALL_HEIGHT/2 + 10);
+    translate(0, 0, WALL_HEIGHT / 2 + 10);
     fill(70, 70, 70);
     cone(45, 40);
     pop();
 
     // Right tower
     push();
-    translate(BRIDGE_WIDTH/2 + 30, wallY, WALL_HEIGHT/2);
+    translate(BRIDGE_WIDTH / 2 + 30, wallY, WALL_HEIGHT / 2);
     fill(90, 90, 90);
     cylinder(40, WALL_HEIGHT);
 
     // Tower top
-    translate(0, 0, WALL_HEIGHT/2 + 10);
+    translate(0, 0, WALL_HEIGHT / 2 + 10);
     fill(70, 70, 70);
     cone(45, 40);
     pop();
@@ -2279,7 +2326,7 @@ function drawPowerUpLane() {
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
     // Add glowing edge to power-up lane
     push();
-    translate(POWER_UP_LANE_WIDTH/2 - 5, 0, 2);
+    translate(POWER_UP_LANE_WIDTH / 2 - 5, 0, 2);
     fill(100, 200, 255, 180); // Brighter blue for the edge
     box(3, BRIDGE_LENGTH, 4);
     pop();
@@ -2289,14 +2336,19 @@ function drawPowerUpLane() {
     const particleSpacing = BRIDGE_LENGTH / particleCount;
 
     for (let i = 0; i < particleCount; i++) {
-      const yPos = -BRIDGE_LENGTH/2 + i * particleSpacing + particleSpacing/2;
+      const yPos =
+        -BRIDGE_LENGTH / 2 + i * particleSpacing + particleSpacing / 2;
 
       // Only draw particles that would be visible
-      if (yPos > -BRIDGE_LENGTH/2 && yPos < BRIDGE_LENGTH/2) {
+      if (yPos > -BRIDGE_LENGTH / 2 && yPos < BRIDGE_LENGTH / 2) {
         push();
         // Use sin function to make particles float up and down
         const floatOffset = sin(frameCount * 0.05 + i) * 10;
-        translate(random(-POWER_UP_LANE_WIDTH/3, POWER_UP_LANE_WIDTH/3), yPos, 10 + floatOffset);
+        translate(
+          random(-POWER_UP_LANE_WIDTH / 3, POWER_UP_LANE_WIDTH / 3),
+          yPos,
+          10 + floatOffset
+        );
 
         // Pulsing glow effect
         const pulseSize = 5 + sin(frameCount * 0.1 + i * 0.5) * 2;
@@ -2320,10 +2372,10 @@ function drawPowerUpLane() {
     const supportSpacing = BRIDGE_LENGTH / supportCount;
 
     for (let i = 0; i < supportCount; i++) {
-      const yPos = -BRIDGE_LENGTH/2 + i * supportSpacing + supportSpacing/2;
+      const yPos = -BRIDGE_LENGTH / 2 + i * supportSpacing + supportSpacing / 2;
 
       push();
-      translate(-POWER_UP_LANE_WIDTH/2 + 10, yPos, -5);
+      translate(-POWER_UP_LANE_WIDTH / 2 + 10, yPos, -5);
       fill(130, 170, 200);
       box(20, 30, 10);
       pop();
@@ -2429,42 +2481,45 @@ function drawHuman(size, isLeader) {
 
 function drawEnemies() {
   // Count active skills to adjust rendering detail
-  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-  
+  const activeSkillCount = Object.values(skills).filter(
+    (skill) => skill.active
+  ).length;
+
   // Dynamically reduce detail when multiple skills are active
-  const skillDetailMultiplier = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
-  
+  const skillDetailMultiplier = Math.max(0.3, 1 - activeSkillCount * 0.2); // Reduce by 20% per active skill, min 30%
+
   // Adjust distance thresholds based on active skills
   const farDistanceThreshold = activeSkillCount > 1 ? 600 * 600 : 800 * 800;
   const mediumDistanceThreshold = activeSkillCount > 1 ? 300 * 300 : 400 * 400;
-  
+
   // Limit the number of enemies to render when multiple skills are active
-  const maxEnemiesToRender = activeSkillCount > 1 ? 
-    Math.floor(enemies.length * skillDetailMultiplier) : 
-    enemies.length;
-  
+  const maxEnemiesToRender =
+    activeSkillCount > 1
+      ? Math.floor(enemies.length * skillDetailMultiplier)
+      : enemies.length;
+
   // Sort enemies by distance for better culling
   const sortedEnemies = [...enemies];
-  
+
   if (squad.length > 0 && activeSkillCount > 1) {
     const mainMember = squad[0];
     sortedEnemies.sort((a, b) => {
       const dxA = a.x - mainMember.x;
       const dyA = a.y - mainMember.y;
       const distA = dxA * dxA + dyA * dyA;
-      
+
       const dxB = b.x - mainMember.x;
       const dyB = b.y - mainMember.y;
       const distB = dxB * dxB + dyB * dyB;
-      
+
       return distA - distB; // Sort by closest first
     });
   }
-  
+
   // Draw enemies with distance-based LOD (Level of Detail)
   for (let i = 0; i < Math.min(maxEnemiesToRender, sortedEnemies.length); i++) {
     const enemy = sortedEnemies[i];
-    
+
     // Find distance to camera/player for LOD calculations
     let distToCamera = 0;
     if (squad.length > 0) {
@@ -2473,7 +2528,7 @@ function drawEnemies() {
       const dy = enemy.y - mainMember.y;
       distToCamera = dx * dx + dy * dy; // Squared distance - no need for sqrt
     }
-    
+
     // Skip very distant enemies when multiple skills are active
     if (activeSkillCount > 1 && distToCamera > farDistanceThreshold) {
       continue;
@@ -2514,7 +2569,10 @@ function drawEnemies() {
     }
 
     // Only draw health bars for enemies within reasonable distance and when not too many skills active
-    if (distToCamera < 600 * 600 && (activeSkillCount < 2 || enemy.type.includes("boss"))) {
+    if (
+      distToCamera < 600 * 600 &&
+      (activeSkillCount < 2 || enemy.type.includes("boss"))
+    ) {
       // Draw health bar above enemy - only for bosses when multiple skills active
       const maxHealth = getEnemyMaxHealth(enemy.type);
       const healthPercentage = enemy.health / maxHealth;
@@ -2551,15 +2609,17 @@ function drawEnemies() {
 
 function drawProjectiles() {
   // Count active skills to adjust rendering detail
-  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-  
+  const activeSkillCount = Object.values(skills).filter(
+    (skill) => skill.active
+  ).length;
+
   // Dynamically reduce detail when multiple skills are active
-  const skillDetailMultiplier = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
-  
+  const skillDetailMultiplier = Math.max(0.3, 1 - activeSkillCount * 0.2); // Reduce by 20% per active skill, min 30%
+
   // Adjust distance thresholds based on active skills
   const farDistanceThreshold = activeSkillCount > 1 ? 600 * 600 : 800 * 800;
   const mediumDistanceThreshold = activeSkillCount > 1 ? 300 * 300 : 400 * 400;
-  
+
   // Draw projectiles with performance optimizations
   for (let proj of projectiles) {
     // Distance-based Level of Detail
@@ -2570,7 +2630,7 @@ function drawProjectiles() {
       const dy = proj.y - mainMember.y;
       distToCamera = dx * dx + dy * dy; // Squared distance
     }
-    
+
     // Skip rendering very distant projectiles when multiple skills are active
     if (activeSkillCount > 1 && distToCamera > farDistanceThreshold) {
       continue;
@@ -2775,12 +2835,14 @@ function drawProjectiles() {
 function drawEffects() {
   // Get performance-based multipliers
   const effectMultiplier = getEffectMultiplier();
-  
+
   // Count active skills to adjust rendering
-  const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-  
+  const activeSkillCount = Object.values(skills).filter(
+    (skill) => skill.active
+  ).length;
+
   // Dynamically reduce effects when multiple skills are active
-  const skillMultiplier = Math.max(0.4, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 40%
+  const skillMultiplier = Math.max(0.4, 1 - activeSkillCount * 0.2); // Reduce by 20% per active skill, min 40%
 
   // Determine if we should use high-detail effects
   const useHighDetail = currentPerformanceLevel === "high";
@@ -2894,11 +2956,13 @@ function drawEffects() {
     } else {
       performanceFactor = useLowDetail ? 0.5 : useMediumDetail ? 0.8 : 1.0;
     }
-    
+
     // Further reduce particles when multiple skills are active
-    const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-    const skillFactor = Math.max(0.3, 1 - (activeSkillCount * 0.2)); // Reduce by 20% per active skill, min 30%
-    
+    const activeSkillCount = Object.values(skills).filter(
+      (skill) => skill.active
+    ).length;
+    const skillFactor = Math.max(0.3, 1 - activeSkillCount * 0.2); // Reduce by 20% per active skill, min 30%
+
     // Calculate final particle count
     const baseParticleCount = 10;
     const particleCount = Math.ceil(
@@ -6283,7 +6347,7 @@ function checkCollisions() {
       const squaredDist = dx * dx + dy * dy + dz * dz;
 
       // Significantly increased collision threshold to make hits much more forgiving
-      const collisionSize = enemy.size / 2 + (PROJECTILE_SIZE * 2.5);
+      const collisionSize = enemy.size / 2 + PROJECTILE_SIZE * 2.5;
       const squaredThreshold = collisionSize * collisionSize;
 
       if (squaredDist < squaredThreshold) {
@@ -6380,7 +6444,11 @@ function checkCollisions() {
 
     for (let squadMember of squad) {
       // Skip if squadMember is undefined or missing required properties
-      if (!squadMember || squadMember.x === undefined || squadMember.y === undefined) {
+      if (
+        !squadMember ||
+        squadMember.x === undefined ||
+        squadMember.y === undefined
+      ) {
         continue;
       }
 
@@ -6573,7 +6641,13 @@ function checkCollisions() {
         enemy.health -= 30;
         if (enemy.health <= 0) {
           // Create explosion effect
-          createExplosionEffect(enemy.x, enemy.y, enemy.z, [255, 100, 0], enemy.size);
+          createExplosionEffect(
+            enemy.x,
+            enemy.y,
+            enemy.z,
+            [255, 100, 0],
+            enemy.size
+          );
           enemies.splice(i, 1);
         }
 
@@ -6895,12 +6969,14 @@ function activateSkill(skillNumber) {
       let enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
       let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
       let freezeRadius = 1500; // Reduced radius for better performance
-      
+
       // Count active skills to adjust visual effects
-      const activeSkillCount = Object.values(skills).filter(skill => skill.active).length;
-      
+      const activeSkillCount = Object.values(skills).filter(
+        (skill) => skill.active
+      ).length;
+
       // Dynamically reduce effects when multiple skills are active
-      const effectReduction = Math.max(0.3, 1 - (activeSkillCount * 0.25)); // Reduce by 25% per active skill, min 30%
+      const effectReduction = Math.max(0.3, 1 - activeSkillCount * 0.25); // Reduce by 25% per active skill, min 30%
 
       // Activate freeze mode
       skills.skill4.active = true;
@@ -6924,7 +7000,7 @@ function activateSkill(skillNumber) {
 
       // Create a global freeze effect
       // 1. Create a simplified freezing shockwave - reduce count when multiple skills active
-      shockwaveCount = activeSkillCount > 1 ? 2 : (isMobileDevice ? 3 : 5); // Fewer rings when skills active
+      shockwaveCount = activeSkillCount > 1 ? 2 : isMobileDevice ? 3 : 5; // Fewer rings when skills active
       for (let i = 0; i < shockwaveCount; i++) {
         setTimeout(() => {
           effects.push({
@@ -6958,14 +7034,22 @@ function activateSkill(skillNumber) {
         // Adjust crystal count based on performance level and active skills
         const gridSize = 2; // Smaller grid for better performance
         const gridSpacing = 300; // 300 units apart
-        
+
         // Reduce grid size when multiple skills active
         const effectiveGridSize = Math.floor(gridSize * effectReduction);
-        
+
         // Only create crystals if we have a valid grid size
         if (effectiveGridSize > 0) {
-          for (let gridX = -effectiveGridSize / 2; gridX <= effectiveGridSize / 2; gridX++) {
-            for (let gridY = -effectiveGridSize / 2; gridY <= effectiveGridSize / 2; gridY++) {
+          for (
+            let gridX = -effectiveGridSize / 2;
+            gridX <= effectiveGridSize / 2;
+            gridX++
+          ) {
+            for (
+              let gridY = -effectiveGridSize / 2;
+              gridY <= effectiveGridSize / 2;
+              gridY++
+            ) {
               // Add some randomness to grid positions
               const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
               const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
@@ -6989,32 +7073,33 @@ function activateSkill(skillNumber) {
 
       // 4. Apply freeze effect to ALL enemies regardless of distance
       // This is the gameplay effect, so we keep it but optimize the visuals
-      
+
       // Create a faster "freeze wave" that moves outward
       const freezeWaveSpeed = 30; // Faster units per frame
       const maxFreezeDelay = 1000; // Reduced maximum delay in ms
-      
+
       // Sort enemies by distance to prioritize closest ones
       const sortedEnemies = [...enemies].sort((a, b) => {
         const dxA = a.x - freezeCenter.x;
         const dyA = a.y - freezeCenter.y;
         const distA = dxA * dxA + dyA * dyA;
-        
+
         const dxB = b.x - freezeCenter.x;
         const dyB = b.y - freezeCenter.y;
         const distB = dxB * dxB + dyB * dyB;
-        
+
         return distA - distB; // Sort by closest first
       });
-      
+
       // Limit the number of enemies that get visual effects when multiple skills active
-      const maxEnemiesWithVisuals = activeSkillCount > 1 ? 
-        Math.floor(sortedEnemies.length * 0.5) : // Only 50% of enemies get visuals when multiple skills active
-        sortedEnemies.length;
+      const maxEnemiesWithVisuals =
+        activeSkillCount > 1
+          ? Math.floor(sortedEnemies.length * 0.5) // Only 50% of enemies get visuals when multiple skills active
+          : sortedEnemies.length;
 
       for (let i = 0; i < sortedEnemies.length; i++) {
         const enemy = sortedEnemies[i];
-        
+
         // Calculate distance from freeze center
         const dx = enemy.x - freezeCenter.x;
         const dy = enemy.y - freezeCenter.y;
@@ -7105,7 +7190,9 @@ function activateSkill(skillNumber) {
         });
 
         // Add a few floating ice shards - reduced when multiple skills active
-        const shardCount = Math.floor((isMobileDevice ? 5 : 10) * effectReduction);
+        const shardCount = Math.floor(
+          (isMobileDevice ? 5 : 10) * effectReduction
+        );
         for (let i = 0; i < shardCount; i++) {
           const angle = random(TWO_PI);
           const dist = random(100, 300);
@@ -7295,12 +7382,17 @@ function activateSkill(skillNumber) {
       let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
       let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
       let damageBoostDuration = 60 + fireRateBoost * 60;
-      
+
       // Count active skills to adjust visual effects
-      const rageActiveSkillCount = Object.values(skills).filter(skill => skill.active).length;
-      
+      const rageActiveSkillCount = Object.values(skills).filter(
+        (skill) => skill.active
+      ).length;
+
       // Dynamically reduce effects when multiple skills are active
-      const rageEffectReduction = Math.max(0.3, 1 - (rageActiveSkillCount * 0.25)); // Reduce by 25% per active skill, min 30%
+      const rageEffectReduction = Math.max(
+        0.3,
+        1 - rageActiveSkillCount * 0.25
+      ); // Reduce by 25% per active skill, min 30%
 
       // Calculate the center of the squad
       let infernoSquadCenter = { x: 0, y: 0, z: 0 };
@@ -7395,7 +7487,9 @@ function activateSkill(skillNumber) {
 
       // Create burning bridge effect - multiple fire patches on the bridge
       // Reduce count when multiple skills active
-      const firePatchCount = Math.floor((15 + Math.floor(aoeBoost / 2)) * rageEffectReduction);
+      const firePatchCount = Math.floor(
+        (15 + Math.floor(aoeBoost / 2)) * rageEffectReduction
+      );
       for (let i = 0; i < firePatchCount; i++) {
         const angle = random(TWO_PI);
         const dist = random(50, infernoRadius * 0.9);
@@ -7430,27 +7524,30 @@ function activateSkill(skillNumber) {
 
         // Apply damage to enemies in the inferno area
         // Sort enemies by distance to prioritize closest ones for visual effects
-        const enemiesInRange = enemies.filter(enemy => {
-          const dx = enemy.x - infernoCenter.x;
-          const dy = enemy.y - infernoCenter.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          return distance < infernoRadius;
-        }).sort((a, b) => {
-          const dxA = a.x - infernoCenter.x;
-          const dyA = a.y - infernoCenter.y;
-          const distA = dxA * dxA + dyA * dyA;
-          
-          const dxB = b.x - infernoCenter.x;
-          const dyB = b.y - infernoCenter.y;
-          const distB = dxB * dxB + dyB * dyB;
-          
-          return distA - distB; // Sort by closest first
-        });
-        
+        const enemiesInRange = enemies
+          .filter((enemy) => {
+            const dx = enemy.x - infernoCenter.x;
+            const dy = enemy.y - infernoCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < infernoRadius;
+          })
+          .sort((a, b) => {
+            const dxA = a.x - infernoCenter.x;
+            const dyA = a.y - infernoCenter.y;
+            const distA = dxA * dxA + dyA * dyA;
+
+            const dxB = b.x - infernoCenter.x;
+            const dyB = b.y - infernoCenter.y;
+            const distB = dxB * dxB + dyB * dyB;
+
+            return distA - distB; // Sort by closest first
+          });
+
         // Limit visual effects when multiple skills active
-        const maxEnemiesWithVisuals = rageActiveSkillCount > 1 ? 
-          Math.floor(enemiesInRange.length * 0.3) : // Only 30% of enemies get visuals when multiple skills active
-          enemiesInRange.length;
+        const maxEnemiesWithVisuals =
+          rageActiveSkillCount > 1
+            ? Math.floor(enemiesInRange.length * 0.3) // Only 30% of enemies get visuals when multiple skills active
+            : enemiesInRange.length;
 
         for (let i = 0; i < enemiesInRange.length; i++) {
           const enemy = enemiesInRange[i];
@@ -7463,7 +7560,10 @@ function activateSkill(skillNumber) {
           enemy.health -= burnDamage * damageMultiplier;
 
           // Create burn effect on enemy - only for closest enemies when multiple skills active
-          if ((i < maxEnemiesWithVisuals) && (random() > (rageActiveSkillCount > 1 ? 0.7 : 0.5))) {
+          if (
+            i < maxEnemiesWithVisuals &&
+            random() > (rageActiveSkillCount > 1 ? 0.7 : 0.5)
+          ) {
             effects.push({
               x: enemy.x,
               y: enemy.y,
@@ -7483,10 +7583,11 @@ function activateSkill(skillNumber) {
           // Only create effects if skill is still active
           if (frameCount < skills.skill6.lastUsed + damageBoostDuration) {
             // Create fewer flame eruptions when multiple skills active
-            const eruptions = rageActiveSkillCount > 1 ? 
-              Math.floor(random(1, 3)) : // 1-2 eruptions when multiple skills active
-              Math.floor(random(3, 6)); // 3-5 eruptions normally
-              
+            const eruptions =
+              rageActiveSkillCount > 1
+                ? Math.floor(random(1, 3)) // 1-2 eruptions when multiple skills active
+                : Math.floor(random(3, 6)); // 3-5 eruptions normally
+
             for (let j = 0; j < eruptions; j++) {
               const angle = random(TWO_PI);
               const dist = random(0, infernoRadius * 0.9);
@@ -8092,13 +8193,13 @@ function pauseGame() {
   gameState = GameState.PAUSED;
 
   // Stop all sounds when game is paused
-  if (typeof stopAllSounds === 'function') {
+  if (typeof stopAllSounds === "function") {
     stopAllSounds();
   }
-  
+
   // The pause/resume button will be updated in updatePauseResumeButton
   // which is called from updatePerformanceMetrics in the draw loop
-  
+
   // For backward compatibility, also update the old UI elements if they exist
   try {
     // Show/hide the appropriate buttons
@@ -8121,10 +8222,10 @@ function drawResumeContainer() {
 
 function resumeGame() {
   gameState = GameState.PLAYING;
-  
+
   // The pause/resume button will be updated in updatePauseResumeButton
   // which is called from updatePerformanceMetrics in the draw loop
-  
+
   // For backward compatibility, also update the old UI elements if they exist
   try {
     // Show/hide the appropriate buttons
@@ -8210,7 +8311,7 @@ function createTechnicalBoardElements() {
   techBoard.style("z-index", "1000");
   techBoard.style("text-align", "right");
   techBoard.style("use-select", "none");
-  
+
   // Set initial visibility based on techBoardVisible flag
   if (!techBoardVisible) {
     techBoard.style("display", "none");
@@ -8298,53 +8399,68 @@ function updateTechnicalBoard() {
   const debugModeText = DEBUG_MODE
     ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
     : "";
-    
+
   // Add GPU acceleration indicator
   const gpuEnabled = PerformanceManager.canUseAdvancedFeatures();
   const gpuStatusText = gpuEnabled
     ? '<div style="color: lime;">🚀 GPU ACCELERATION ENABLED</div>'
     : '<div style="color: orange;">⚠️ GPU ACCELERATION DISABLED</div>';
-    
+
   // Get basic GPU info for technical board
-  let gpuInfoText = '';
+  let gpuInfoText = "";
   // Get detailed GPU info for the breakdown section
-  let gpuBreakdownText = '';
-  
+  let gpuBreakdownText = "";
+
   if (PerformanceManager.gpuInfo) {
     // Format the renderer string to be more readable
     const renderer = PerformanceManager.gpuInfo.renderer;
     // Get vendor information
-    const vendor = PerformanceManager.gpuInfo.vendor || 'Unknown Vendor';
-    
+    const vendor = PerformanceManager.gpuInfo.vendor || "Unknown Vendor";
+
     // Create detailed GPU breakdown for the separate section
     gpuBreakdownText = `<div id="gpu-breakdown" style="background-color: rgba(0, 0, 0, 0.25); color: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; max-width: 300px;">`;
     gpuBreakdownText += `<h4 style="margin: 0 0 5px 0; color: #4CAF50;">GPU BREAKDOWN</h4>`;
     gpuBreakdownText += `<div>GPU: ${renderer} (Tier ${PerformanceManager.gpuTier})</div>`;
     gpuBreakdownText += `<div>Vendor: ${vendor}</div>`;
-    
+
     // Add texture size info if available
     if (PerformanceManager.gpuInfo.maxTextureSize) {
-      const maxTextureSizeMB = (PerformanceManager.gpuInfo.maxTextureSize * PerformanceManager.gpuInfo.maxTextureSize * 4 / (1024 * 1024)).toFixed(0);
+      const maxTextureSizeMB = (
+        (PerformanceManager.gpuInfo.maxTextureSize *
+          PerformanceManager.gpuInfo.maxTextureSize *
+          4) /
+        (1024 * 1024)
+      ).toFixed(0);
       gpuBreakdownText += `<div>Max Texture: ${PerformanceManager.gpuInfo.maxTextureSize}px (${maxTextureSizeMB}MB)</div>`;
     }
-    
+
     // Add key extension support information
     if (PerformanceManager.gpuInfo.extensions) {
       // Check for important extensions
-      const hasInstancedArrays = PerformanceManager.gpuInfo.extensions.includes('ANGLE_instanced_arrays');
-      const hasFloatTextures = PerformanceManager.gpuInfo.extensions.includes('OES_texture_float');
-      const hasHalfFloatTextures = PerformanceManager.gpuInfo.extensions.includes('OES_texture_half_float');
-      const hasDepthTextures = PerformanceManager.gpuInfo.extensions.includes('WEBGL_depth_texture');
-      
+      const hasInstancedArrays = PerformanceManager.gpuInfo.extensions.includes(
+        "ANGLE_instanced_arrays"
+      );
+      const hasFloatTextures =
+        PerformanceManager.gpuInfo.extensions.includes("OES_texture_float");
+      const hasHalfFloatTextures =
+        PerformanceManager.gpuInfo.extensions.includes(
+          "OES_texture_half_float"
+        );
+      const hasDepthTextures = PerformanceManager.gpuInfo.extensions.includes(
+        "WEBGL_depth_texture"
+      );
+
       // Create a summary of key capabilities
-      gpuBreakdownText += '<div>Features: ';
-      gpuBreakdownText += hasInstancedArrays ? '✓Instancing ' : '✗Instancing ';
-      gpuBreakdownText += hasFloatTextures ? '✓Float ' : '✗Float ';
-      gpuBreakdownText += hasHalfFloatTextures ? '✓Half-Float ' : '✗Half-Float ';
-      gpuBreakdownText += hasDepthTextures ? '✓Depth' : '✗Depth';
-      gpuBreakdownText += '</div>';
+      gpuBreakdownText += "<div>Features: ";
+      gpuBreakdownText += hasInstancedArrays ? "✓Instancing " : "✗Instancing ";
+      gpuBreakdownText += hasFloatTextures ? "✓Float " : "✗Float ";
+      gpuBreakdownText += hasHalfFloatTextures
+        ? "✓Half-Float "
+        : "✗Half-Float ";
+      gpuBreakdownText += hasDepthTextures ? "✓Depth" : "✗Depth";
+      gpuBreakdownText += "</div>";
     }
-    
+
     gpuBreakdownText += `</div>`;
   }
 
@@ -8622,7 +8738,7 @@ function createPauseElement() {
     </div>
   `);
   pauseContainer.mousePressed(pauseGame);
-  
+
   // Add to controls container
   controlsContainer.child(pauseContainer);
 }
@@ -8645,7 +8761,7 @@ function createResumeElement() {
     <div style="width: 0; height: 0; border-left: 15px solid white; border-top: 10px solid transparent; border-bottom: 10px solid transparent;"></div>
   `);
   resumeContainer.mousePressed(resumeGame);
-  
+
   // Add to controls container
   controlsContainer.child(resumeContainer);
 }
@@ -8663,10 +8779,11 @@ function createSoundElement() {
   soundContainer.style("display", "flex");
   soundContainer.style("align-items", "center");
   soundContainer.style("justify-content", "center");
-  
+
   // Check if sound is muted
-  const isMuted = typeof soundSettings !== "undefined" ? soundSettings.muted : true;
-  
+  const isMuted =
+    typeof soundSettings !== "undefined" ? soundSettings.muted : true;
+
   // Sound icon based on mute state
   if (isMuted) {
     // Muted icon (speaker with X)
@@ -8691,9 +8808,9 @@ function createSoundElement() {
       </div>
     `);
   }
-  
+
   soundContainer.mousePressed(toggleSound);
-  
+
   // Add to controls container
   controlsContainer.child(soundContainer);
 }
@@ -8702,7 +8819,7 @@ function toggleSound() {
   if (typeof soundSettings !== "undefined") {
     // Toggle mute state
     soundSettings.muted = !soundSettings.muted;
-    
+
     // Update the sound icon based on mute state
     if (soundContainer) {
       if (soundSettings.muted) {
@@ -8729,12 +8846,12 @@ function toggleSound() {
         `);
       }
     }
-    
+
     // Stop all sounds if muted
     if (soundSettings.muted) {
       stopAllSounds();
     }
-    
+
     console.log("Sound toggled:", soundSettings.muted ? "Muted" : "Unmuted");
   } else {
     console.log("Sound settings not available");
@@ -9197,7 +9314,7 @@ function createDirectionalPadElement() {
   const fontSize = isMobile ? 24 : 28;
   const centerOffset = dPadSize / 2 - buttonSize / 2;
   const edgeOffset = isMobile ? 15 : 20;
-  
+
   // Define larger touch area size (invisible hit area)
   const touchAreaSize = isMobile ? 80 : 90; // Much larger touch area for mobile
   const touchAreaOffset = dPadSize / 2 - touchAreaSize / 2;
@@ -9221,9 +9338,9 @@ function createDirectionalPadElement() {
 
   dPad.style("display", "block");
   dPad.style("pointer-events", "auto");
-  
+
   // Create invisible touch areas first (they'll be below the visible buttons)
-  
+
   // Up touch area
   const upTouchArea = createDiv("");
   upTouchArea.id("up-touch-area");
@@ -9235,7 +9352,7 @@ function createDirectionalPadElement() {
   upTouchArea.style("background-color", "rgba(255, 255, 255, 0)"); // Completely transparent
   upTouchArea.style("cursor", "pointer");
   upTouchArea.style("z-index", "1601"); // Above the d-pad background but below the buttons
-  
+
   // Down touch area
   const downTouchArea = createDiv("");
   downTouchArea.id("down-touch-area");
@@ -9247,7 +9364,7 @@ function createDirectionalPadElement() {
   downTouchArea.style("background-color", "rgba(255, 255, 255, 0)");
   downTouchArea.style("cursor", "pointer");
   downTouchArea.style("z-index", "1601");
-  
+
   // Left touch area
   const leftTouchArea = createDiv("");
   leftTouchArea.id("left-touch-area");
@@ -9259,7 +9376,7 @@ function createDirectionalPadElement() {
   leftTouchArea.style("background-color", "rgba(255, 255, 255, 0)");
   leftTouchArea.style("cursor", "pointer");
   leftTouchArea.style("z-index", "1601");
-  
+
   // Right touch area
   const rightTouchArea = createDiv("");
   rightTouchArea.id("right-touch-area");
@@ -9273,7 +9390,7 @@ function createDirectionalPadElement() {
   rightTouchArea.style("z-index", "1601");
 
   // Create visible buttons (these will be on top of the touch areas)
-  
+
   // Create up button
   upButton = createDiv("▲");
   upButton.id("up-button");
@@ -9389,7 +9506,7 @@ function createDirectionalPadElement() {
   dPad.child(downTouchArea);
   dPad.child(leftTouchArea);
   dPad.child(rightTouchArea);
-  
+
   // Add visible buttons to the d-pad (higher z-index)
   dPad.child(upButton);
   dPad.child(downButton);
@@ -9402,7 +9519,7 @@ function createDirectionalPadElement() {
   setupDirectionalButton(downButton, "down");
   setupDirectionalButton(leftButton, "left");
   setupDirectionalButton(rightButton, "right");
-  
+
   // Add event handlers for the larger touch areas
   // These will trigger the same actions but provide a larger hit area
   setupDirectionalButton(upTouchArea, "up", upButton);
@@ -9421,7 +9538,7 @@ function updateHUD() {
     updateStatusBoard();
     updateTechnicalBoard();
     updateSkillBar();
-    
+
     // Always update the tech board button to show current FPS
     // even if the technical board is hidden
     updateTechBoardButton();
@@ -9839,21 +9956,21 @@ function calculateDynamicCameraZoom() {
   // Base the zoom on the screen height to ensure the wall is visible
   const baseZoom = CAMERA_OFFSET_Z;
   const minHeight = 500; // Minimum height reference
-  const idealRatio = 16/9; // Ideal aspect ratio
-  
+  const idealRatio = 16 / 9; // Ideal aspect ratio
+
   // Get current aspect ratio and orientation
   const currentRatio = windowWidth / windowHeight;
   const isLandscape = windowWidth > windowHeight;
-  
+
   // Calculate zoom based on screen height and orientation
   let dynamicZoom;
-  
+
   // For landscape orientation on mobile, use a more aggressive zoom factor
   if (isLandscape && isMobileDevice) {
     // For landscape mobile, we need a much higher zoom factor to see the bridge
     // Start with a base factor that's significantly higher
     const landscapeFactor = 2.2; // Very high zoom for landscape mobile
-    
+
     // Calculate zoom based on height - shorter heights need more zoom
     if (windowHeight < 400) {
       // Extremely short height (like iPhone SE in landscape)
@@ -9868,13 +9985,13 @@ function calculateDynamicCameraZoom() {
       // Taller height (tablets in landscape)
       dynamicZoom = baseZoom * landscapeFactor;
     }
-    
+
     // Additional adjustment for very wide screens
     if (currentRatio > 2.0) {
       // Extra wide screen, increase zoom further
       dynamicZoom *= 1.2;
     }
-  } 
+  }
   // For portrait orientation on mobile
   else if (!isLandscape && isMobileDevice) {
     // For portrait mobile, calculate based on height
@@ -9885,7 +10002,7 @@ function calculateDynamicCameraZoom() {
     } else {
       // Normal portrait mode - use height ratio with a minimum
       dynamicZoom = Math.max(baseZoom, windowHeight * CAMERA_ZOOM_HEIGHT_RATIO);
-      
+
       // For very tall and narrow screens, reduce zoom slightly
       if (currentRatio < 0.5) {
         dynamicZoom *= 0.9;
@@ -9901,7 +10018,7 @@ function calculateDynamicCameraZoom() {
     } else {
       // Normal desktop window
       dynamicZoom = Math.max(baseZoom, windowHeight * CAMERA_ZOOM_HEIGHT_RATIO);
-      
+
       // Adjust for extreme aspect ratios on desktop
       if (currentRatio > idealRatio * 1.5) {
         // Very wide screen - increase zoom
@@ -9912,13 +10029,17 @@ function calculateDynamicCameraZoom() {
       }
     }
   }
-  
+
   // Ensure we have a minimum zoom level to always see the bridge
   const minimumRequiredZoom = 400; // Absolute minimum zoom to see the bridge
   dynamicZoom = Math.max(dynamicZoom, minimumRequiredZoom);
-  
-  console.log(`Screen: ${windowWidth}x${windowHeight}, Ratio: ${currentRatio.toFixed(2)}, Landscape: ${isLandscape}, Zoom: ${dynamicZoom.toFixed(2)}`);
-  
+
+  console.log(
+    `Screen: ${windowWidth}x${windowHeight}, Ratio: ${currentRatio.toFixed(
+      2
+    )}, Landscape: ${isLandscape}, Zoom: ${dynamicZoom.toFixed(2)}`
+  );
+
   return dynamicZoom;
 }
 
@@ -9929,7 +10050,7 @@ function windowResized() {
 
   // Update perspective for the new aspect ratio
   perspective(PI / 4, width / height, 0.1, 5000);
-  
+
   // Update camera zoom based on new dimensions
   cameraZoom = calculateDynamicCameraZoom();
 
@@ -10007,7 +10128,7 @@ function setupDirectionalButton(button, direction, visualButton = null) {
   // If visualButton is null, this is a regular button that handles both input and visual feedback
   // If visualButton is provided, this is a touch area that triggers actions on the visual button
   const targetButton = visualButton || button;
-  
+
   // Mouse down event - start moving in that direction
   button.mousePressed(function () {
     if (gameState === "playing") {
