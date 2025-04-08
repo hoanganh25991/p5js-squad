@@ -8117,6 +8117,17 @@ function startGame() {
     totalEnemiesKilled = 0;
     waveEnemiesKilled = 0;
 
+    // Reset squad leader's health
+    squadLeader = {
+      x: SQUAD_X,
+      y: SQUAD_Y,
+      z: SQUAD_Z,
+      size: HUMAN_SIZE,
+      health: SQUAD_HEALTH, // Reset health to full
+      weapon: currentWeapon,
+      id: Date.now(), // Unique ID for reference
+    };
+
     // Reset squad
     squad = [];
     squad.push(squadLeader);
@@ -8152,9 +8163,11 @@ function startGame() {
     damageBoost = DEBUG_MODE ? 10 : 0;
     aoeBoost = DEBUG_MODE ? 10 : 0;
 
-    // Reset skills cooldowns
+    // Reset skills cooldowns and make all skills ready
+    const currentTime = frameCount;
     for (let skillName in skills) {
-      skills[skillName].lastUsed = 0;
+      // Set lastUsed to a time that makes the skill ready immediately
+      skills[skillName].lastUsed = currentTime - skills[skillName].cooldown - 1;
       if (skills[skillName].active) {
         skills[skillName].active = false;
       }
