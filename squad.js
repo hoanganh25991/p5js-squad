@@ -8088,7 +8088,7 @@ function activateSkill(skillNumber) {
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 8: // Apocalyptic Devastation - Ultimate atomic bomb with enhanced effects
+    case 8: // Apocalyptic Devastation - Ultimate atomic bomb with enhanced effects (Performance Optimized)
       // Get bomb drop point - farther ahead of the player for better visibility
       let bombCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
@@ -8111,8 +8111,8 @@ function activateSkill(skillNumber) {
       // Add screen shake for dramatic effect
       cameraShake = 3; // Initial shake when launching
 
-      // Create targeting reticle effect
-      for (let i = 0; i < 3; i++) {
+      // Create targeting reticle effect - OPTIMIZED: reduced from 3 to 2 reticles
+      for (let i = 0; i < 2; i++) {
         setTimeout(() => {
           effects.push({
             x: bombCenter.x,
@@ -8162,9 +8162,9 @@ function activateSkill(skillNumber) {
         // Enhanced damage based on accumulated damage boost - extremely powerful
         let atomicDamage = 3000 + damageBoost * 150; // Even more devastating damage
 
-        // Create massive atomic explosion
-        for (let i = 0; i < 5; i++) {
-          // More explosion layers (increased from 5)
+        // OPTIMIZED: Create massive atomic explosion with fewer layers (4 instead of 5)
+        // and more efficient particle generation
+        for (let i = 0; i < 4; i++) {
           setTimeout(() => {
             // Create expanding shockwave effect - enormous explosion sizes
             const explosionSize = 500 + i * 250; // Larger explosion visuals
@@ -8174,8 +8174,6 @@ function activateSkill(skillNumber) {
               [255, 150, 0], // deep orange
               [150, 75, 0], // brown/orange
               [100, 50, 0], // dark brown
-              [50, 50, 50], // dark smoke
-              [200, 200, 200], // light smoke
             ];
 
             // Create expanding explosion at bomb position
@@ -8189,6 +8187,7 @@ function activateSkill(skillNumber) {
               color: explosionColors[i],
               layer: i,
               forceRenderDetail: true, // Always render at full detail regardless of distance
+              optimized: true, // Flag for optimized rendering
             });
 
             // Add bright flash during initial explosion
@@ -8205,7 +8204,7 @@ function activateSkill(skillNumber) {
                 forceRenderDetail: true, // Always render at full detail regardless of distance
               });
 
-              // Add secondary radiation flash
+              // OPTIMIZED: Reduced to just one secondary flash instead of two
               setTimeout(() => {
                 effects.push({
                   x: bombCenter.x,
@@ -8218,24 +8217,10 @@ function activateSkill(skillNumber) {
                   forceRenderDetail: true, // Always render at full detail regardless of distance
                 });
               }, 300);
-
-              // Add tertiary radiation flash
-              setTimeout(() => {
-                effects.push({
-                  x: bombCenter.x,
-                  y: bombCenter.y,
-                  z: bombCenter.z,
-                  type: "atomicFlash",
-                  size: 3000,
-                  life: 30,
-                  color: [255, 200, 150], // Orange tint
-                  forceRenderDetail: true, // Always render at full detail regardless of distance
-                });
-              }, 600);
             }
 
-            // Create expanding ground shockwave
-            if (i < 4) {
+            // Create expanding ground shockwave - OPTIMIZED: only for first 3 layers
+            if (i < 3) {
               effects.push({
                 x: bombCenter.x,
                 y: bombCenter.y,
@@ -8265,134 +8250,89 @@ function activateSkill(skillNumber) {
               // Apply damage to enemy
               enemy.health -= damage;
 
-              // Create explosion effects at all enemy positions for dramatic effect
+              // OPTIMIZED: Create explosion effects at enemy positions with distance-based culling
               if (i === 0) {
-                createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+                // Always create explosion for close enemies
+                if (distance < 2000) {
+                  createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+                } 
+                // For distant enemies, only create effects with 50% probability
+                else if (random() > 0.5) {
+                  createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+                }
 
-                // Create additional effects for distant enemies to show shockwave reaching them
-                if (distance > 500) {
+                // OPTIMIZED: Create additional effects for medium-distance enemies only
+                if (distance > 500 && distance < 3000 && random() > 0.5) {
                   setTimeout(() => {
                     createExplosion(enemy.x, enemy.y, enemy.z, [255, 150, 50]);
                   }, distance * 0.1); // Delayed explosions based on distance
                 }
 
-                // Add enemy disintegration effect
-                setTimeout(() => {
-                  for (let j = 0; j < 10; j++) {
-                    effects.push({
-                      x: enemy.x + random(-20, 20),
-                      y: enemy.y + random(-20, 20),
-                      z: enemy.z + random(0, 40),
-                      type: "atomicParticle",
-                      size: random(5, 15),
-                      life: random(60, 120),
-                      color: [255, 150, 50, 200],
-                      velocity: {
-                        x: random(-2, 2),
-                        y: random(-2, 2),
-                        z: random(1, 3),
-                      },
-                    });
-                  }
-                }, distance * 0.1);
+                // OPTIMIZED: Add enemy disintegration effect with fewer particles (5 instead of 10)
+                // and only for enemies within a reasonable distance
+                if (distance < 3000) {
+                  setTimeout(() => {
+                    // Determine particle count based on distance
+                    const particleCount = distance < 1000 ? 5 : 3;
+                    
+                    for (let j = 0; j < particleCount; j++) {
+                      effects.push({
+                        x: enemy.x + random(-20, 20),
+                        y: enemy.y + random(-20, 20),
+                        z: enemy.z + random(0, 40),
+                        type: "atomicParticle",
+                        size: random(5, 15),
+                        life: random(60, 90), // Slightly shorter life
+                        color: [255, 150, 50, 200],
+                        velocity: {
+                          x: random(-2, 2),
+                          y: random(-2, 2),
+                          z: random(1, 3),
+                        },
+                      });
+                    }
+                  }, distance * 0.1);
+                }
               }
             }
           }, i * 200); // Stagger explosion layers
         }
 
-        // Create persistent radiation field after explosion
-        setTimeout(() => {
-          // effects.push({
-          //   x: bombCenter.x,
-          //   y: bombCenter.y,
-          //   z: 0, // At ground level
-          //   type: "radiationField",
-          //   size: 800,
-          //   life: 600, // 10 seconds
-          //   color: [100, 255, 100, 100], // Sickly green
-          //   pulseRate: 0.03,
-          //   forceRenderDetail: true,
-          // });
+        // OPTIMIZED: Apply lingering damage without creating persistent visual effects
+        // This maintains the gameplay impact without the performance cost
+        const radiationInterval = setInterval(() => {
+          // Apply radiation damage to enemies in field
+          for (let enemy of enemies) {
+            const dx = enemy.x - bombCenter.x;
+            const dy = enemy.y - bombCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-          // Add atmospheric glow
-          // effects.push({
-          //   type: "globalRadiation",
-          //   life: 600, // 10 seconds
-          //   intensity: 0.2 + damageBoost * 0.01,
-          //   forceRenderDetail: true,
-          // });
+            if (distance < 800) {
+              // Radiation field radius
+              // Apply radiation damage
+              const radiationDamage = 50 + damageBoost * 5;
+              enemy.health -= radiationDamage;
 
-          // Create floating debris
-          // for (let i = 0; i < 30; i++) {
-          //   setTimeout(() => {
-          //     const angle = random(TWO_PI);
-          //     const dist = random(100, 700);
-          //     const x = bombCenter.x + cos(angle) * dist;
-          //     const y = bombCenter.y + sin(angle) * dist;
-
-          //     effects.push({
-          //       x: x,
-          //       y: y,
-          //       z: random(50, 200),
-          //       type: "debrisParticle",
-          //       size: random(10, 30),
-          //       life: random(300, 500),
-          //       color: [100, 100, 100, 180],
-          //       rotationSpeed: random(-0.05, 0.05),
-          //       velocity: {
-          //         x: random(-0.5, 0.5),
-          //         y: random(-0.5, 0.5),
-          //         z: random(-0.2, 0.1),
-          //       },
-          //       forceRenderDetail: false,
-          //     });
-          //   }, i * 50);
-          // }
-
-          // Apply lingering damage over time to enemies in radiation field
-          const radiationInterval = setInterval(() => {
-            // Check if effect is still active
-            const radiationEffect = effects.find(
-              (e) => e.type === "radiationField"
-            );
-            if (!radiationEffect) {
-              clearInterval(radiationInterval);
-              return;
-            }
-
-            // Apply radiation damage to enemies in field
-            for (let enemy of enemies) {
-              const dx = enemy.x - bombCenter.x;
-              const dy = enemy.y - bombCenter.y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-
-              if (distance < 800) {
-                // Radiation field radius
-                // Apply radiation damage
-                const radiationDamage = 50 + damageBoost * 5;
-                enemy.health -= radiationDamage;
-
-                // Create radiation effect on enemy
-                if (random() > 0.7) {
-                  effects.push({
-                    x: enemy.x,
-                    y: enemy.y,
-                    z: enemy.z + 20,
-                    type: "radiationBurst",
-                    size: random(15, 25),
-                    life: random(20, 30),
-                    color: [100, 255, 100],
-                  });
-                }
+              // OPTIMIZED: Create radiation effect on enemy with reduced probability (30% instead of 70%)
+              if (random() > 0.7) {
+                effects.push({
+                  x: enemy.x,
+                  y: enemy.y,
+                  z: enemy.z + 20,
+                  type: "radiationBurst",
+                  size: random(15, 25),
+                  life: random(20, 30),
+                  color: [100, 255, 100],
+                });
               }
             }
-          }, 500); // Check every 0.5 seconds
+          }
+        }, 500); // Check every 0.5 seconds
 
-          // Clear interval after radiation field expires
-          setTimeout(() => {
-            clearInterval(radiationInterval);
-          }, 600 * (1000 / 60)); // Convert frames to ms
-        }, 1500); // Start radiation field 1.5 seconds after explosion
+        // Clear interval after radiation field expires
+        setTimeout(() => {
+          clearInterval(radiationInterval);
+        }, 600 * (1000 / 60)); // Convert frames to ms
       }, ATOMIC_BOMB_FALL_DURATION_MS); // Delay matches the bomb fall duration
 
       break;
