@@ -1972,10 +1972,10 @@ function drawSkyAndMountains() {
 // Function to draw clouds that appear on top of the bridge at the horizon
 function drawSkyOverlay() {
   try {
-    // Check if we're in mobile landscape mode - if so, skip drawing clouds
-    // This is a workaround for the WebGL context issue in mobile landscape
-    if (isMobileDevice && windowWidth > windowHeight) {
-      return; // Skip drawing clouds in mobile landscape mode
+    // Skip cloud rendering on mobile devices completely to avoid WebGL context issues
+    // This is a more aggressive fix that prevents the error in both portrait and landscape
+    if (isMobileDevice) {
+      return; // Skip drawing clouds on all mobile devices
     }
     
     // Save the current WebGL state
@@ -1992,6 +1992,9 @@ function drawSkyOverlay() {
         console.warn("Error setting ortho projection:", e);
         // If ortho fails, try to use a simpler approach
         resetMatrix();
+        // Exit early if we can't set up the projection properly
+        pop();
+        return;
       }
 
       // Move in front of everything
@@ -2029,9 +2032,15 @@ function drawSkyOverlay() {
             
             // Use try/catch for each ellipse to prevent errors from stopping the entire function
             try {
-              ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+              // Check if WebGL context is still valid before drawing
+              if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
+                ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+              }
             } catch (e) {
               console.warn("Error drawing cloud ellipse:", e);
+              // If we encounter an error, stop drawing clouds completely
+              pop();
+              return;
             }
           } catch (e) {
             console.warn("Error in cloud calculation:", e);
@@ -2051,28 +2060,58 @@ function drawSkyOverlay() {
 
 function drawGame() {
   try {
+    // Draw each component in a separate try-catch block to prevent cascading failures
+    
     // Draw the power-up lane first
-    drawPowerUpLane();
+    try {
+      drawPowerUpLane();
+    } catch (e) {
+      console.error("Error drawing power-up lane:", e);
+    }
     
     // Draw power-ups
-    drawPowerUps();
+    try {
+      drawPowerUps();
+    } catch (e) {
+      console.error("Error drawing power-ups:", e);
+    }
 
     // Draw the main lane
-    drawMainLane();
+    try {
+      drawMainLane();
+    } catch (e) {
+      console.error("Error drawing main lane:", e);
+    }
 
     // Draw squad members
-    drawSquad();
+    try {
+      drawSquad();
+    } catch (e) {
+      console.error("Error drawing squad:", e);
+    }
 
     // Draw enemies
-    drawEnemies();
+    try {
+      drawEnemies();
+    } catch (e) {
+      console.error("Error drawing enemies:", e);
+    }
 
     // Draw projectiles
-    drawProjectiles();
+    try {
+      drawProjectiles();
+    } catch (e) {
+      console.error("Error drawing projectiles:", e);
+    }
 
     // Draw visual effects
-    drawEffects();
+    try {
+      drawEffects();
+    } catch (e) {
+      console.error("Error drawing effects:", e);
+    }
   } catch (e) {
-    console.error("Error in drawGame:", e);
+    console.error("Critical error in drawGame:", e);
   }
 }
 
@@ -2426,70 +2465,124 @@ function drawWallAndGate() {
 
 function drawPowerUpLane() {
   try {
-    // Draw the power-up lane (extended to match main bridge)
-    push();
-    translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
-
-    // Use a slightly different fill color for better contrast
-    fill(...POWER_UP_LANE_COLOR);
-
-    // Check if we're on a mobile device or low performance mode
-    // and use simpler rendering to avoid WebGL issues
-    if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW) {
-      // Use rect() instead of box() for better compatibility
-      push();
-      rectMode(CENTER);
-      translate(0, 0, 0);
-      rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
-      pop();
-    } else {
-      // For desktop/high-performance devices, try the 3D version with fallback
+    // Always use the simplest approach for mobile devices to avoid WebGL context issues
+    if (isMobileDevice) {
       try {
-        box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
-      } catch (e) {
-        console.warn("Error drawing power-up lane box:", e);
-        // Fallback to a simpler shape if box fails
         push();
-        translate(0, 0, 0);
+        translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
+        
+        // Use a slightly different fill color for better contrast
+        fill(...POWER_UP_LANE_COLOR);
+        
+        // Use a 2D rect for mobile - most compatible approach
+        push();
         rectMode(CENTER);
+        translate(0, 0, 0);
         rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
         pop();
-      }
-    }
-
-    // Add lane markers/decorations for better visual guidance
-    // Reduce number of markers on mobile for better performance
-    const laneMarkers = isMobileDevice ? 15 : 30;
-    const stepSize = BRIDGE_LENGTH / laneMarkers;
-
-    // Draw lane markers
-    for (let i = 0; i < laneMarkers; i++) {
-      const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
-      push();
-      translate(0, yPos, 5); // Position slightly above the lane
-      fill(180, 220, 255, 150); // Lighter blue with transparency
-      
-      if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW) {
-        // Use rect() for mobile devices
-        rectMode(CENTER);
-        rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
-      } else {
-        // For desktop, try 3D with fallback
-        try {
-          box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
-        } catch (e) {
-          // Fallback to a simpler shape if box fails
+        
+        // Add minimal lane markers for mobile
+        const laneMarkers = 10; // Even fewer markers for mobile
+        const stepSize = BRIDGE_LENGTH / laneMarkers;
+        
+        for (let i = 0; i < laneMarkers; i++) {
+          const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
+          push();
+          translate(0, yPos, 5);
+          fill(180, 220, 255, 150);
           rectMode(CENTER);
           rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
+          pop();
+        }
+        
+        pop();
+      } catch (e) {
+        console.warn("Error in mobile power-up lane rendering:", e);
+      }
+      return; // Exit early for mobile devices
+    }
+    
+    // For desktop devices, continue with the more detailed rendering
+    try {
+      // Draw the power-up lane (extended to match main bridge)
+      push();
+      translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
+
+      // Use a slightly different fill color for better contrast
+      fill(...POWER_UP_LANE_COLOR);
+
+      // Check if we're in low performance mode
+      if (currentPerformanceLevel === PerformanceLevel.LOW) {
+        // Use rect() instead of box() for better compatibility
+        push();
+        rectMode(CENTER);
+        translate(0, 0, 0);
+        rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
+        pop();
+      } else {
+        // For high-performance devices, try the 3D version with fallback
+        try {
+          // Check if WebGL context is still valid before drawing
+          if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
+            box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
+          } else {
+            throw new Error("WebGL context is lost or invalid");
+          }
+        } catch (e) {
+          console.warn("Error drawing power-up lane box:", e);
+          // Fallback to a simpler shape if box fails
+          push();
+          translate(0, 0, 0);
+          rectMode(CENTER);
+          rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
+          pop();
+        }
+      }
+
+      // Add lane markers/decorations for better visual guidance
+      const laneMarkers = currentPerformanceLevel === PerformanceLevel.LOW ? 15 : 30;
+      const stepSize = BRIDGE_LENGTH / laneMarkers;
+
+      // Draw lane markers
+      for (let i = 0; i < laneMarkers; i++) {
+        try {
+          const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
+          push();
+          translate(0, yPos, 5); // Position slightly above the lane
+          fill(180, 220, 255, 150); // Lighter blue with transparency
+          
+          if (currentPerformanceLevel === PerformanceLevel.LOW) {
+            // Use rect() for low performance mode
+            rectMode(CENTER);
+            rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
+          } else {
+            // For high performance, try 3D with fallback
+            try {
+              if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
+                box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
+              } else {
+                throw new Error("WebGL context is lost or invalid");
+              }
+            } catch (e) {
+              // Fallback to a simpler shape if box fails
+              rectMode(CENTER);
+              rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
+            }
+          }
+          
+          pop();
+        } catch (e) {
+          console.warn("Error drawing lane marker:", e);
+          continue; // Skip this marker and continue with the next one
         }
       }
       
-      pop();
+      pop(); // Close the main push
+    } catch (e) {
+      console.warn("Error in desktop power-up lane rendering:", e);
     }
-    
-    pop(); // Close the main push
   } catch (e) {
-    console.error("Error in drawPowerUpLane:", e);
+    console.error("Critical error in drawPowerUpLane:", e);
   }
 }
 
@@ -5501,171 +5594,238 @@ function drawEffects() {
 }
 
 function drawPowerUps() {
-  // Clear any remaining visual artifacts at the beginning of each frame
-  // by drawing a clean overlay over the power-up lane
-  push();
-  translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, -1); // Position just behind the power-up lane
-  fill(...POWER_UP_LANE_COLOR);
-  box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * 1, 8); // Slightly narrower than the lane
-  pop();
-
-  // Draw power-ups with proper depth testing
-  for (let powerUp of powerUps) {
-    // Distance-based Level of Detail
-    let distToCamera = 0;
-    if (squad.length > 0) {
-      const mainMember = squad[0];
-      const dx = powerUp.x - mainMember.x;
-      const dy = powerUp.y - mainMember.y;
-      distToCamera = dx * dx + dy * dy; // Squared distance
-    }
-
-    push();
-    translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
-
-    // Rotate slowly to make power-ups look interesting
-    let rotationAmount = powerUp.rotation || 0;
-    rotationAmount += powerUp.rotationSpeed || 0.02;
-    powerUp.rotation = rotationAmount; // Store updated rotation
-
-    rotateX(rotationAmount);
-    rotateY(rotationAmount * 0.7);
-
-    // Add a slight hover effect
-    const hoverOffset = sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
-    translate(0, 0, hoverOffset);
-
-    // Different shapes for different power-up types - with simplified rendering for distant power-ups
-    if (distToCamera > 800 * 800) {
-      // Very distant power-ups - ultra simplified
-      if (powerUp.type === "mirror") {
-        fill(WEAPON_COLORS.mirror);
-        box(POWER_UP_SIZE);
-      } else if (
-        powerUp.type === "fire_rate" ||
-        powerUp.type === "damage" ||
-        powerUp.type === "aoe"
-      ) {
-        // Skill power-ups - use distinctive colors
-        const color =
-          powerUp.type === "fire_rate"
-            ? [50, 255, 50]
-            : powerUp.type === "damage"
-            ? [255, 50, 50]
-            : [50, 50, 255];
-        fill(...color);
-        sphere(POWER_UP_SIZE / 2);
-      } else {
-        // Weapon power-ups
-        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
-        fill(...powerUpColor);
-        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
-      }
-    } else {
-      // Fully detailed power-ups for nearby ones
-      if (powerUp.type === "mirror") {
-        // Mirror - white cube with sparkle effect
-        fill(WEAPON_COLORS.mirror);
-        box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
-
-        // Add sparkle effect
-        if (distToCamera < 500 * 500) {
+  try {
+    // Use a simplified approach for mobile devices to avoid WebGL context issues
+    if (isMobileDevice) {
+      // Draw power-ups with simplified rendering for mobile
+      for (let powerUp of powerUps) {
+        try {
           push();
-          noStroke();
-          fill(255, 255, 255, 150 + sin(frameCount * 0.1) * 50);
-          for (let i = 0; i < 3; i++) {
-            push();
-            rotateX(frameCount * 0.1 + (i * TWO_PI) / 3);
-            rotateY(frameCount * 0.15 + (i * TWO_PI) / 3);
-            translate(0, 0, POWER_UP_SIZE / 2 + 5);
-            sphere(3);
-            pop();
+          translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
+          
+          // Simplified rotation for mobile
+          let rotationAmount = powerUp.rotation || 0;
+          rotationAmount += powerUp.rotationSpeed || 0.02;
+          powerUp.rotation = rotationAmount;
+          
+          rotateX(rotationAmount);
+          rotateY(rotationAmount * 0.7);
+          
+          // Use simplified shapes for all power-ups on mobile
+          if (powerUp.type === "mirror") {
+            fill(WEAPON_COLORS.mirror);
+            // Use a sphere instead of box for better WebGL compatibility
+            sphere(POWER_UP_SIZE / 2);
+          } else if (
+            powerUp.type === "fire_rate" ||
+            powerUp.type === "damage" ||
+            powerUp.type === "aoe"
+          ) {
+            // Skill power-ups - use distinctive colors
+            const color =
+              powerUp.type === "fire_rate"
+                ? [50, 255, 50]
+                : powerUp.type === "damage"
+                ? [255, 50, 50]
+                : [50, 50, 255];
+            fill(...color);
+            sphere(POWER_UP_SIZE / 2);
+          } else {
+            // Weapon power-ups
+            const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+            fill(...powerUpColor);
+            // Use a sphere instead of cylinder for better WebGL compatibility
+            sphere(POWER_UP_SIZE / 2);
           }
           pop();
-        }
-      } else if (powerUp.type === "fire_rate") {
-        // Fire rate boost - green sphere
-        fill(50, 255, 50);
-
-        // Add a pulsating effect
-        const pulseScale = 1 + sin(frameCount * 0.1) * 0.1;
-        sphere((POWER_UP_SIZE / 2) * pulseScale);
-
-        // Add value text
-        if (distToCamera < 400 * 400) {
-          push();
-          rotateX(-PI / 4);
-          fill(255);
-          textSize(16);
-          textAlign(CENTER, CENTER);
-          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-          pop();
-        }
-      } else if (powerUp.type === "damage") {
-        // Damage boost - red cube
-        fill(255, 50, 50);
-
-        // Add a rotating effect
-        box(POWER_UP_SIZE * (1 + sin(frameCount * 0.05) * 0.1));
-
-        // Add value text
-        if (distToCamera < 400 * 400) {
-          push();
-          rotateX(-PI / 4);
-          fill(255);
-          textSize(16);
-          textAlign(CENTER, CENTER);
-          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-          pop();
-        }
-      } else if (powerUp.type === "aoe") {
-        // Area effect boost - blue pyramid
-        fill(50, 50, 255);
-
-        // Add a subtle rotation
-        cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
-
-        // Add value text
-        if (distToCamera < 400 * 400) {
-          push();
-          rotateX(-PI / 4);
-          fill(255);
-          textSize(16);
-          textAlign(CENTER, CENTER);
-          text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
-          pop();
-        }
-      } else {
-        // Weapon power-ups - use default color if type not found
-        const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
-        fill(...powerUpColor);
-
-        // Add interesting shape with orbital effect
-        cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
-
-        // Add orbital particles
-        if (distToCamera < 600 * 600 && powerUp.orbitals > 0) {
-          push();
-          noStroke();
-          fill(...powerUpColor, 200);
-          const orbitalCount = Math.min(3, powerUp.orbitals || 0);
-          for (let i = 0; i < orbitalCount; i++) {
-            push();
-            const angle = frameCount * 0.05 + (i * TWO_PI) / orbitalCount;
-            const orbitalRadius = POWER_UP_SIZE * 0.8;
-            translate(
-              cos(angle) * orbitalRadius,
-              sin(angle) * orbitalRadius,
-              0
-            );
-            sphere(4);
-            pop();
-          }
-          pop();
+        } catch (e) {
+          console.warn("Error drawing power-up:", e);
+          // Continue with the next power-up
+          continue;
         }
       }
+      return; // Skip the rest of the function for mobile devices
     }
-    pop();
+    
+    // For desktop devices, continue with the full rendering
+    try {
+      // Clear any remaining visual artifacts at the beginning of each frame
+      // by drawing a clean overlay over the power-up lane
+      push();
+      translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, -1); // Position just behind the power-up lane
+      fill(...POWER_UP_LANE_COLOR);
+      box(POWER_UP_LANE_WIDTH + 2, BRIDGE_LENGTH * 1, 8); // Slightly narrower than the lane
+      pop();
+    } catch (e) {
+      console.warn("Error drawing power-up lane overlay:", e);
+    }
+
+    // Draw power-ups with proper depth testing
+    for (let powerUp of powerUps) {
+      try {
+        // Distance-based Level of Detail
+        let distToCamera = 0;
+        if (squad.length > 0) {
+          const mainMember = squad[0];
+          const dx = powerUp.x - mainMember.x;
+          const dy = powerUp.y - mainMember.y;
+          distToCamera = dx * dx + dy * dy; // Squared distance
+        }
+
+        push();
+        translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
+
+        // Rotate slowly to make power-ups look interesting
+        let rotationAmount = powerUp.rotation || 0;
+        rotationAmount += powerUp.rotationSpeed || 0.02;
+        powerUp.rotation = rotationAmount; // Store updated rotation
+
+        rotateX(rotationAmount);
+        rotateY(rotationAmount * 0.7);
+
+        // Add a slight hover effect
+        const hoverOffset = sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
+        translate(0, 0, hoverOffset);
+
+        // Different shapes for different power-up types - with simplified rendering for distant power-ups
+        if (distToCamera > 800 * 800) {
+          // Very distant power-ups - ultra simplified
+          if (powerUp.type === "mirror") {
+            fill(WEAPON_COLORS.mirror);
+            box(POWER_UP_SIZE);
+          } else if (
+            powerUp.type === "fire_rate" ||
+            powerUp.type === "damage" ||
+            powerUp.type === "aoe"
+          ) {
+            // Skill power-ups - use distinctive colors
+            const color =
+              powerUp.type === "fire_rate"
+                ? [50, 255, 50]
+                : powerUp.type === "damage"
+                ? [255, 50, 50]
+                : [50, 50, 255];
+            fill(...color);
+            sphere(POWER_UP_SIZE / 2);
+          } else {
+            // Weapon power-ups
+            const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+            fill(...powerUpColor);
+            cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+          }
+        } else {
+          // Fully detailed power-ups for nearby ones
+          if (powerUp.type === "mirror") {
+            // Mirror - white cube with sparkle effect
+            fill(WEAPON_COLORS.mirror);
+            box(POWER_UP_SIZE, POWER_UP_SIZE, POWER_UP_SIZE);
+
+            // Add sparkle effect
+            if (distToCamera < 500 * 500) {
+              push();
+              noStroke();
+              fill(255, 255, 255, 150 + sin(frameCount * 0.1) * 50);
+              for (let i = 0; i < 3; i++) {
+                push();
+                rotateX(frameCount * 0.1 + (i * TWO_PI) / 3);
+                rotateY(frameCount * 0.15 + (i * TWO_PI) / 3);
+                translate(0, 0, POWER_UP_SIZE / 2 + 5);
+                sphere(3);
+                pop();
+              }
+              pop();
+            }
+          } else if (powerUp.type === "fire_rate") {
+            // Fire rate boost - green sphere
+            fill(50, 255, 50);
+
+            // Add a pulsating effect
+            const pulseScale = 1 + sin(frameCount * 0.1) * 0.1;
+            sphere((POWER_UP_SIZE / 2) * pulseScale);
+
+            // Add value text
+            if (distToCamera < 400 * 400) {
+              push();
+              rotateX(-PI / 4);
+              fill(255);
+              textSize(16);
+              textAlign(CENTER, CENTER);
+              text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+              pop();
+            }
+          } else if (powerUp.type === "damage") {
+            // Damage boost - red cube
+            fill(255, 50, 50);
+
+            // Add a rotating effect
+            box(POWER_UP_SIZE * (1 + sin(frameCount * 0.05) * 0.1));
+
+            // Add value text
+            if (distToCamera < 400 * 400) {
+              push();
+              rotateX(-PI / 4);
+              fill(255);
+              textSize(16);
+              textAlign(CENTER, CENTER);
+              text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+              pop();
+            }
+          } else if (powerUp.type === "aoe") {
+            // Area effect boost - blue pyramid
+            fill(50, 50, 255);
+
+            // Add a subtle rotation
+            cone(POWER_UP_SIZE, POWER_UP_SIZE * 1.5);
+
+            // Add value text
+            if (distToCamera < 400 * 400) {
+              push();
+              rotateX(-PI / 4);
+              fill(255);
+              textSize(16);
+              textAlign(CENTER, CENTER);
+              text(`+${powerUp.value}`, 0, -POWER_UP_SIZE);
+              pop();
+            }
+          } else {
+            // Weapon power-ups - use default color if type not found
+            const powerUpColor = WEAPON_COLORS[powerUp.type] || [200, 200, 200];
+            fill(...powerUpColor);
+
+            // Add interesting shape with orbital effect
+            cylinder(POWER_UP_SIZE / 2, POWER_UP_SIZE);
+
+            // Add orbital particles
+            if (distToCamera < 600 * 600 && powerUp.orbitals > 0) {
+              push();
+              noStroke();
+              fill(...powerUpColor, 200);
+              const orbitalCount = Math.min(3, powerUp.orbitals || 0);
+              for (let i = 0; i < orbitalCount; i++) {
+                push();
+                const angle = frameCount * 0.05 + (i * TWO_PI) / orbitalCount;
+                const orbitalRadius = POWER_UP_SIZE * 0.8;
+                translate(
+                  cos(angle) * orbitalRadius,
+                  sin(angle) * orbitalRadius,
+                  0
+                );
+                sphere(4);
+                pop();
+              }
+              pop();
+            }
+          }
+        }
+        pop();
+      } catch (e) {
+        console.warn("Error drawing power-up:", e);
+        // Continue with the next power-up
+        continue;
+      }
+    }
+  } catch (e) {
+    console.error("Critical error in drawPowerUps:", e);
   }
 }
 
