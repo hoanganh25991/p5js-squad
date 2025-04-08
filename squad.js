@@ -7636,11 +7636,55 @@ function updateTechnicalBoard() {
   const debugModeText = DEBUG_MODE
     ? '<div style="color: cyan;">⚡ DEBUG MODE ACTIVE</div>'
     : "";
+    
+  // Add GPU acceleration indicator
+  const gpuEnabled = PerformanceManager.canUseAdvancedFeatures();
+  const gpuStatusText = gpuEnabled
+    ? '<div style="color: lime;">🚀 GPU ACCELERATION ENABLED</div>'
+    : '<div style="color: orange;">⚠️ GPU ACCELERATION DISABLED</div>';
+    
+  // Get detailed GPU info if available
+  let gpuInfoText = '';
+  if (PerformanceManager.gpuInfo) {
+    // Format the renderer string to be more readable
+    const renderer = PerformanceManager.gpuInfo.renderer;
+    // Get vendor information
+    const vendor = PerformanceManager.gpuInfo.vendor || 'Unknown Vendor';
+    
+    // Create a more detailed GPU info display
+    gpuInfoText = `<div>GPU: ${renderer} (Tier ${PerformanceManager.gpuTier})</div>`;
+    gpuInfoText += `<div>Vendor: ${vendor}</div>`;
+    
+    // Add texture size info if available
+    if (PerformanceManager.gpuInfo.maxTextureSize) {
+      const maxTextureSizeMB = (PerformanceManager.gpuInfo.maxTextureSize * PerformanceManager.gpuInfo.maxTextureSize * 4 / (1024 * 1024)).toFixed(0);
+      gpuInfoText += `<div>Max Texture: ${PerformanceManager.gpuInfo.maxTextureSize}px (${maxTextureSizeMB}MB)</div>`;
+    }
+    
+    // Add key extension support information
+    if (PerformanceManager.gpuInfo.extensions) {
+      // Check for important extensions
+      const hasInstancedArrays = PerformanceManager.gpuInfo.extensions.includes('ANGLE_instanced_arrays');
+      const hasFloatTextures = PerformanceManager.gpuInfo.extensions.includes('OES_texture_float');
+      const hasHalfFloatTextures = PerformanceManager.gpuInfo.extensions.includes('OES_texture_half_float');
+      const hasDepthTextures = PerformanceManager.gpuInfo.extensions.includes('WEBGL_depth_texture');
+      
+      // Create a summary of key capabilities
+      gpuInfoText += '<div>Features: ';
+      gpuInfoText += hasInstancedArrays ? '✓Instancing ' : '✗Instancing ';
+      gpuInfoText += hasFloatTextures ? '✓Float ' : '✗Float ';
+      gpuInfoText += hasHalfFloatTextures ? '✓Half-Float ' : '✗Half-Float ';
+      gpuInfoText += hasDepthTextures ? '✓Depth' : '✗Depth';
+      gpuInfoText += '</div>';
+    }
+  }
 
   // Update technical board with HTML content
   techBoard.html(`
     <h3 style="margin: 0 0 10px 0;">TECHNICAL BOARD</h3>
     ${debugModeText}
+    ${gpuStatusText}
+    ${gpuInfoText}
     <div>FPS: ${Math.floor(avgFPS)}</div>
     <div>Objects: ${objectCount}</div>
     <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(
