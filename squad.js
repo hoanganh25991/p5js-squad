@@ -1791,27 +1791,26 @@ function drawSkyAndMountains() {
     }
   }
   
-  // // ===== CLOUDS =====
-  // // Add clouds near the horizon
-  // if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-  //   fill(255, 255, 255, 180);
+  // ===== CLOUDS =====
+  // Add clouds near the horizon
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    fill(255, 255, 255, 180);
     
-  //   // Use noise for cloud positions
-  //   for (let i = 0; i < 12; i++) {
-  //     // Position clouds more toward the horizon
-  //     const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
-  //     const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
-  //     const cloudWidth = noise(i * 0.3) * 200 + 100;
-  //     const cloudHeight = 30 + noise(i) * 20;
-      
-  //     // Draw cloud as a series of ellipses
-  //     for (let j = 0; j < 5; j++) {
-  //       const offsetX = (j - 2) * cloudWidth/6;
-  //       const offsetY = sin(j * 0.5) * 5;
-  //       ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
-  //     }
-  //   }
-  // }
+    // Use noise for cloud positions
+    // Position clouds more toward the horizon
+    let i = 1;
+    const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
+    const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
+    const cloudWidth = noise(i * 0.3) * 200 + 100;
+    const cloudHeight = 30 + noise(i) * 20;
+    
+    // Draw cloud as a series of ellipses
+    for (let j = 0; j < 5; j++) {
+      const offsetX = (j - 2) * cloudWidth/6;
+      const offsetY = sin(j * 0.5) * 5;
+      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
+    }
+  }
   
   // ===== DISTANT MOUNTAINS =====
   // Draw mountain ranges at the horizon
@@ -1858,30 +1857,6 @@ function drawSkyAndMountains() {
     
     fill(waterColors[i]);
     rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
-  }
-  
-  // ===== WATER REFLECTIONS =====
-  // Add subtle water reflections if not on low performance
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    // Draw subtle horizontal reflection lines
-    stroke(255, 255, 255, 20);
-    strokeWeight(1);
-    
-    for (let y = height * 0.55; y < height; y += 15) {
-      const reflectionWidth = map(y, height * 0.55, height, width * 0.5, width * 0.8);
-      const xStart = width/2 - reflectionWidth/2;
-      const xEnd = width/2 + reflectionWidth/2;
-      
-      // Wavy reflection lines
-      beginShape();
-      for (let x = xStart; x <= xEnd; x += 10) {
-        const waveHeight = sin((x + frameCount) * 0.05) * 2;
-        vertex(x, y + waveHeight);
-      }
-      endShape();
-    }
-    
-    noStroke();
   }
   
   // Re-enable depth testing if it was enabled before
