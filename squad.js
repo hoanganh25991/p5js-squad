@@ -8605,7 +8605,7 @@ function updateSkillBar() {
   for (let i = 1; i <= 12; i++) {
     const skill = skills[`skill${i}`];
     if (!skill) {
-      console.log(`Skill ${i} not defined`);
+      // console.log(`Skill ${i} not defined`);
       continue;
     }
 
