@@ -1,8 +1,8 @@
 # Squad Survival
 
+![](screenshots/screenshot-161649-20250408.jpg)
 ![](screenshots/screenshot-151545-20250407.jpg)
 ![](screenshots/screenshot-231954-20250406.jpg)
-![](screenshots/screenshot-071222-20250407.png)
 ![](screenshots/screenshot-2025-04-04T14-14-03-772Z.png)
 ![](screenshots/screenshot-2025-03-30T15-41-01-025Z.png)
 
