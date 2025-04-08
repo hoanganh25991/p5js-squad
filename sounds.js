@@ -78,6 +78,26 @@ let soundSettings = {
   },
   muted: false, // Sound off by default
   currentMusic: null,
+  
+  // Sound optimization settings
+  maxConcurrentSounds: 8,       // Maximum number of sounds that can play simultaneously
+  soundPriority: {              // Priority levels for different sound types (higher = more important)
+    ui: 10,                     // UI sounds are highest priority
+    skills: 8,                  // Skill sounds are high priority
+    death: 7,                   // Death sounds are important
+    criticalHit: 6,             // Critical hits are somewhat important
+    explosion: 5,               // Explosions are medium priority
+    hit: 3,                     // Regular hits are lower priority
+    shoot: 2,                   // Shoot sounds are low priority
+    environment: 1              // Environment sounds are lowest priority
+  },
+  soundCooldowns: {             // Minimum time (ms) between playing the same sound type
+    shoot: 50,                  // Don't play shoot sounds more than once per 50ms
+    hit: 80,                    // Don't play hit sounds more than once per 80ms
+    criticalHit: 150            // Don't play critical hit sounds more than once per 150ms
+  },
+  batchSounds: true,            // Whether to batch similar sounds together
+  dynamicCulling: true          // Whether to dynamically reduce sounds based on game performance
 };
 
 // Preload all sounds
@@ -150,6 +170,213 @@ function preloadSounds() {
 // Flag to track if sound system has been initialized
 let soundSystemInitialized = false;
 
+// Sound manager for tracking and optimizing sound playback
+const soundManager = {
+  activeSounds: [],           // Currently playing sounds
+  lastPlayedTime: {},         // Last time each sound type was played
+  soundsThisFrame: {},        // Sounds requested this frame (for batching)
+  frameStartTime: 0,          // Start time of current frame
+  
+  // Initialize the sound manager
+  init() {
+    this.activeSounds = [];
+    this.lastPlayedTime = {};
+    this.frameStartTime = millis();
+    this.soundsThisFrame = {};
+    
+    // Set up performance monitoring
+    this.frameRates = [];
+    this.lastFrameTime = millis();
+    this.performanceIssue = false;
+  },
+  
+  // Start a new frame
+  startFrame() {
+    // Calculate frame rate and detect performance issues
+    const currentTime = millis();
+    const frameDelta = currentTime - this.lastFrameTime;
+    this.lastFrameTime = currentTime;
+    
+    // Track frame rates for the last 10 frames
+    if (frameDelta > 0) {
+      const fps = 1000 / frameDelta;
+      this.frameRates.push(fps);
+      if (this.frameRates.length > 10) {
+        this.frameRates.shift();
+      }
+      
+      // Check if we're experiencing performance issues
+      if (this.frameRates.length >= 5) {
+        const avgFps = this.frameRates.reduce((sum, fps) => sum + fps, 0) / this.frameRates.length;
+        this.performanceIssue = avgFps < 30; // Consider it a performance issue if below 30 FPS
+      }
+    }
+    
+    this.frameStartTime = currentTime;
+    this.soundsThisFrame = {};
+  },
+  
+  // End the current frame and process batched sounds
+  endFrame() {
+    if (!soundSettings.batchSounds) return;
+    
+    // Process batched sounds
+    Object.keys(this.soundsThisFrame).forEach(soundKey => {
+      const batch = this.soundsThisFrame[soundKey];
+      if (batch.count > 0) {
+        // For batched sounds, we play one instance with adjusted volume
+        const volumeMultiplier = Math.min(1.5, 1 + Math.log10(batch.count) * 0.3);
+        this._playSound(
+          batch.sound,
+          batch.volume * volumeMultiplier,
+          batch.rate,
+          batch.pan
+        );
+      }
+    });
+  },
+  
+  // Check if a sound can be played based on priority and cooldowns
+  canPlaySound(soundType, priority) {
+    const currentTime = millis();
+    
+    // Check cooldown
+    if (soundSettings.soundCooldowns[soundType]) {
+      const lastPlayed = this.lastPlayedTime[soundType] || 0;
+      if (currentTime - lastPlayed < soundSettings.soundCooldowns[soundType]) {
+        return false;
+      }
+    }
+    
+    // If we're at the max number of concurrent sounds, check priority
+    if (soundSettings.dynamicCulling && this.performanceIssue) {
+      // During performance issues, be more aggressive with culling
+      if (priority < 5) return false; // Only play high priority sounds
+    }
+    
+    if (this.activeSounds.length >= soundSettings.maxConcurrentSounds) {
+      // Find the lowest priority active sound
+      let lowestPriority = Infinity;
+      let lowestPriorityIndex = -1;
+      
+      for (let i = 0; i < this.activeSounds.length; i++) {
+        if (this.activeSounds[i].priority < lowestPriority) {
+          lowestPriority = this.activeSounds[i].priority;
+          lowestPriorityIndex = i;
+        }
+      }
+      
+      // If this sound has higher priority than the lowest one, stop the lowest one
+      if (priority > lowestPriority && lowestPriorityIndex >= 0) {
+        const soundToStop = this.activeSounds[lowestPriorityIndex];
+        if (soundToStop.sound && soundToStop.sound.stop) {
+          soundToStop.sound.stop();
+        }
+        this.activeSounds.splice(lowestPriorityIndex, 1);
+      } else {
+        // This sound has lower priority, don't play it
+        return false;
+      }
+    }
+    
+    return true;
+  },
+  
+  // Add a sound to the active sounds list
+  addActiveSound(sound, priority, soundType) {
+    // Update last played time for this sound type
+    this.lastPlayedTime[soundType] = millis();
+    
+    // Add to active sounds
+    this.activeSounds.push({
+      sound,
+      priority,
+      startTime: millis(),
+      soundType
+    });
+    
+    // Clean up finished sounds
+    this.cleanupFinishedSounds();
+  },
+  
+  // Request to play a sound (may be batched)
+  requestSound(sound, volume, rate, pan, soundType, priority, batchKey) {
+    if (!sound || soundSettings.muted) return;
+    
+    // If batching is enabled and this sound type can be batched
+    if (soundSettings.batchSounds && batchKey && 
+        (soundType === 'hit' || soundType === 'shoot')) {
+      
+      // Create or update batch
+      if (!this.soundsThisFrame[batchKey]) {
+        this.soundsThisFrame[batchKey] = {
+          sound,
+          volume,
+          rate,
+          pan,
+          count: 0,
+          priority
+        };
+      }
+      
+      // Increment count for this batch
+      this.soundsThisFrame[batchKey].count++;
+      
+      // For the first sound in a batch, or high priority sounds, play immediately
+      if (this.soundsThisFrame[batchKey].count === 1 || priority >= 6) {
+        if (this.canPlaySound(soundType, priority)) {
+          this._playSound(sound, volume, rate, pan);
+          this.addActiveSound(sound, priority, soundType);
+        }
+      }
+    } else {
+      // Non-batched sounds play immediately if they pass priority check
+      if (this.canPlaySound(soundType, priority)) {
+        this._playSound(sound, volume, rate, pan);
+        this.addActiveSound(sound, priority, soundType);
+      }
+    }
+  },
+  
+  // Actually play the sound (internal method)
+  _playSound(sound, volume, rate, pan) {
+    try {
+      // Check if the sound object has the necessary methods
+      if (!sound.play || !sound.setVolume) {
+        return;
+      }
+      
+      // Play the sound with specified parameters
+      if (sound.rate) sound.rate(rate);
+      if (sound.pan) sound.pan(pan);
+      sound.setVolume(volume);
+      sound.play();
+    } catch (e) {
+      console.warn("Error playing sound:", e);
+    }
+  },
+  
+  // Clean up finished sounds from the active sounds list
+  cleanupFinishedSounds() {
+    const currentTime = millis();
+    this.activeSounds = this.activeSounds.filter(activeSound => {
+      // Remove sounds that have been playing for more than 5 seconds
+      if (currentTime - activeSound.startTime > 5000) {
+        return false;
+      }
+      
+      // Remove sounds that are no longer playing
+      if (activeSound.sound && 
+          activeSound.sound.isPlaying && 
+          !activeSound.sound.isPlaying()) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+};
+
 // Initialize sound system - only call this after user interaction
 function initSounds() {
   // If already initialized, don't do it again
@@ -192,6 +419,9 @@ function initSounds() {
         }
       });
 
+      // Initialize sound manager
+      soundManager.init();
+
       // Don't automatically start ambient sounds - we'll do this when game starts
       console.log("Sound system initialized successfully");
       soundSystemInitialized = true;
@@ -212,7 +442,7 @@ function initSounds() {
 }
 
 // Play a sound with specified volume and optional rate/pan
-function playSound(sound, volume = 1.0, rate = 1.0, pan = 0) {
+function playSound(sound, volume = 1.0, rate = 1.0, pan = 0, soundType = 'generic', priority = 1) {
   try {
     // Check if sound is available and not muted
     if (!sound || soundSettings.muted) return;
@@ -225,12 +455,9 @@ function playSound(sound, volume = 1.0, rate = 1.0, pan = 0) {
 
     // Calculate final volume based on master volume
     const finalVolume = volume * soundSettings.masterVolume;
-
-    // Play the sound with specified parameters
-    if (sound.rate) sound.rate(rate);
-    if (sound.pan) sound.pan(pan);
-    sound.setVolume(finalVolume);
-    sound.play();
+    
+    // Use the sound manager to handle this sound request
+    soundManager.requestSound(sound, finalVolume, rate, pan, soundType, priority);
   } catch (e) {
     console.warn("Error playing sound:", e);
   }
@@ -239,7 +466,9 @@ function playSound(sound, volume = 1.0, rate = 1.0, pan = 0) {
 // Play UI sound
 function playUISound(soundName) {
   if (sounds.ui[soundName]) {
-    playSound(sounds.ui[soundName], soundSettings.uiVolume);
+    // UI sounds have high priority
+    const priority = soundSettings.soundPriority.ui || 10;
+    playSound(sounds.ui[soundName], soundSettings.uiVolume, 1.0, 0, 'ui', priority);
   }
 }
 
@@ -258,8 +487,31 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
     const combatVolumeMultiplier = soundSettings.combatVolume && soundSettings.combatVolume[soundName]
       ? soundSettings.combatVolume[soundName]
       : 1.0;
-
-    playSound(sounds.combat[soundName], soundSettings.sfxVolume * combatVolumeMultiplier * volume * distanceVolume, 1.0, pan);
+    
+    // Get priority for this sound type
+    const priority = soundSettings.soundPriority[soundName] || 
+                    (soundName === 'criticalHit' ? 6 : 
+                     soundName === 'explosion' ? 5 : 
+                     soundName === 'hit' ? 3 : 
+                     soundName === 'shoot' ? 2 : 4);
+    
+    // For sounds that can be batched, create a batch key
+    const batchKey = (soundName === 'hit' || soundName === 'shoot') ? 
+                     `${soundName}_${Math.floor(x/100)}_${Math.floor(y/100)}` : null;
+    
+    // Calculate final volume
+    const finalVolume = soundSettings.sfxVolume * combatVolumeMultiplier * volume * distanceVolume;
+    
+    // Request the sound through the sound manager
+    soundManager.requestSound(
+      sounds.combat[soundName], 
+      finalVolume, 
+      1.0, 
+      pan, 
+      soundName, 
+      priority,
+      batchKey
+    );
   }
 }
 
@@ -271,8 +523,11 @@ function playSkillSound(skillNumber) {
     const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillName]
       ? soundSettings.skillVolume[skillName]
       : soundSettings.sfxVolume;
-
-    playSound(sounds.skills[skillName], volume);
+    
+    // Skills have high priority
+    const priority = soundSettings.soundPriority.skills || 8;
+    
+    playSound(sounds.skills[skillName], volume, 1.0, 0, 'skill', priority);
   }
 }
 
@@ -471,24 +726,67 @@ function updateAmbientSounds() {
 
 // Play random hit sound with variation
 function playRandomHitSound(x, y, isCritical = false) {
+  // Start a new sound frame to track batched sounds
+  soundManager.startFrame();
+  
   if (isCritical) {
     playCombatSound('criticalHit', x, y, 1.0);
   } else {
-    playCombatSound('hit', x, y, random(0.8, 1.0));
-
-    // Randomize pitch slightly
-    sounds.combat.hit.rate(random(0.9, 1.1));
+    // For regular hits, randomize volume slightly
+    const hitVolume = random(0.8, 1.0);
+    
+    // For regular hits, we'll use the sound manager's batching system
+    // The rate will be set in the playCombatSound function
+    playCombatSound('hit', x, y, hitVolume);
+    
+    // We don't need to set the rate directly anymore as the sound manager handles it
   }
+  
+  // Process any batched sounds at the end of the frame
+  soundManager.endFrame();
 }
 
 // Play explosion sound with size-based variations
 function playExplosionSound(x, y, size = 1.0) {
+  // Start a new sound frame
+  soundManager.startFrame();
+  
   // Larger explosions have lower pitch and higher volume
   const rate = map(size, 0.5, 3, 1.2, 0.7);
   const volume = map(size, 0.5, 3, 0.7, 1.0);
   
-  playCombatSound('explosion', x, y, volume);
-  sounds.combat.explosion.rate(rate);
+  // For explosions, we'll use a higher priority for larger explosions
+  const priority = soundSettings.soundPriority.explosion + 
+                  (size > 2.0 ? 2 : size > 1.0 ? 1 : 0);
+  
+  // Use the sound manager to play the explosion sound
+  if (sounds.combat.explosion) {
+    // Calculate pan based on x position
+    const screenCenterX = width / 2;
+    const pan = constrain((x - screenCenterX) / (screenCenterX), -1, 1) * 0.7;
+    
+    // Calculate volume falloff based on distance
+    const distanceFromCamera = abs(y - cameraOffsetY) / height;
+    const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
+    
+    // Calculate final volume
+    const finalVolume = soundSettings.sfxVolume * 
+                       (soundSettings.combatVolume.explosion || 1.0) * 
+                       volume * distanceVolume;
+    
+    // Request the sound directly through the sound manager
+    soundManager.requestSound(
+      sounds.combat.explosion,
+      finalVolume,
+      rate,
+      pan,
+      'explosion',
+      priority
+    );
+  }
+  
+  // Process any batched sounds
+  soundManager.endFrame();
 }
 
 // Handle sound fallbacks if files don't load
@@ -525,4 +823,33 @@ function handleSoundLoadError() {
   } catch (e) {
     console.error("Error creating sound fallbacks:", e);
   }
+}
+
+// Update sound system - call this once per frame from the main game loop
+function updateSoundSystem() {
+  // Skip if sound system isn't initialized
+  if (!soundSystemInitialized) return;
+  
+  // Start a new sound frame
+  soundManager.startFrame();
+  
+  // Update ambient sounds
+  updateAmbientSounds();
+  
+  // Clean up finished sounds
+  soundManager.cleanupFinishedSounds();
+  
+  // Process any batched sounds
+  soundManager.endFrame();
+}
+
+// Debug function to show sound statistics (can be called from the debug overlay)
+function getSoundStats() {
+  return {
+    activeSounds: soundManager.activeSounds.length,
+    maxSounds: soundSettings.maxConcurrentSounds,
+    performanceIssue: soundManager.performanceIssue,
+    muted: soundSettings.muted,
+    currentMusic: soundSettings.currentMusic
+  };
 }
