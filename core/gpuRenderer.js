@@ -30,7 +30,6 @@ class GPURenderer {
     this.createShaders();
     
     this.initialized = true;
-    console.log("GPU Renderer initialized with buffer size:", this.bufferSize);
   }
   
   updateBufferSize() {

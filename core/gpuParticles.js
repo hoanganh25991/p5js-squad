@@ -16,12 +16,15 @@ class GPUParticleSystem {
     // Create shader for instanced rendering
     this.instanceShader = createShader(this.vertexShader(), this.fragmentShader());
     
-    // Create particle geometry (simple cube for each particle)
+    // Create particle geometry (simple quad for each particle)
     this.particleGeometry = createGeometry();
     this.particleGeometry.addAttribute('aPosition', [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3);
     this.particleGeometry.addAttribute('aTexCoord', [0, 0, 1, 0, 1, 1, 0, 1], 2);
     this.particleGeometry.addFace([0, 1, 2]);
     this.particleGeometry.addFace([0, 2, 3]);
+    
+    // Create WebGL buffers for the geometry
+    this.particleGeometry.createBuffers();
     
     this.initialized = true;
   }
