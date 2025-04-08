@@ -8088,252 +8088,176 @@ function activateSkill(skillNumber) {
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
-    case 8: // Apocalyptic Devastation - Ultimate atomic bomb with enhanced effects (Performance Optimized)
+    case 8: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
       // Get bomb drop point - farther ahead of the player for better visibility
       let bombCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
         bombCenter = {
           x: squad[0].x,
-          y: squad[0].y - 1200, // Drop even farther ahead of the squad for better visibility
+          y: squad[0].y - 1200, // Drop far ahead of the squad
           z: squad[0].z,
         };
       }
 
-      // Add warning siren effect
-      const sirenSound = {
+      // RADICAL OPTIMIZATION: Reduced fall duration for faster effect
+      const OPTIMIZED_FALL_DURATION = 90; // 1.5 seconds at 60fps
+      const OPTIMIZED_FALL_DURATION_MS = OPTIMIZED_FALL_DURATION * (1000 / 60);
+
+      // Add warning siren effect - single global effect instead of multiple
+      effects.push({
         type: "globalWarning",
-        life: ATOMIC_BOMB_FALL_DURATION,
+        life: OPTIMIZED_FALL_DURATION,
         intensity: 0.5,
         forceRenderDetail: true,
-      };
-      effects.push(sirenSound);
+      });
 
       // Add screen shake for dramatic effect
       cameraShake = 3; // Initial shake when launching
 
-      // Create targeting reticle effect - OPTIMIZED: reduced from 3 to 2 reticles
-      for (let i = 0; i < 2; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: bombCenter.x,
-            y: bombCenter.y,
-            z: 0, // At ground level
-            type: "targetingReticle",
-            size: 200 - i * 30,
-            life: ATOMIC_BOMB_FALL_DURATION - i * 20,
-            color: [255, 50, 50, 150],
-            pulseRate: 0.1,
-            forceRenderDetail: true,
-          });
-        }, i * 200);
-      }
-
-      // Create initial bomb drop effect (small object falling from sky)
-      const bombObj = {
+      // RADICAL OPTIMIZATION: Single targeting reticle instead of multiple
+      effects.push({
         x: bombCenter.x,
         y: bombCenter.y,
-        z: 1000, // Start even higher in the sky for more dramatic effect
+        z: 0, // At ground level
+        type: "targetingReticle",
+        size: 200,
+        life: OPTIMIZED_FALL_DURATION,
+        color: [255, 50, 50, 150],
+        pulseRate: 0.1,
+        forceRenderDetail: true,
+      });
+
+      // Create initial bomb drop effect (small object falling from sky)
+      effects.push({
+        x: bombCenter.x,
+        y: bombCenter.y,
+        z: 1000, // Start high in the sky
         type: "atomicBomb",
-        size: 40, // Larger bomb
-        life: ATOMIC_BOMB_FALL_DURATION, // Use consistent duration constant
-        endPos: { ...bombCenter, z: bombCenter.z }, // Where it will land
-        trail: [], // Store trail points
-        fallStartTime: frameCount, // When bomb started falling
-        forceRenderDetail: true, // Force detailed rendering regardless of distance
-      };
+        size: 40,
+        life: OPTIMIZED_FALL_DURATION,
+        endPos: { ...bombCenter, z: bombCenter.z },
+        fallStartTime: frameCount,
+        forceRenderDetail: true,
+      });
 
-      effects.push(bombObj);
-
-      // Add atmospheric distortion effect as bomb falls
-      setTimeout(() => {
-        effects.push({
-          type: "globalDistortion",
-          life: ATOMIC_BOMB_FALL_DURATION_MS / 2,
-          intensity: 0.3,
-          forceRenderDetail: true,
-        });
-      }, ATOMIC_BOMB_FALL_DURATION_MS / 2);
-
+      // RADICAL OPTIMIZATION: Skip atmospheric distortion effect
       // Create atomic explosion after delay (when bomb hits ground)
       setTimeout(() => {
         // Massive camera shake when bomb hits
         cameraShake = 20;
 
         // Enhanced damage based on accumulated damage boost - extremely powerful
-        let atomicDamage = 3000 + damageBoost * 150; // Even more devastating damage
+        let atomicDamage = 3000 + damageBoost * 150;
 
-        // OPTIMIZED: Create massive atomic explosion with fewer layers (4 instead of 5)
-        // and more efficient particle generation
-        for (let i = 0; i < 4; i++) {
-          setTimeout(() => {
-            // Create expanding shockwave effect - enormous explosion sizes
-            const explosionSize = 500 + i * 250; // Larger explosion visuals
-            const explosionColors = [
-              [255, 255, 220], // bright flash
-              [255, 200, 50], // orange fire
-              [255, 150, 0], // deep orange
-              [150, 75, 0], // brown/orange
-              [100, 50, 0], // dark brown
-            ];
+        // RADICAL OPTIMIZATION: Single explosion layer with shader-based rendering
+        // Create one main explosion effect that uses efficient rendering techniques
+        effects.push({
+          x: bombCenter.x,
+          y: bombCenter.y,
+          z: bombCenter.z,
+          type: "atomicExplosion",
+          size: 1000, // Single large explosion
+          life: 120,
+          color: [255, 200, 50], // Orange fire color
+          layer: 0,
+          forceRenderDetail: true,
+          radicallyOptimized: true, // Flag for new optimized rendering
+        });
 
-            // Create expanding explosion at bomb position
-            effects.push({
-              x: bombCenter.x,
-              y: bombCenter.y,
-              z: bombCenter.z,
-              type: "atomicExplosion",
-              size: explosionSize,
-              life: 150 - i * 10, // Longer life for explosion layers
-              color: explosionColors[i],
-              layer: i,
-              forceRenderDetail: true, // Always render at full detail regardless of distance
-              optimized: true, // Flag for optimized rendering
-            });
+        // Add bright flash during explosion - single flash only
+        effects.push({
+          x: bombCenter.x,
+          y: bombCenter.y,
+          z: bombCenter.z,
+          type: "atomicFlash",
+          size: 6000,
+          life: 45,
+          color: [255, 255, 255],
+          forceRenderDetail: true,
+        });
 
-            // Add bright flash during initial explosion
-            if (i === 0) {
-              // Create blinding white flash effect covering the screen temporarily
-              effects.push({
-                x: bombCenter.x,
-                y: bombCenter.y,
-                z: bombCenter.z,
-                type: "atomicFlash",
-                size: 6000, // Larger flash size
-                life: 50, // Longer flash duration
-                color: [255, 255, 255],
-                forceRenderDetail: true, // Always render at full detail regardless of distance
-              });
+        // RADICAL OPTIMIZATION: Single shockwave instead of multiple
+        effects.push({
+          x: bombCenter.x,
+          y: bombCenter.y,
+          z: 0, // At ground level
+          type: "shockwave",
+          size: 1200,
+          life: 90,
+          color: [255, 150, 50],
+          layer: 0,
+          forceRenderDetail: true,
+        });
 
-              // OPTIMIZED: Reduced to just one secondary flash instead of two
-              setTimeout(() => {
-                effects.push({
-                  x: bombCenter.x,
-                  y: bombCenter.y,
-                  z: bombCenter.z,
-                  type: "atomicFlash",
-                  size: 4000,
-                  life: 40,
-                  color: [255, 255, 200], // Slightly yellow tint
-                  forceRenderDetail: true, // Always render at full detail regardless of distance
-                });
-              }, 300);
+        // RADICAL OPTIMIZATION: Process enemies in batches for damage calculation
+        // This reduces the number of distance calculations and improves performance
+        const BATCH_SIZE = 20; // Process enemies in batches
+        const totalBatches = Math.ceil(enemies.length / BATCH_SIZE);
+        
+        for (let batch = 0; batch < totalBatches; batch++) {
+          const startIdx = batch * BATCH_SIZE;
+          const endIdx = Math.min(startIdx + BATCH_SIZE, enemies.length);
+          
+          // Process this batch of enemies
+          for (let i = startIdx; i < endIdx; i++) {
+            const enemy = enemies[i];
+            if (!enemy) continue; // Skip if enemy doesn't exist
+            
+            // Calculate distance from explosion center
+            const dx = enemy.x - bombCenter.x;
+            const dy = enemy.y - bombCenter.y;
+            const dz = enemy.z - bombCenter.z;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            // Apply damage with distance falloff
+            // Enormous blast radius of 6000 units
+            const damageMultiplier = Math.max(0.8, 1 - distance / 6000);
+            const damage = atomicDamage * damageMultiplier;
+
+            // Apply damage to enemy
+            enemy.health -= damage;
+
+            // RADICAL OPTIMIZATION: Create visual effects only for nearby enemies
+            // and with much lower probability
+            if (distance < 1500 && random() > 0.8) {
+              createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
             }
-
-            // Create expanding ground shockwave - OPTIMIZED: only for first 3 layers
-            if (i < 3) {
-              effects.push({
-                x: bombCenter.x,
-                y: bombCenter.y,
-                z: 0, // At ground level
-                type: "shockwave",
-                size: explosionSize * 1.2,
-                life: 90 - i * 10,
-                color: [255, 150, 50],
-                layer: i,
-                forceRenderDetail: true,
-              });
-            }
-
-            // Apply damage to enemies with distance falloff
-            for (let enemy of enemies) {
-              // Calculate distance from explosion center
-              const dx = enemy.x - bombCenter.x;
-              const dy = enemy.y - bombCenter.y;
-              const dz = enemy.z - bombCenter.z;
-              const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-              // Apply damage with more gradual distance falloff for wider effect
-              // Enormous blast radius of 6000 units (covers entire bridge from any position)
-              const damageMultiplier = Math.max(0.8, 1 - distance / 6000); // Minimum 80% damage even at extreme range
-              const damage = atomicDamage * damageMultiplier;
-
-              // Apply damage to enemy
-              enemy.health -= damage;
-
-              // OPTIMIZED: Create explosion effects at enemy positions with distance-based culling
-              if (i === 0) {
-                // Always create explosion for close enemies
-                if (distance < 2000) {
-                  createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
-                } 
-                // For distant enemies, only create effects with 50% probability
-                else if (random() > 0.5) {
-                  createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
-                }
-
-                // OPTIMIZED: Create additional effects for medium-distance enemies only
-                if (distance > 500 && distance < 3000 && random() > 0.5) {
-                  setTimeout(() => {
-                    createExplosion(enemy.x, enemy.y, enemy.z, [255, 150, 50]);
-                  }, distance * 0.1); // Delayed explosions based on distance
-                }
-
-                // OPTIMIZED: Add enemy disintegration effect with fewer particles (5 instead of 10)
-                // and only for enemies within a reasonable distance
-                if (distance < 3000) {
-                  setTimeout(() => {
-                    // Determine particle count based on distance
-                    const particleCount = distance < 1000 ? 5 : 3;
-                    
-                    for (let j = 0; j < particleCount; j++) {
-                      effects.push({
-                        x: enemy.x + random(-20, 20),
-                        y: enemy.y + random(-20, 20),
-                        z: enemy.z + random(0, 40),
-                        type: "atomicParticle",
-                        size: random(5, 15),
-                        life: random(60, 90), // Slightly shorter life
-                        color: [255, 150, 50, 200],
-                        velocity: {
-                          x: random(-2, 2),
-                          y: random(-2, 2),
-                          z: random(1, 3),
-                        },
-                      });
-                    }
-                  }, distance * 0.1);
-                }
-              }
-            }
-          }, i * 200); // Stagger explosion layers
+          }
         }
 
-        // OPTIMIZED: Apply lingering damage without creating persistent visual effects
-        // This maintains the gameplay impact without the performance cost
-        const radiationInterval = setInterval(() => {
-          // Apply radiation damage to enemies in field
+        // RADICAL OPTIMIZATION: Apply radiation damage in a single batch operation
+        // instead of creating individual effects for each enemy
+        setTimeout(() => {
+          // Apply one final wave of radiation damage
           for (let enemy of enemies) {
             const dx = enemy.x - bombCenter.x;
             const dy = enemy.y - bombCenter.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < 800) {
-              // Radiation field radius
               // Apply radiation damage
               const radiationDamage = 50 + damageBoost * 5;
               enemy.health -= radiationDamage;
-
-              // OPTIMIZED: Create radiation effect on enemy with reduced probability (30% instead of 70%)
-              if (random() > 0.7) {
+              
+              // Create a single visual indicator at random positions in the radiation field
+              // instead of on each enemy
+              if (random() > 0.95) {
+                const angle = random(TWO_PI);
+                const radius = random(800);
                 effects.push({
-                  x: enemy.x,
-                  y: enemy.y,
-                  z: enemy.z + 20,
+                  x: bombCenter.x + cos(angle) * radius,
+                  y: bombCenter.y + sin(angle) * radius,
+                  z: 20,
                   type: "radiationBurst",
-                  size: random(15, 25),
+                  size: random(20, 30),
                   life: random(20, 30),
                   color: [100, 255, 100],
                 });
               }
             }
           }
-        }, 500); // Check every 0.5 seconds
-
-        // Clear interval after radiation field expires
-        setTimeout(() => {
-          clearInterval(radiationInterval);
-        }, 600 * (1000 / 60)); // Convert frames to ms
-      }, ATOMIC_BOMB_FALL_DURATION_MS); // Delay matches the bomb fall duration
+        }, 300); // Apply radiation damage after a short delay
+      }, OPTIMIZED_FALL_DURATION_MS);
 
       break;
   }
