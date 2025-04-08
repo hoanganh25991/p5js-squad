@@ -1863,121 +1863,143 @@ function updateGame() {
 
 // Draw the sky, mountains, and environment
 function drawSkyAndMountains() {
-  // Save the current WebGL state
-  push();
+  // OPTIMIZATION: Skip detailed background on low performance devices
+  const skyIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const skyIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+  
+  try {
+    // Save the current WebGL state
+    push();
 
-  // Completely reset the matrix to draw in 2D screen space
-  resetMatrix();
+    // Completely reset the matrix to draw in 2D screen space
+    resetMatrix();
 
-  // Switch to 2D rendering mode for the background
-  ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
+    // Switch to 2D rendering mode for the background
+    ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
 
-  // Get WebGL context and disable depth testing temporarily
-  const gl = drawingContext;
-  const depthTest = gl.isEnabled(gl.DEPTH_TEST);
-  gl.disable(gl.DEPTH_TEST);
+    // Get WebGL context and disable depth testing temporarily
+    const gl = drawingContext;
+    const depthTest = gl.isEnabled(gl.DEPTH_TEST);
+    gl.disable(gl.DEPTH_TEST);
 
-  // Move far back in Z space to ensure background is behind everything
-  translate(0, 0, -5000);
+    // Move far back in Z space to ensure background is behind everything
+    translate(0, 0, -5000);
 
-  noStroke(); // No stroke for all background elements
+    noStroke(); // No stroke for all background elements
 
-  // Extra size to ensure coverage beyond screen edges
-  // Increased to ensure full coverage on larger screens
-  const extraSize = Math.max(1000, width); // Use at least 1000px or the full width, whichever is larger
+    // OPTIMIZATION: Reduce extra size on mobile
+    const extraSize = skyIsLowPerformance ? width * 0.5 : Math.max(1000, width);
 
-  // ===== SKY GRADIENT =====
-  // Create a horizon-oriented gradient (lighter at horizon, darker at top)
-  // This creates a more realistic sky appearance for a bridge going toward the horizon
-  const skyColors = [
-    [25, 25, 112], // Midnight blue (top of sky)
-    [65, 105, 225], // Royal blue (upper sky)
-    [135, 206, 235], // Sky blue (mid sky)
-    [240, 248, 255], // Alice blue (horizon)
-  ];
+    // ===== SKY GRADIENT =====
+    // OPTIMIZATION: Reduce number of gradient steps on low performance devices
+    const skyColors = [
+      [25, 25, 112], // Midnight blue (top of sky)
+      [65, 105, 225], // Royal blue (upper sky)
+      [135, 206, 235], // Sky blue (mid sky)
+      [240, 248, 255], // Alice blue (horizon)
+    ];
 
-  // Draw the sky gradient from top to horizon
-  for (let i = 0; i < skyColors.length; i++) {
-    const y1 = map(i, 0, skyColors.length, -extraSize, height * 0.5);
-    const y2 = map(i + 1, 0, skyColors.length, -extraSize, height * 0.5);
+    // OPTIMIZATION: Use fewer gradient steps on low performance devices
+    const gradientSteps = skyIsLowPerformance ? 2 : skyColors.length;
+    
+    // Draw the sky gradient from top to horizon with fewer steps on mobile
+    for (let i = 0; i < gradientSteps; i++) {
+      // Map the reduced steps to the full color array
+      const colorIndex = Math.floor(i * (skyColors.length / gradientSteps));
+      const nextColorIndex = Math.floor((i + 1) * (skyColors.length / gradientSteps)) % skyColors.length;
+      
+      const y1 = map(i, 0, gradientSteps, -extraSize, height * 0.5);
+      const y2 = map(i + 1, 0, gradientSteps, -extraSize, height * 0.5);
 
-    fill(skyColors[i]);
-    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
+      fill(skyColors[colorIndex]);
+      rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
+    }
+
+    // ===== DISTANT MOUNTAINS =====
+    // OPTIMIZATION: Skip mountains on low performance devices, simplify on medium
+    if (!skyIsLowPerformance) {
+      // First mountain range (furthest)
+      fill(70, 80, 120); // Distant purple-blue mountains
+      beginShape();
+      vertex(-extraSize, height * 0.5); // Start at horizon
+
+      // OPTIMIZATION: Increase step size on medium performance
+      const mountainStep = skyIsMediumPerformance ? 40 : 20;
+      
+      // Create a jagged mountain range using noise
+      // OPTIMIZATION: Use static noise value instead of frameCount on medium performance
+      const noiseOffset = skyIsMediumPerformance ? 0 : frameCount * 0.0001;
+      
+      for (let x = -extraSize; x < width + extraSize; x += mountainStep) {
+        const mountainHeight = noise(x * 0.002, noiseOffset) * height * 0.15;
+        vertex(x, height * 0.5 - mountainHeight);
+      }
+
+      vertex(width + extraSize, height * 0.5);
+      endShape(CLOSE);
+
+      // Second mountain range only on high performance
+      if (!skyIsMediumPerformance) {
+        fill(90, 100, 140); // Slightly lighter blue mountains
+        beginShape();
+        vertex(-extraSize, height * 0.5);
+
+        for (let x = -extraSize; x < width + extraSize; x += 30) { // Increased step size
+          const mountainHeight = noise(x * 0.003 + 100, noiseOffset) * height * 0.1;
+          vertex(x, height * 0.5 - mountainHeight);
+        }
+
+        vertex(width + extraSize, height * 0.5);
+        endShape(CLOSE);
+      }
+    }
+
+    // ===== OCEAN/WATER =====
+    // OPTIMIZATION: Reduce water gradient steps on low performance devices
+    const waterColors = [
+      [100, 149, 237], // Cornflower blue (near horizon)
+      [65, 105, 225], // Royal blue (mid water)
+      [25, 25, 112], // Midnight blue (deep water)
+    ];
+
+    // OPTIMIZATION: Use fewer gradient steps on low performance devices
+    const waterSteps = skyIsLowPerformance ? 1 : waterColors.length;
+    
+    // Draw water gradient with fewer steps on mobile
+    for (let i = 0; i < waterSteps; i++) {
+      // Map the reduced steps to the full color array
+      const colorIndex = Math.floor(i * (waterColors.length / waterSteps));
+      
+      const y1 = map(i, 0, waterSteps, height * 0.5, height + extraSize);
+      const y2 = map(i + 1, 0, waterSteps, height * 0.5, height + extraSize);
+
+      fill(waterColors[colorIndex]);
+      rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
+    }
+
+    // Re-enable depth testing if it was enabled before
+    if (depthTest) {
+      gl.enable(gl.DEPTH_TEST);
+    }
+
+    // Restore the previous state
+    pop();
+  } catch (e) {
+    // Fallback to a simple background if there's an error
+    console.error("Error in drawSkyAndMountains:", e);
+    background(25, 25, 112); // Simple dark blue background as fallback
   }
-
-  // ===== DISTANT MOUNTAINS =====
-  // Draw mountain ranges at the horizon
-  // First mountain range (furthest)
-  fill(70, 80, 120); // Distant purple-blue mountains
-  beginShape();
-  vertex(-extraSize, height * 0.5); // Start at horizon
-
-  // Create a jagged mountain range using noise
-  for (let x = -extraSize; x < width + extraSize; x += 20) {
-    const mountainHeight =
-      noise(x * 0.002, frameCount * 0.0001) * height * 0.15;
-    vertex(x, height * 0.5 - mountainHeight);
-  }
-
-  vertex(width + extraSize, height * 0.5);
-  endShape(CLOSE);
-
-  // Second mountain range (closer)
-  fill(90, 100, 140); // Slightly lighter blue mountains
-  beginShape();
-  vertex(-extraSize, height * 0.5);
-
-  for (let x = -extraSize; x < width + extraSize; x += 15) {
-    const mountainHeight =
-      noise(x * 0.003 + 100, frameCount * 0.0002) * height * 0.1;
-    vertex(x, height * 0.5 - mountainHeight);
-  }
-
-  vertex(width + extraSize, height * 0.5);
-  endShape(CLOSE);
-
-  // ===== OCEAN/WATER =====
-  // Draw water below the horizon (for a bridge over water)
-  // Water gradient from horizon to bottom
-  const waterColors = [
-    [100, 149, 237], // Cornflower blue (near horizon)
-    [65, 105, 225], // Royal blue (mid water)
-    [25, 25, 112], // Midnight blue (deep water)
-  ];
-
-  // Draw water gradient
-  for (let i = 0; i < waterColors.length; i++) {
-    const y1 = map(i, 0, waterColors.length, height * 0.5, height + extraSize);
-    const y2 = map(
-      i + 1,
-      0,
-      waterColors.length,
-      height * 0.5,
-      height + extraSize
-    );
-
-    fill(waterColors[i]);
-    rect(-extraSize, y1, width + extraSize * 2, y2 - y1 + 1);
-  }
-
-  // Re-enable depth testing if it was enabled before
-  if (depthTest) {
-    gl.enable(gl.DEPTH_TEST);
-  }
-
-  // Restore the previous state
-  pop();
 }
 
 // Function to draw clouds that appear on top of the bridge at the horizon
 function drawSkyOverlay() {
+  // OPTIMIZATION: Skip clouds on low/medium performance devices completely
+  if (isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW || 
+      currentPerformanceLevel === PerformanceLevel.MEDIUM) {
+    return; // Skip drawing clouds on all mobile and low/medium performance devices
+  }
+  
   try {
-    // Skip cloud rendering on mobile devices completely to avoid WebGL context issues
-    // This is a more aggressive fix that prevents the error in both portrait and landscape
-    if (isMobileDevice) {
-      return; // Skip drawing clouds on all mobile devices
-    }
-    
     // Save the current WebGL state
     push();
 
@@ -1985,65 +2007,52 @@ function drawSkyOverlay() {
       // Completely reset the matrix to draw in 2D screen space
       resetMatrix();
 
-      // Switch to 2D rendering mode - use try/catch to handle potential WebGL errors
+      // Switch to 2D rendering mode with error handling
       try {
         ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
       } catch (e) {
         console.warn("Error setting ortho projection:", e);
-        // If ortho fails, try to use a simpler approach
-        resetMatrix();
-        // Exit early if we can't set up the projection properly
         pop();
         return;
       }
 
       // Move in front of everything
       translate(0, 0, 1000);
-
       noStroke();
 
-      // Extra size to ensure coverage beyond screen edges
-      const extraSize = Math.max(1000, width);
+      // OPTIMIZATION: Reduce extra size
+      const extraSize = width;
 
-      // ===== CLOUDS OVERLAY =====
-      // Add clouds that appear on top of the bridge near the horizon
-      // Use noise for cloud positions
-      for (let i = 0; i < 6; i++) {
-        // Reduced number of clouds
-        // Position clouds near the horizon (middle of screen)
-        const cloudX =
-          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
-
-        // Position clouds slightly above the horizon line for better visibility of the bridge/wall
-        // Adjust based on device - higher on mobile to show more of the bridge
+      // OPTIMIZATION: Draw fewer clouds (3 instead of 6)
+      const cloudCount = 3;
+      
+      // Use a static noise offset instead of frameCount for better performance
+      const noiseOffset = 0.5;
+      
+      // Draw simplified clouds
+      for (let i = 0; i < cloudCount; i++) {
+        // Position clouds near the horizon
+        const cloudX = noise(i * 0.5, noiseOffset) * (width + extraSize) - extraSize/2;
         const cloudY = 420; // Slightly above center of screen in ortho mode
+        const cloudWidth = noise(i * 0.3) * 200 + 100;
+        const cloudHeight = 30 + noise(i) * 20;
 
-        const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
-        const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
-
-        // Draw cloud as a series of overlapping ellipses
-        for (let j = 0; j < 5; j++) {
+        // OPTIMIZATION: Draw each cloud with fewer ellipses (3 instead of 5)
+        for (let j = 0; j < 3; j++) {
           try {
-            const offsetX = ((j - 2) * cloudWidth) / 6;
-            const offsetY = sin(j * 0.5) * 6;
+            const offsetX = ((j - 1) * cloudWidth) / 4;
+            const offsetY = sin(j * 0.5) * 4;
 
-            // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
-            fill(255, 255, 255, map(j, 0, 4, 80, 120));
+            // Make clouds more transparent
+            fill(255, 255, 255, 80);
             
-            // Use try/catch for each ellipse to prevent errors from stopping the entire function
-            try {
-              // Check if WebGL context is still valid before drawing
-              if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
-                ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
-              }
-            } catch (e) {
-              console.warn("Error drawing cloud ellipse:", e);
-              // If we encounter an error, stop drawing clouds completely
-              pop();
-              return;
+            // Check WebGL context before drawing
+            if (drawingContext && !drawingContext.isContextLost()) {
+              ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
             }
           } catch (e) {
-            console.warn("Error in cloud calculation:", e);
+            // Just skip this ellipse on error
+            console.warn("Error drawing cloud ellipse:", e);
           }
         }
       }
@@ -2051,7 +2060,7 @@ function drawSkyOverlay() {
       console.error("Error in sky overlay rendering:", e);
     }
     
-    // Always try to restore the previous state
+    // Restore the previous state
     pop();
   } catch (e) {
     console.error("Critical error in drawSkyOverlay:", e);
@@ -6978,6 +6987,10 @@ function activateSkill(skillNumber) {
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
     case 1: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
+      // OPTIMIZATION: Check device performance
+      const starBlastIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+      const starBlastIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+      
       // Create a powerful multi-directional area damage effect
       let areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
       let areaDamageAmount = 100 + damageBoost * 15; // Higher base damage + bonus from damage boost
@@ -6990,9 +7003,7 @@ function activateSkill(skillNumber) {
 
       // Calculate the center point of the squad for the area effect
       if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
+        let totalX = 0, totalY = 0, totalZ = 0;
         for (let member of squad) {
           totalX += member.x;
           totalY += member.y;
@@ -7003,11 +7014,14 @@ function activateSkill(skillNumber) {
         squadCenter.z = totalZ / squad.length;
       }
 
-      // Define all 8 directions for the star blast
+      // OPTIMIZATION: Reduce directions on mobile/low performance
+      // Define directions for the star blast based on performance level
       // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
-      const directions = [0, 1, 2, 3, 4, 5, 6, 7];
+      const directions = starBlastIsLowPerformance ? 
+        [0, 2, 4, 6] : // Only 4 cardinal directions on low performance
+        (starBlastIsMediumPerformance ? [0, 2, 4, 6, 1, 5] : [0, 1, 2, 3, 4, 5, 6, 7]); // 6 or 8 directions
 
-      // Initial star blast in all 8 directions
+      // Initial star blast
       fireStarBlast(
         squadCenter,
         directions,
@@ -7024,31 +7038,43 @@ function activateSkill(skillNumber) {
         size: 50,
         life: 30,
         color: [255, 100, 0],
-        forceRenderDetail: true,
+        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
       });
 
-      // Schedule periodic star blasts for the duration
-      const blastInterval = 45; // Fire star blast every 0.75 seconds (45 frames)
-      const totalIntervals = Math.floor(starBlastDuration / blastInterval);
+      // OPTIMIZATION: Reduce number of periodic blasts on mobile/low performance
+      // Schedule fewer periodic star blasts for the duration
+      const blastInterval = starBlastIsLowPerformance ? 90 : (starBlastIsMediumPerformance ? 60 : 45); // Longer intervals on mobile
+      const maxIntervals = starBlastIsLowPerformance ? 2 : (starBlastIsMediumPerformance ? 3 : 5); // Fewer intervals on mobile
+      const totalIntervals = Math.min(maxIntervals, Math.floor(starBlastDuration / blastInterval));
 
+      // Store the squad center reference to avoid recalculating in each timeout
+      let lastCenter = {...squadCenter};
+      
       for (let i = 1; i <= totalIntervals; i++) {
         setTimeout(() => {
           // Only continue if the skill is still active
           if (skills.skill1.active && frameCount < skills.skill1.endTime) {
-            // Get updated squad center position
-            let currentCenter = { x: 0, y: 0, z: 0 };
-            if (squad.length > 0) {
-              let totalX = 0,
-                totalY = 0,
-                totalZ = 0;
-              for (let member of squad) {
-                totalX += member.x;
-                totalY += member.y;
-                totalZ += member.z;
+            // OPTIMIZATION: Only recalculate center position once every other blast on mobile
+            let currentCenter;
+            
+            if (i % 2 === 0 || !starBlastIsLowPerformance) {
+              // Get updated squad center position
+              currentCenter = { x: 0, y: 0, z: 0 };
+              if (squad.length > 0) {
+                let totalX = 0, totalY = 0, totalZ = 0;
+                for (let member of squad) {
+                  totalX += member.x;
+                  totalY += member.y;
+                  totalZ += member.z;
+                }
+                currentCenter.x = totalX / squad.length;
+                currentCenter.y = totalY / squad.length;
+                currentCenter.z = totalZ / squad.length;
+                lastCenter = {...currentCenter};
               }
-              currentCenter.x = totalX / squad.length;
-              currentCenter.y = totalY / squad.length;
-              currentCenter.z = totalZ / squad.length;
+            } else {
+              // Use the last calculated center to save performance
+              currentCenter = lastCenter;
             }
 
             // Fire another star blast with reduced damage
@@ -7069,7 +7095,7 @@ function activateSkill(skillNumber) {
               size: 30,
               life: 20,
               color: [255, 100, 0],
-              forceRenderDetail: true,
+              forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
             });
           }
         }, i * blastInterval * (1000 / 60)); // Convert frames to ms
@@ -7079,20 +7105,10 @@ function activateSkill(skillNumber) {
       setTimeout(() => {
         skills.skill1.active = false;
 
-        // Final star blast when the skill ends
+        // Final star blast when the skill ends (keep this for gameplay impact)
         if (squad.length > 0) {
-          let finalCenter = { x: 0, y: 0, z: 0 };
-          let totalX = 0,
-            totalY = 0,
-            totalZ = 0;
-          for (let member of squad) {
-            totalX += member.x;
-            totalY += member.y;
-            totalZ += member.z;
-          }
-          finalCenter.x = totalX / squad.length;
-          finalCenter.y = totalY / squad.length;
-          finalCenter.z = totalZ / squad.length;
+          // OPTIMIZATION: Reuse the last center position instead of recalculating
+          const finalCenter = lastCenter;
 
           // Fire a final star blast with increased damage
           const finalDamage = areaDamageAmount * 1.2; // 120% of initial damage for final blast
@@ -7112,7 +7128,7 @@ function activateSkill(skillNumber) {
             size: 70,
             life: 45,
             color: [255, 150, 0],
-            forceRenderDetail: true,
+            forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
           });
         }
       }, starBlastDuration * (1000 / 60)); // Convert frames to ms
@@ -7232,19 +7248,15 @@ function activateSkill(skillNumber) {
       break;
 
     case 4: // Freeze - ice effect that freezes enemies
+      // OPTIMIZATION: Check device performance
+      const freezeIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+      const freezeIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+      
       // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
       let visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
       let enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
       let freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
       let freezeRadius = 1500; // Reduced radius for better performance
-
-      // Count active skills to adjust visual effects
-      const activeSkillCount = Object.values(skills).filter(
-        (skill) => skill.active
-      ).length;
-
-      // Dynamically reduce effects when multiple skills are active
-      const effectReduction = Math.max(0.3, 1 - activeSkillCount * 0.25); // Reduce by 25% per active skill, min 30%
 
       // Activate freeze mode
       skills.skill4.active = true;
@@ -7253,9 +7265,7 @@ function activateSkill(skillNumber) {
       // Calculate the center point of the squad for the freeze effect
       let freezeCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
+        let totalX = 0, totalY = 0, totalZ = 0;
         for (let member of squad) {
           totalX += member.x;
           totalY += member.y;
@@ -7266,23 +7276,56 @@ function activateSkill(skillNumber) {
         freezeCenter.z = totalZ / squad.length;
       }
 
-      // Create a global freeze effect
-      // 1. Create a simplified freezing shockwave - reduce count when multiple skills active
-      shockwaveCount = activeSkillCount > 1 ? 2 : isMobileDevice ? 3 : 5; // Fewer rings when skills active
-      for (let i = 0; i < shockwaveCount; i++) {
+      // OPTIMIZATION: Drastically simplify visual effects based on performance level
+      
+      // 1. Create a single shockwave instead of multiple on low performance devices
+      const shockwaveCount = freezeIsLowPerformance ? 1 : (freezeIsMediumPerformance ? 2 : 3);
+      
+      // Create just one immediate shockwave for low performance
+      effects.push({
+        x: freezeCenter.x,
+        y: freezeCenter.y,
+        z: freezeCenter.z,
+        type: "shockwave",
+        size: freezeRadius * 0.5,
+        life: 60,
+        color: [100, 200, 255], // Ice blue color
+        layer: 0,
+        forceRenderDetail: false,
+      });
+      
+      // Add additional shockwaves only for medium/high performance
+      if (!freezeIsLowPerformance) {
         setTimeout(() => {
           effects.push({
             x: freezeCenter.x,
             y: freezeCenter.y,
             z: freezeCenter.z,
             type: "shockwave",
-            size: freezeRadius * (0.2 + i * 0.2), // Simplified expanding size
-            life: 60 - i * 5, // Shorter life for better performance
-            color: [100, 200, 255], // Ice blue color
-            layer: i,
-            forceRenderDetail: false, // Never force render when optimizing
+            size: freezeRadius * 0.7,
+            life: 50,
+            color: [100, 200, 255],
+            layer: 1,
+            forceRenderDetail: false,
           });
-        }, i * 80); // Faster expansion
+        }, 100);
+        
+        // Third shockwave only for high performance
+        if (!freezeIsMediumPerformance) {
+          setTimeout(() => {
+            effects.push({
+              x: freezeCenter.x,
+              y: freezeCenter.y,
+              z: freezeCenter.z,
+              type: "shockwave",
+              size: freezeRadius * 0.9,
+              life: 40,
+              color: [100, 200, 255],
+              layer: 2,
+              forceRenderDetail: false,
+            });
+          }, 200);
+        }
       }
 
       // 2. Create a single bridge frost effect - always include this as it's the main visual
@@ -7294,58 +7337,36 @@ function activateSkill(skillNumber) {
         size: freezeRadius,
         life: visualEffectDuration,
         color: [200, 240, 255, 150], // Light blue with transparency
-        forceRenderDetail: false, // Never force render when optimizing
+        forceRenderDetail: false,
       });
 
-      // 3. Create simplified ice crystal formations - only if not too many skills active
-      if (activeSkillCount < 2) {
-        // Adjust crystal count based on performance level and active skills
-        const gridSize = 2; // Smaller grid for better performance
-        const gridSpacing = 300; // 300 units apart
-
-        // Reduce grid size when multiple skills active
-        const effectiveGridSize = Math.floor(gridSize * effectReduction);
-
-        // Only create crystals if we have a valid grid size
-        if (effectiveGridSize > 0) {
-          for (
-            let gridX = -effectiveGridSize / 2;
-            gridX <= effectiveGridSize / 2;
-            gridX++
-          ) {
-            for (
-              let gridY = -effectiveGridSize / 2;
-              gridY <= effectiveGridSize / 2;
-              gridY++
-            ) {
-              // Add some randomness to grid positions
-              const x = freezeCenter.x + gridX * gridSpacing + random(-50, 50);
-              const y = freezeCenter.y + gridY * gridSpacing + random(-50, 50);
-
-              // Create a single crystal at each grid point
-              effects.push({
-                x: x,
-                y: y,
-                z: 0, // Start at bridge level
-                type: "iceCrystal",
-                size: random(40, 80),
-                life: visualEffectDuration - random(0, 30),
-                color: [200, 240, 255, 200],
-                growthTime: random(5, 15), // Faster growth
-                forceRenderDetail: false, // Never force render for better performance
-              });
-            }
-          }
+      // 3. OPTIMIZATION: Skip ice crystal formations on low performance devices
+      if (!freezeIsLowPerformance) {
+        // Create just a few ice crystals on medium performance
+        const crystalCount = freezeIsMediumPerformance ? 2 : 4;
+        
+        for (let i = 0; i < crystalCount; i++) {
+          const angle = random(TWO_PI);
+          const dist = random(100, 300);
+          const x = freezeCenter.x + cos(angle) * dist;
+          const y = freezeCenter.y + sin(angle) * dist;
+          
+          effects.push({
+            x: x,
+            y: y,
+            z: 0, // At bridge level
+            type: "iceCrystal",
+            size: random(40, 80),
+            life: visualEffectDuration - random(0, 30),
+            color: [200, 240, 255, 200],
+            growthTime: random(5, 15),
+            forceRenderDetail: false,
+          });
         }
       }
 
-      // 4. Apply freeze effect to ALL enemies regardless of distance
-      // This is the gameplay effect, so we keep it but optimize the visuals
-
-      // Create a faster "freeze wave" that moves outward
-      const freezeWaveSpeed = 30; // Faster units per frame
-      const maxFreezeDelay = 1000; // Reduced maximum delay in ms
-
+      // 4. OPTIMIZATION: Apply freeze effect to ALL enemies but drastically reduce visuals
+      
       // Sort enemies by distance to prioritize closest ones
       const sortedEnemies = [...enemies].sort((a, b) => {
         const dxA = a.x - freezeCenter.x;
@@ -7359,93 +7380,66 @@ function activateSkill(skillNumber) {
         return distA - distB; // Sort by closest first
       });
 
-      // Limit the number of enemies that get visual effects when multiple skills active
-      const maxEnemiesWithVisuals =
-        activeSkillCount > 1
-          ? Math.floor(sortedEnemies.length * 0.5) // Only 50% of enemies get visuals when multiple skills active
-          : sortedEnemies.length;
+      // OPTIMIZATION: Limit visual effects to just a few enemies
+      const maxEnemiesWithVisuals = freezeIsLowPerformance ? 
+        Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on low performance
+        (freezeIsMediumPerformance ? 
+          Math.min(5, sortedEnemies.length) : // Only 5 enemies get visuals on medium performance
+          Math.min(10, sortedEnemies.length)); // Only 10 enemies get visuals on high performance
 
-      for (let i = 0; i < sortedEnemies.length; i++) {
-        const enemy = sortedEnemies[i];
-
-        // Calculate distance from freeze center
-        const dx = enemy.x - freezeCenter.x;
-        const dy = enemy.y - freezeCenter.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        // Calculate delay based on distance (freeze wave propagation)
-        const freezeDelay = Math.min(
-          maxFreezeDelay,
-          (distance / freezeWaveSpeed) * (1000 / 60)
-        );
-
-        // Store original speed for restoration
-        if (!enemy.originalSpeed) {
-          enemy.originalSpeed = enemy.speed;
-        }
-
-        // Apply freeze effect to ALL enemies - note the longer duration
+      // OPTIMIZATION: Apply gameplay effect to all enemies but batch the processing
+      // Process enemies in batches to avoid too many simultaneous timeouts
+      const batchSize = 10;
+      const batches = Math.ceil(sortedEnemies.length / batchSize);
+      
+      for (let batch = 0; batch < batches; batch++) {
+        const startIdx = batch * batchSize;
+        const endIdx = Math.min(startIdx + batchSize, sortedEnemies.length);
+        
         setTimeout(() => {
-          if (!enemy.effects) enemy.effects = {};
-          enemy.effects.frozen = {
-            duration: enemyFreezeEffectDuration, // 5 seconds freeze effect on enemies
-            slowFactor: max(0.05, freezeStrength), // Min 5% of normal speed
-            originalSpeed: enemy.originalSpeed || enemy.speed,
-          };
-
-          // Apply slowdown
-          enemy.speed =
-            enemy.effects.frozen.originalSpeed *
-            enemy.effects.frozen.slowFactor;
-
-          // Only create visual effects for a limited number of enemies when multiple skills active
-          if (i < maxEnemiesWithVisuals) {
-            // Create ice effect on enemy - simplified when multiple skills active
-            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.5) {
+          for (let i = startIdx; i < endIdx; i++) {
+            const enemy = sortedEnemies[i];
+            
+            // Store original speed for restoration
+            if (!enemy.originalSpeed) {
+              enemy.originalSpeed = enemy.speed;
+            }
+            
+            // Apply freeze effect to enemy
+            if (!enemy.effects) enemy.effects = {};
+            enemy.effects.frozen = {
+              duration: enemyFreezeEffectDuration,
+              slowFactor: max(0.05, freezeStrength),
+              originalSpeed: enemy.originalSpeed || enemy.speed,
+            };
+            
+            // Apply slowdown
+            enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
+            
+            // Only create visual effects for a limited number of enemies
+            if (i < maxEnemiesWithVisuals) {
+              // Create a single visual effect for each visible enemy
               createIceEffect(enemy.x, enemy.y, enemy.z);
-            }
-
-            // Add a single ice crystal to the enemy - only for closest enemies when multiple skills active
-            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.3) {
-              const offsetX = random(-20, 20);
-              const offsetY = random(-20, 20);
-              const offsetZ = random(0, 30);
-
-              effects.push({
-                x: enemy.x + offsetX,
-                y: enemy.y + offsetY,
-                z: enemy.z + offsetZ,
-                type: "iceCrystal",
-                size: random(10, 20),
-                life: min(visualEffectDuration, 60), // Short visual effect
-                color: [200, 240, 255, 200],
-                growthTime: random(5, 10),
-                enemy: enemy, // Reference to follow the enemy
-                offsetX: offsetX,
-                offsetY: offsetY,
-                offsetZ: offsetZ,
-                forceRenderDetail: false,
-              });
-            }
-
-            // Add a frost burst effect - only for closest enemies when multiple skills active
-            if (activeSkillCount < 2 || i < maxEnemiesWithVisuals * 0.2) {
-              effects.push({
-                x: enemy.x,
-                y: enemy.y,
-                z: enemy.z + 20,
-                type: "frostBurst",
-                size: 30,
-                life: 20,
-                color: [200, 240, 255],
-              });
+              
+              // Add a frost burst effect only for the closest enemies
+              if (i < maxEnemiesWithVisuals / 2) {
+                effects.push({
+                  x: enemy.x,
+                  y: enemy.y,
+                  z: enemy.z + 20,
+                  type: "frostBurst",
+                  size: 30,
+                  life: 20,
+                  color: [200, 240, 255],
+                });
+              }
             }
           }
-        }, freezeDelay);
+        }, batch * 50); // Stagger batches by 50ms
       }
 
-      // 5. Add simplified visual feedback for the freeze - only if not too many skills active
-      if (activeSkillCount < 2) {
+      // 5. OPTIMIZATION: Skip additional visual effects on low performance devices
+      if (!freezeIsLowPerformance) {
         // Create a central ice explosion
         effects.push({
           x: freezeCenter.x,
@@ -7456,79 +7450,34 @@ function activateSkill(skillNumber) {
           life: 40,
           color: [200, 240, 255],
         });
-
-        // Add a few floating ice shards - reduced when multiple skills active
-        const shardCount = Math.floor(
-          (isMobileDevice ? 5 : 10) * effectReduction
-        );
-        for (let i = 0; i < shardCount; i++) {
-          const angle = random(TWO_PI);
-          const dist = random(100, 300);
-          effects.push({
-            x: freezeCenter.x + cos(angle) * dist,
-            y: freezeCenter.y + sin(angle) * dist,
-            z: random(50, 150),
-            type: "iceCrystal",
-            size: random(15, 30),
-            life: random(60, 90),
-            color: [200, 240, 255, 180],
-            growthTime: 5,
-            rotationSpeed: random(-0.05, 0.05),
-            forceRenderDetail: false,
-          });
-        }
       }
 
-      // 6. Create a global frost effect (blue tint to the scene) - shorter duration
+      // 6. Create a global frost effect (blue tint to the scene) - keep this as it's important for feedback
       effects.push({
         type: "globalFrost",
-        life: visualEffectDuration, // Only 2 seconds for visual effect
-        intensity: 0.6 + aoeBoost * 0.03, // Slightly reduced intensity
+        life: visualEffectDuration,
+        intensity: 0.6 + aoeBoost * 0.03,
         forceRenderDetail: false,
       });
 
-      // 7. Add a small screen shake effect for impact
-      cameraShake = 5; // Reduced shake
+      // 7. Add a small screen shake effect for impact (reduced on low performance)
+      cameraShake = freezeIsLowPerformance ? 2 : 4;
 
       // 8. Schedule deactivation after visual duration
       setTimeout(() => {
         skills.skill4.active = false;
 
-        // Simple thaw effect when the skill ends
-        if (squad.length > 0) {
-          let finalCenter = { x: 0, y: 0, z: 0 };
-          let totalX = 0,
-            totalY = 0,
-            totalZ = 0;
-          for (let member of squad) {
-            totalX += member.x;
-            totalY += member.y;
-            totalZ += member.z;
-          }
-          finalCenter.x = totalX / squad.length;
-          finalCenter.y = totalY / squad.length;
-          finalCenter.z = totalZ / squad.length;
-
-          // Create minimal thaw effect
-          const dropletCount = isMobileDevice ? 5 : 10;
-          for (let i = 0; i < dropletCount; i++) {
-            const angle = random(TWO_PI);
-            const dist = random(100, 400);
-            const x = finalCenter.x + cos(angle) * dist;
-            const y = finalCenter.y + sin(angle) * dist;
-
-            effects.push({
-              x: x,
-              y: y,
-              z: random(50, 100),
-              type: "hit",
-              size: random(8, 15),
-              life: random(20, 40),
-              color: [100, 200, 255, 150],
-              forceRenderDetail: false,
-            });
-          }
-        }
+        // OPTIMIZATION: Simplified end effect
+        // Create just one final effect at the center
+        effects.push({
+          x: freezeCenter.x,
+          y: freezeCenter.y,
+          z: freezeCenter.z + 20,
+          type: "frostBurst",
+          size: 60,
+          life: 30,
+          color: [200, 240, 255],
+        });
       }, visualEffectDuration * (1000 / 60)); // Convert frames to ms
 
       break;
@@ -7962,17 +7911,15 @@ function activateSkill(skillNumber) {
       break;
 
     case 7: // Quantum Acceleration - Advanced speed boost with time dilation effects
-      let baseSpeedBoost = 1.8; // 80% faster (increased from 50%)
-      let additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost (increased from 10%)
+      let baseSpeedBoost = 1.8; // 80% faster
+      let additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost
       let totalSpeedMultiplier = baseSpeedBoost + additionalSpeedBoost;
       let speedBoostDuration = 480 + fireRateBoost * 30; // 8s + 0.5s per fire rate
 
-      // Calculate the center of the squad
+      // Calculate the center of the squad (only once)
       let accelCenter = { x: 0, y: 0, z: 0 };
       if (squad.length > 0) {
-        let totalX = 0,
-          totalY = 0,
-          totalZ = 0;
+        let totalX = 0, totalY = 0, totalZ = 0;
         for (let member of squad) {
           totalX += member.x;
           totalY += member.y;
@@ -7983,7 +7930,11 @@ function activateSkill(skillNumber) {
         accelCenter.z = totalZ / squad.length;
       }
 
-      // Create initial acceleration effect
+      // OPTIMIZATION: Reduce visual effects based on device
+      const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+      const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+
+      // Create a single initial effect instead of multiple
       effects.push({
         x: accelCenter.x,
         y: accelCenter.y,
@@ -7992,33 +7943,36 @@ function activateSkill(skillNumber) {
         size: 120,
         life: 60,
         color: [0, 200, 255],
-        forceRenderDetail: true,
+        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
       });
 
-      // Create shockwave
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          effects.push({
-            x: accelCenter.x,
-            y: accelCenter.y,
-            z: accelCenter.z,
-            type: "shockwave",
-            size: 150 * (1 + i * 0.5),
-            life: 45 - i * 5,
-            color: [0, 200, 255],
-            layer: i,
-            forceRenderDetail: true,
-          });
-        }, i * 100);
-      }
+      // OPTIMIZATION: Only create one shockwave on mobile, up to 2 on medium performance
+      const maxShockwaves = isLowPerformance ? 1 : (isMediumPerformance ? 2 : 3);
+      
+      // Create simplified shockwave (no setTimeout for better performance)
+      effects.push({
+        x: accelCenter.x,
+        y: accelCenter.y,
+        z: accelCenter.z,
+        type: "shockwave",
+        size: 200,
+        life: 45,
+        color: [0, 200, 255],
+        layer: 0,
+        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+      });
 
       // Store old speed
       let oldSpeed = squadSpeed;
       squadSpeed *= totalSpeedMultiplier;
 
-      // Apply effect to each squad member
-      for (let member of squad) {
-        // Create speed aura effect for each squad member
+      // OPTIMIZATION: Apply visual effects to limited number of squad members
+      const maxMembersWithEffects = isLowPerformance ? 3 : (isMediumPerformance ? 5 : squad.length);
+      const membersToShow = squad.slice(0, maxMembersWithEffects);
+      
+      // Apply effect to limited number of squad members
+      for (let member of membersToShow) {
+        // OPTIMIZATION: Only create one effect per member
         effects.push({
           x: member.x,
           y: member.y,
@@ -8028,92 +7982,60 @@ function activateSkill(skillNumber) {
           life: speedBoostDuration,
           color: [0, 200, 255],
           member: member, // Reference to follow the member
-          forceRenderDetail: true,
+          forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
         });
+      }
 
-        // Create initial burst effect
-        effects.push({
-          x: member.x,
-          y: member.y,
-          z: member.z + 20,
-          type: "speedBurst",
-          size: 40,
-          life: 45,
-          color: [0, 200, 255],
-        });
-
-        // Add motion blur trails
-        for (let i = 0; i < 3; i++) {
-          effects.push({
-            x: member.x,
-            y: member.y + 20 + i * 10, // Trail behind
-            z: member.z,
-            type: "speedTrail",
-            size: 25 - i * 5,
-            life: 30,
-            color: [0, 200, 255, 150 - i * 30],
-            member: member, // Reference to follow the member
-            offset: i * 10, // Offset behind the member
-          });
+      // OPTIMIZATION: Remove periodic bursts on mobile, reduce on medium
+      if (!isLowPerformance) {
+        // Add just a few periodic bursts (not every second)
+        const burstCount = isMediumPerformance ? 2 : 4;
+        const interval = speedBoostDuration / burstCount;
+        
+        for (let i = 1; i <= burstCount; i++) {
+          setTimeout(() => {
+            if (frameCount < skills.skill7.lastUsed + speedBoostDuration) {
+              // Create just one burst at squad center instead of for each member
+              effects.push({
+                x: accelCenter.x,
+                y: accelCenter.y,
+                z: accelCenter.z + 10,
+                type: "speedBurst",
+                size: 25,
+                life: 30,
+                color: [0, 200, 255],
+              });
+            }
+          }, i * interval * (1000 / 60));
         }
       }
 
-      // Add periodic speed bursts throughout the duration
-      const speedBurstInterval = 60; // Every second
-      const speedTotalBursts = Math.floor(
-        speedBoostDuration / speedBurstInterval
-      );
-
-      for (let i = 1; i <= speedTotalBursts; i++) {
-        setTimeout(() => {
-          // Only create effects if skill is still active
-          if (frameCount < skills.skill7.lastUsed + speedBoostDuration) {
-            for (let member of squad) {
-              // Create speed burst
-              if (random() > 0.5) {
-                // 50% chance for each member
-                effects.push({
-                  x: member.x,
-                  y: member.y,
-                  z: member.z + 10,
-                  type: "speedBurst",
-                  size: random(15, 25),
-                  life: random(20, 30),
-                  color: [0, 200, 255],
-                });
-              }
-            }
-          }
-        }, i * speedBurstInterval * (1000 / 60)); // Convert frames to ms
-      }
-
       // Create a global time dilation effect (cyan tint to the scene)
+      // Keep this as it's an important visual indicator of the skill
       effects.push({
         type: "globalTimeDilation",
         life: speedBoostDuration,
-        intensity: 0.2 + fireRateBoost * 0.01, // Stronger effect with fire rate boost
-        forceRenderDetail: true,
+        intensity: 0.2 + fireRateBoost * 0.01,
+        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
       });
 
-      // Add screen shake for impact
-      cameraShake = 5;
+      // Add screen shake for impact (reduced)
+      cameraShake = isLowPerformance ? 2 : 4;
 
       // Reset after duration
       setTimeout(() => {
         squadSpeed = oldSpeed;
 
-        // Create final burst effect when skill ends
-        for (let member of squad) {
-          effects.push({
-            x: member.x,
-            y: member.y,
-            z: member.z + 20,
-            type: "speedBurst",
-            size: 30,
-            life: 30,
-            color: [0, 200, 255],
-          });
-        }
+        // OPTIMIZATION: Create just one final effect at squad center
+        effects.push({
+          x: accelCenter.x,
+          y: accelCenter.y,
+          z: accelCenter.z + 20,
+          type: "speedBurst",
+          size: 40,
+          life: 30,
+          color: [0, 200, 255],
+        });
       }, speedBoostDuration * (1000 / 60)); // Convert frames to ms
       break;
 
