@@ -206,6 +206,8 @@ let skills = {
     activeDuration: 600, // Barrier duration (10 seconds = 600 frames at 60fps)
     endTime: 0,
     health: 500, // Barrier health
+    maxBarriers: 5, // Maximum number of barriers allowed
+    activeBarriers: 0, // Current number of active barriers
   },
 };
 
@@ -3179,7 +3181,8 @@ function drawEffects() {
         effect.type === "atomicFlash" ||
         effect.type === "shockwave" ||
         effect.type === "areaBarrier" ||
-        effect.type === "globalFrost";
+        effect.type === "globalFrost" ||
+        effect.type === "barrier";
 
       // On mobile/low performance, use more aggressive culling
       const cullingDistanceSquared = isMobileDevice
@@ -3394,6 +3397,89 @@ function drawEffects() {
         torus(effect.size * 0.6, 3);
         pop();
       }
+    } else if (effect.type === "barrier") {
+      // Barrier effect - wall that enemies target first
+      noStroke();
+      
+      // Calculate health percentage for color
+      const healthPercent = effect.health / effect.maxHealth;
+      
+      // Color changes from blue to red as health decreases
+      const r = 150 + (1 - healthPercent) * 105; // 150 to 255
+      const g = 150 - (1 - healthPercent) * 50;  // 150 to 100
+      const b = 200 - (1 - healthPercent) * 100; // 200 to 100
+      
+      // Draw the barrier wall
+      push();
+      fill(r, g, b, 200 * (effect.life / effect.life));
+      
+      // Draw the main barrier wall
+      box(effect.width, effect.thickness, effect.height);
+      
+      // Draw health bar above the barrier
+      push();
+      translate(0, 0, effect.height / 2 + 20);
+      
+      // Background of health bar
+      fill(50, 50, 50, 200);
+      box(effect.width * 0.8, 10, 5);
+      
+      // Actual health bar
+      translate(-effect.width * 0.4 * (1 - healthPercent), 0, 0);
+      fill(r, g, b, 230);
+      box(effect.width * 0.8 * healthPercent, 10, 5);
+      pop();
+      
+      // Add some detail to the barrier
+      if (currentPerformanceLevel !== PerformanceLevel.LOW) {
+        // Add vertical supports
+        const supportCount = Math.min(5, Math.floor(effect.width / 50));
+        for (let i = 0; i < supportCount; i++) {
+          const offsetX = (i / (supportCount - 1) - 0.5) * effect.width;
+          
+          push();
+          translate(offsetX, 0, 0);
+          fill(r * 0.8, g * 0.8, b * 0.8, 230);
+          box(effect.thickness * 1.5, effect.thickness * 1.5, effect.height);
+          pop();
+        }
+        
+        // Add horizontal reinforcements
+        push();
+        translate(0, 0, -effect.height * 0.25);
+        fill(r * 0.9, g * 0.9, b * 0.9, 230);
+        box(effect.width, effect.thickness * 1.2, effect.thickness * 1.2);
+        pop();
+        
+        push();
+        translate(0, 0, effect.height * 0.25);
+        fill(r * 0.9, g * 0.9, b * 0.9, 230);
+        box(effect.width, effect.thickness * 1.2, effect.thickness * 1.2);
+        pop();
+      }
+      
+      // Add energy field effect
+      if (currentPerformanceLevel === PerformanceLevel.HIGH) {
+        for (let i = 0; i < 5; i++) {
+          if (frameCount % 10 === i) {
+            const offsetX = random(-effect.width/2, effect.width/2);
+            const offsetZ = random(-effect.height/2, effect.height/2);
+            
+            effects.push({
+              x: effect.x + offsetX,
+              y: effect.y,
+              z: effect.z + offsetZ,
+              type: "energyBurst",
+              size: 15,
+              life: 10,
+              color: [r, g, b, 150],
+              forceRenderDetail: false,
+            });
+          }
+        }
+      }
+      
+      pop();
     } else if (effect.type === "machineGun") {
       // Machine Gun effect - visual indicator for active machine gun skill
       // Follow the squad member if reference exists
@@ -6467,6 +6553,13 @@ function updateEnemies() {
   let shieldX = shieldEffect ? shieldEffect.x : targetX;
   let shieldY = shieldEffect ? shieldEffect.y : targetY;
   let shieldRadius = shieldEffect ? shieldEffect.size : 0; // Adjust size factor as needed
+  
+  // Find the barrier effect
+  let barrierEffect = effects.find((effect) => effect.type === "barrier");
+  let barrierX = barrierEffect ? barrierEffect.x : null;
+  let barrierY = barrierEffect ? barrierEffect.y : null;
+  let barrierWidth = barrierEffect ? barrierEffect.width : 0;
+  let barrierHeight = barrierEffect ? barrierEffect.height : 0;
 
   // Process enemies from the end of the array to avoid index issues when removing
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -6498,28 +6591,106 @@ function updateEnemies() {
       continue; // Skip to the next enemy
     }
 
-    // Check if enemy is close to the squad
-    const distanceToSquadY = Math.abs(targetY - enemy.y);
-
-    if (distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD) {
-      // When close to squad, directly target the squad at consistent speed
-      // Calculate vector to target
-      const dx = targetX - enemy.x;
-      const dy = targetY - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      // Normalize and apply speed consistently (no acceleration)
-      if (dist > 0) {
-        enemy.x += (dx / dist) * enemy.speed * 2;
-        enemy.y += (dy / dist) * enemy.speed * 2;
+    // Check if there's an active barrier to target
+    let hasBarrier = barrierEffect !== undefined && barrierX !== null;
+    let targetingBarrier = false;
+    
+    if (hasBarrier) {
+      // Calculate distance to barrier
+      const distToBarrierY = Math.abs(barrierY - enemy.y);
+      const distToBarrierX = Math.abs(barrierX - enemy.x);
+      
+      // Check if enemy is within range to target the barrier
+      // Only target the barrier if the enemy is close enough and within the barrier's width
+      if (distToBarrierY < ENEMY_FIGHT_DISTANCE_THRESHOLD && distToBarrierX < barrierWidth/2 + enemy.size) {
+        targetingBarrier = true;
+        
+        // Calculate vector to barrier
+        const dx = barrierX - enemy.x;
+        const dy = barrierY - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Normalize and apply speed consistently
+        if (dist > 0) {
+          enemy.x += (dx / dist) * enemy.speed * 2;
+          enemy.y += (dy / dist) * enemy.speed * 2;
+        }
+        
+        // Check for collision with barrier
+        const barrierThickness = barrierEffect.thickness || WALL_THICKNESS;
+        if (dist < enemy.size/2 + barrierThickness/2) {
+          // Enemy is hitting the barrier
+          
+          // Damage the barrier
+          const damageAmount = enemy.type.includes('boss') ? 5 : 
+                             enemy.type === 'elite' ? 2 : 1;
+          barrierEffect.health -= damageAmount;
+          
+          // Create hit effect
+          if (frameCount % 5 === 0) {
+            effects.push({
+              x: enemy.x + (barrierX - enemy.x) * 0.5,
+              y: enemy.y + (barrierY - enemy.y) * 0.5,
+              z: enemy.z,
+              type: "hit",
+              size: 15,
+              life: 15,
+              color: [200, 100, 100],
+            });
+          }
+          
+          // If barrier is destroyed, remove it
+          if (barrierEffect.health <= 0) {
+            // Find the barrier effect index and remove it
+            const barrierIndex = effects.findIndex(effect => effect === barrierEffect);
+            if (barrierIndex !== -1) {
+              // Call the onDestroy callback if it exists
+              if (typeof barrierEffect.onDestroy === 'function') {
+                barrierEffect.onDestroy();
+              } else {
+                // Fallback to the old method if onDestroy doesn't exist
+                createBarrierCollapseEffect(
+                  {x: barrierEffect.x, y: barrierEffect.y, z: barrierEffect.z},
+                  barrierEffect.width,
+                  barrierEffect.height
+                );
+                
+                // Decrement active barriers count
+                skills.skill9.activeBarriers--;
+              }
+              
+              // Remove the barrier
+              effects.splice(barrierIndex, 1);
+            }
+          }
+        }
       }
-    } else {
-      // Regular downward movement when far from squad
-      enemy.y += enemy.speed;
+    }
+    
+    // If not targeting barrier, check if enemy is close to the squad
+    if (!targetingBarrier) {
+      const distanceToSquadY = Math.abs(targetY - enemy.y);
 
-      // Only bosses have side-to-side movement when far away
-      if (enemy.type.includes("boss")) {
-        enemy.x += sin(frameCount * 0.05) * 1;
+      if (distanceToSquadY < ENEMY_FIGHT_DISTANCE_THRESHOLD) {
+        // When close to squad, directly target the squad at consistent speed
+        // Calculate vector to target
+        const dx = targetX - enemy.x;
+        const dy = targetY - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Normalize and apply speed consistently (no acceleration)
+        if (dist > 0) {
+          enemy.x += (dx / dist) * enemy.speed * 2;
+          enemy.y += (dy / dist) * enemy.speed * 2;
+        }
+      } else {
+        // Regular downward movement when far from squad
+        enemy.y += enemy.speed;
+
+        // Only bosses have side-to-side movement when far away
+        if (enemy.type.includes("boss")) {
+          enemy.x += sin(frameCount * 0.05) * 1;
+        }
       }
     }
 
@@ -7211,6 +7382,136 @@ function activateApocalypticDevastation() {
  * @param {Object} bombCenter - The center point of the explosion
  * @param {number} atomicDamage - The base damage amount
  */
+/**
+ * Activates the Barrier skill (Skill 9)
+ * Places a wall that enemies target first, protecting the squad
+ */
+function activateBarrierSkill() {
+    // Check if maximum number of barriers has been reached
+    if (skills.skill9.activeBarriers >= skills.skill9.maxBarriers) {
+      // Play error sound and show error message
+      playUISound("error");
+      return; // Exit the function without creating a barrier
+    }
+    
+  // Calculate barrier parameters based on player stats
+  const barrierHealth = skills.skill9.health + damageBoost * 20; // Barrier health enhanced by damage boost
+  const barrierWidth = BRIDGE_WIDTH * 0.8 + aoeBoost * 10; // Barrier width enhanced by AOE boost
+  const barrierHeight = WALL_HEIGHT * 0.8 + aoeBoost * 5; // Barrier height enhanced by AOE boost
+  
+  // Calculate barrier position - 200 units in front of the squad
+  let barrierPosition = { x: 0, y: 0, z: 0 };
+  if (squad.length > 0) {
+    barrierPosition = {
+      x: squad[0].x,
+      y: squad[0].y - 200, // 200 units in front of the squad
+      z: squad[0].z,
+    };
+  }
+  
+  // Increment active barriers count
+  skills.skill9.activeBarriers++;
+  
+  // Create a barrier effect with no lifetime (will exist until destroyed)
+  const barrier = {
+    x: barrierPosition.x,
+    y: barrierPosition.y,
+    z: barrierPosition.z,
+    type: "barrier", // New effect type for the barrier
+    width: barrierWidth,
+    height: barrierHeight,
+    thickness: WALL_THICKNESS,
+    life: Infinity, // No lifetime - will exist until destroyed
+    health: barrierHealth,
+    maxHealth: barrierHealth, // Store max health for health bar display
+    color: [150, 150, 200, 200], // Bluish-gray color for the barrier
+    forceRenderDetail: true,
+    // Add a callback for when the barrier is destroyed
+    onDestroy: function() {
+      skills.skill9.activeBarriers--; // Decrement active barriers count
+      createBarrierCollapseEffect(barrierPosition, barrierWidth, barrierHeight);
+    }
+  };
+  
+  // Add the barrier to effects
+  effects.push(barrier);
+  
+  // Create deployment effect
+  createBarrierDeploymentEffect(barrierPosition, barrierWidth, barrierHeight);
+}
+
+/**
+ * Creates visual effects for barrier deployment
+ */
+function createBarrierDeploymentEffect(position, width, height) {
+  // Create a shockwave effect at the barrier position
+  effects.push({
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    type: "shockwave",
+    size: width * 0.5,
+    life: 30,
+    color: [150, 150, 200],
+    forceRenderDetail: true,
+  });
+  
+  // Create particle effects along the barrier
+  const particleCount = Math.min(20, Math.floor(width / 20)); // 1 particle per 20 units of width, max 20
+  
+  for (let i = 0; i < particleCount; i++) {
+    const offsetX = (i / (particleCount - 1) - 0.5) * width;
+    
+    effects.push({
+      x: position.x + offsetX,
+      y: position.y,
+      z: position.z + random(-10, 10),
+      type: "energyBurst",
+      size: 30,
+      life: 20 + random(0, 10),
+      color: [150, 150, 200, 150],
+      forceRenderDetail: false,
+    });
+  }
+}
+
+/**
+ * Creates visual effects for barrier collapse
+ */
+function createBarrierCollapseEffect(position, width, height) {
+  // Create a shockwave effect at the barrier position
+  effects.push({
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    type: "shockwave",
+    size: width * 0.4,
+    life: 20,
+    color: [150, 150, 200, 150],
+    forceRenderDetail: false,
+  });
+  
+  // Create particle effects for the collapse
+  const particleCount = Math.min(15, Math.floor(width / 30)); // 1 particle per 30 units of width, max 15
+  
+  for (let i = 0; i < particleCount; i++) {
+    const offsetX = (i / (particleCount - 1) - 0.5) * width;
+    const offsetZ = random(-height/4, height/4);
+    
+    effects.push({
+      x: position.x + offsetX,
+      y: position.y,
+      z: position.z + offsetZ,
+      type: "debris",
+      size: 20,
+      life: 30 + random(0, 15),
+      color: [150, 150, 200, 200],
+      velocity: { x: random(-2, 2), y: random(-2, 2), z: random(-1, 1) },
+      forceRenderDetail: false,
+    });
+  }
+}
+
 function applyApocalypticDamage(bombCenter, atomicDamage) {
   // RADICAL OPTIMIZATION: Process enemies in batches for damage calculation
   // This reduces the number of distance calculations and improves performance
@@ -8091,7 +8392,7 @@ function createSkillBarElement() {
   skillBar.child(bottomRow);
 
   // Create individual skill elements
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 9; i++) {
     const skillDiv = createDiv("");
     skillDiv.id(`skill${i}`);
     skillDiv.style("text-align", "center");
@@ -8167,8 +8468,12 @@ function createSkillBarElement() {
     // Add to the appropriate row based on index
     // Q, W, E, R (skills 5-8) go in top row
     // A, S, D, F (skills 1-4) go in bottom row
-    if (i >= 5) {
+    // Barrier (skill 9) goes in the center of the top row
+    if (i >= 5 && i <= 8) {
       // Q, W, E, R (skills 5-8)
+      topRow.child(skillDiv);
+    } else if (i === 9) {
+      // Barrier (skill 9) - add to top row
       topRow.child(skillDiv);
     } else {
       // A, S, D, F (skills 1-4)
@@ -8693,6 +8998,8 @@ function getSkillKey(skillNumber) {
       return "E";
     case 8:
       return "R";
+    case 9:
+      return "B";
     default:
       return "";
   }
@@ -8716,6 +9023,8 @@ function getSkillName(skillNumber) {
       return "Quantum Accel";
     case 8:
       return "Apocalypse";
+    case 9:
+      return "Barrier";
     default:
       return "";
   }
@@ -9428,59 +9737,6 @@ function windowResized() {
     // Log to console for debugging
     console.log("Window resized, controls container repositioned");
   }
-}
-
-// Handle keyboard input
-function keyPressed() {
-  // Start/restart game with ENTER key
-  if (keyCode === ENTER) {
-    if (gameState === "menu" || gameState === "gameOver") {
-      startGame();
-      return false; // Prevent default behavior
-    }
-  }
-
-  // Toggle pause with ESC key
-  if (keyCode === ESCAPE) {
-    if (gameState === "playing") {
-      pauseGame();
-    } else if (gameState === "paused") {
-      resumeGame();
-    }
-    return false; // Prevent default behavior
-  }
-
-  // Handle skill activation with keyboard shortcuts
-  if (gameState === "playing") {
-    // Map keys A, S, D, F, Q, W, E, R to skills
-    if (key === "a" || key === "A") {
-      activateSkill(SkillName.STAR_BLAST);
-      return false;
-    } else if (key === "s" || key === "S") {
-      activateSkill(SkillName.MACHINE_GUN);
-      return false;
-    } else if (key === "d" || key === "D") {
-      activateSkill(SkillName.SHIELD);
-      return false;
-    } else if (key === "f" || key === "F") {
-      activateSkill(SkillName.FREEZE);
-      return false;
-    } else if (key === "q" || key === "Q") {
-      activateSkill(SkillName.REJUVENATION);
-      return false;
-    } else if (key === "w" || key === "W") {
-      activateSkill(SkillName.INFERNAL_RAGE);
-      return false;
-    } else if (key === "e" || key === "E") {
-      activateSkill(SkillName.QUANTUM_ACCELERATION);
-      return false;
-    } else if (key === "r" || key === "R") {
-      activateSkill(SkillName.APOCALYPTIC_DEVASTATION);
-      return false;
-    }
-  }
-
-  return true; // Allow other default behaviors
 }
 
 // Global touch handler to prevent default touch behavior on skill buttons and d-pad
