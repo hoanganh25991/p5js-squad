@@ -7766,7 +7766,7 @@ function createStatusBoardElements() {
   statusBoard = createDiv("");
   statusBoard.id("status-board");
   statusBoard.position(10, 10);
-  statusBoard.style("background-color", "rgba(0, 0, 0, 0.8)");
+  statusBoard.style("background-color", "rgba(0, 0, 0, 0.27)"); // Reduced opacity to 1/3 of 0.8
   statusBoard.style("color", "white");
   statusBoard.style("padding", "10px");
   statusBoard.style("border-radius", "5px");
@@ -7816,7 +7816,7 @@ function createTechnicalBoardElements() {
   techBoard = createDiv("");
   techBoard.id("tech-board");
   techBoard.position(windowWidth - 270, 10);
-  techBoard.style("background-color", "rgba(0, 0, 0, 0.8)");
+  techBoard.style("background-color", "rgba(0, 0, 0, 0.27)"); // Reduced opacity to 1/3 of 0.8
   techBoard.style("color", "white");
   techBoard.style("padding", "10px");
   techBoard.style("border-radius", "5px");
@@ -7927,7 +7927,7 @@ function updateTechnicalBoard() {
     const vendor = PerformanceManager.gpuInfo.vendor || 'Unknown Vendor';
     
     // Create detailed GPU breakdown for the separate section
-    gpuBreakdownText = `<div id="gpu-breakdown" style="background-color: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; max-width: 300px;">`;
+    gpuBreakdownText = `<div id="gpu-breakdown" style="background-color: rgba(0, 0, 0, 0.25); color: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 12px; max-width: 300px;">`;
     gpuBreakdownText += `<h4 style="margin: 0 0 5px 0; color: #4CAF50;">GPU BREAKDOWN</h4>`;
     gpuBreakdownText += `<div>GPU: ${renderer} (Tier ${PerformanceManager.gpuTier})</div>`;
     gpuBreakdownText += `<div>Vendor: ${vendor}</div>`;
@@ -8480,7 +8480,7 @@ function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  skillBar.style("background-color", "rgba(50, 50, 50, 0.8)");
+  skillBar.style("background-color", "rgba(50, 50, 50, 0.27)"); // Reduced opacity to 1/3 of 0.8
   skillBar.style("color", "white");
   skillBar.style("padding", isMobile ? "5px" : "10px");
   skillBar.style("border-radius", "5px");
@@ -8879,10 +8879,10 @@ function createDirectionalPadElement() {
   dPad.style("width", dPadSize + "px");
   dPad.style("height", dPadSize + "px");
   dPad.style("position", "relative");
-  dPad.style("background-color", "rgba(30, 30, 30, 0.8)");
+  dPad.style("background-color", "rgba(30, 30, 30, 0.27)"); // Reduced opacity to 1/3 of 0.8
   dPad.style("border-radius", dPadSize / 2 + "px");
   dPad.style("flex-shrink", "0"); // Prevent d-pad from shrinking
-  dPad.style("border", "3px solid rgba(200, 200, 200, 0.7)");
+  dPad.style("border", "3px solid rgba(200, 200, 200, 0.23)"); // Reduced opacity to 1/3 of 0.7
   dPad.style("z-index", "1600");
   dPad.style("box-shadow", "0 0 15px rgba(0, 0, 0, 0.5)");
   dPad.style("margin-left", isMobile ? "5px" : "10px"); // Add margin on the left
