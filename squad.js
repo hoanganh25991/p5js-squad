@@ -231,6 +231,69 @@ function preload() {
 
 // ===== PERFORMANCE MANAGEMENT =====
 const PerformanceManager = {
+  gpuInfo: null,
+  gpuTier: 0, // 0=unknown, 1=low, 2=medium, 3=high
+  
+  // Detect GPU capabilities
+  detectGPUCapabilities: function() {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      
+      if (!gl) {
+        console.warn('WebGL not supported');
+        return false;
+      }
+      
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        
+        this.gpuInfo = {
+          vendor: vendor,
+          renderer: renderer,
+          maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+          maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS),
+          extensions: gl.getSupportedExtensions()
+        };
+        
+        console.log('GPU Info:', this.gpuInfo);
+        
+        // Determine GPU tier based on renderer string
+        const rendererLower = renderer.toLowerCase();
+        
+        // Check for high-end GPUs
+        if (rendererLower.includes('nvidia') && !rendererLower.includes('mobile') ||
+            rendererLower.includes('amd') && !rendererLower.includes('mobile') ||
+            rendererLower.includes('intel') && (
+              rendererLower.includes('iris') || 
+              rendererLower.includes('hd 6') || 
+              rendererLower.includes('uhd')
+            )) {
+          this.gpuTier = 3; // High-end
+        }
+        // Check for mid-range GPUs
+        else if (rendererLower.includes('intel') || 
+                 rendererLower.includes('mali-t') ||
+                 rendererLower.includes('adreno 6')) {
+          this.gpuTier = 2; // Mid-range
+        }
+        // Everything else is considered low-end
+        else {
+          this.gpuTier = 1; // Low-end
+        }
+        
+        console.log('GPU Tier:', this.gpuTier);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Error detecting GPU:', e);
+    }
+    
+    return false;
+  },
+
   // Detect if the device is mobile
   detectMobileDevice: function() {
     // Check if the device has touch capability
@@ -259,31 +322,49 @@ const PerformanceManager = {
     return fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
   },
 
-  // Set performance level based on device and FPS
+  // Set performance level based on device, GPU and FPS
   setPerformanceLevel: function() {
     if (performanceMode !== PerformanceLevel.AUTO) {
       currentPerformanceLevel = performanceMode;
       return;
     }
 
+    // Try to detect GPU capabilities if not already done
+    if (!this.gpuInfo) {
+      this.detectGPUCapabilities();
+    }
+
     const avgFPS = this.getAverageFPS();
 
     // If we're on a mobile device, use more conservative settings
     if (isMobileDevice) {
+      // Start with medium as default for mobile
       currentPerformanceLevel = PerformanceLevel.MEDIUM;
+      
+      // If we have GPU info, use it to refine our decision
+      if (this.gpuTier === 3) {
+        // High-end mobile GPU can handle medium settings
+        currentPerformanceLevel = PerformanceLevel.MEDIUM;
+      } else if (this.gpuTier === 1) {
+        // Low-end mobile GPU should use low settings
+        currentPerformanceLevel = PerformanceLevel.LOW;
+      }
 
-      // If we have enough FPS history and it's consistently low, adjust
+      // If we have enough FPS history and it's consistently low, adjust down
       if (fpsHistory.length >= 10) {
         if (avgFPS < 30) {
           currentPerformanceLevel = PerformanceLevel.LOW;
-        } else if (avgFPS > 55) {
-          // Stay at medium even with good FPS on mobile
-          currentPerformanceLevel = PerformanceLevel.MEDIUM;
         }
       }
     } else {
       // On desktop, start with high performance
       currentPerformanceLevel = PerformanceLevel.HIGH;
+      
+      // If we have GPU info, use it to refine our decision
+      if (this.gpuTier === 1) {
+        // Low-end desktop GPU should use medium settings
+        currentPerformanceLevel = PerformanceLevel.MEDIUM;
+      }
 
       // If we have enough FPS history and it's consistently low, adjust
       if (fpsHistory.length >= 10) {
@@ -319,9 +400,11 @@ const PerformanceManager = {
       setAttributes("antialias", false);
       setAttributes("perPixelLighting", false);
       setAttributes("depth", false);
+      setAttributes("preserveDrawingBuffer", false);
     } else if (currentPerformanceLevel === PerformanceLevel.MEDIUM) {
       setAttributes("antialias", true);
       setAttributes("perPixelLighting", false);
+      setAttributes("preserveDrawingBuffer", false);
       if (isMobileDevice) {
         setAttributes("depth", false);
       } else {
@@ -331,10 +414,23 @@ const PerformanceManager = {
       setAttributes("antialias", true);
       setAttributes("perPixelLighting", true);
       setAttributes("depth", true);
+      setAttributes("preserveDrawingBuffer", false);
     }
 
     // Disable texture mipmapping to save memory
     textureMode(NORMAL);
+    
+    // Enable hardware acceleration hints
+    if (typeof _renderer !== 'undefined' && _renderer.GL) {
+      const gl = _renderer.GL;
+      gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
+      gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
+    }
+  },
+  
+  // Check if we can use advanced GPU features
+  canUseAdvancedFeatures: function() {
+    return this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW;
   }
 };
 
@@ -358,6 +454,9 @@ function setup() {
   isMobileDevice = PerformanceManager.detectMobileDevice();
   console.log("Mobile device detected:", isMobileDevice);
 
+  // Detect GPU capabilities
+  PerformanceManager.detectGPUCapabilities();
+  
   // Set initial performance level
   PerformanceManager.setPerformanceLevel();
 
@@ -372,6 +471,35 @@ function setup() {
 
   // Set perspective for better 3D view with increased far plane to see the entire bridge
   perspective(PI / 4, width / height, 0.1, 5000);
+
+  // Initialize GPU acceleration systems if supported
+  if (PerformanceManager.canUseAdvancedFeatures()) {
+    console.log("Initializing GPU acceleration features");
+    
+    // Initialize GPU-based particle system
+    try {
+      initGPUParticles();
+      console.log("GPU Particle system initialized");
+    } catch (e) {
+      console.warn("Could not initialize GPU particles:", e);
+    }
+    
+    // Initialize GPU-based renderer for effects
+    try {
+      initGPURenderer();
+      console.log("GPU Renderer initialized");
+    } catch (e) {
+      console.warn("Could not initialize GPU renderer:", e);
+    }
+  }
+  
+  // Initialize spatial partitioning for collision detection
+  try {
+    initCollisionSystem();
+    console.log("Collision system initialized");
+  } catch (e) {
+    console.warn("Could not initialize collision system:", e);
+  }
 
   // Auto-start the game (no need to press enter)
   gameStartTime = frameCount;
