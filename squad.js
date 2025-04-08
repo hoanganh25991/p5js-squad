@@ -1519,6 +1519,9 @@ function draw() {
 
   // 3D
   drawGame();
+  
+  // Draw the sky overlay on top of the game elements
+  drawSkyOverlay();
 
   if (gameState == "playing") {
     updateGame();
@@ -1742,7 +1745,8 @@ function drawSkyAndMountains() {
   noStroke(); // No stroke for all background elements
   
   // Extra size to ensure coverage beyond screen edges
-  const extraSize = 500;
+  // Increased to ensure full coverage on larger screens
+  const extraSize = Math.max(1000, width); // Use at least 1000px or the full width, whichever is larger
   
   // ===== SKY GRADIENT =====
   // Create a horizon-oriented gradient (lighter at horizon, darker at top)
@@ -1877,6 +1881,69 @@ function drawSkyAndMountains() {
   // Re-enable depth testing if it was enabled before
   if (depthTest) {
     gl.enable(gl.DEPTH_TEST);
+  }
+  
+  // Restore the previous state
+  pop();
+}
+
+// New function to draw a semi-transparent sky overlay at the top of the screen (end of bridge)
+// This will be drawn on top of the bridge and enemies
+function drawSkyOverlay() {
+  // Save the current WebGL state
+  push();
+  
+  // Completely reset the matrix to draw in 2D screen space
+  resetMatrix();
+  
+  // Switch to 2D rendering mode
+  ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
+  
+  // Get WebGL context
+  const gl = drawingContext;
+  
+  // Move in front of everything
+  translate(0, 0, 5000);
+  
+  noStroke();
+  
+  // Extra size to ensure coverage beyond screen edges
+  const extraSize = Math.max(1000, width);
+  
+  // Create a semi-transparent gradient at the top of the screen (where the bridge ends)
+  // that fades out as it approaches the middle
+  const skyOverlayColors = [
+    [25, 25, 112, 180],   // Midnight blue with opacity (top)
+    [65, 105, 225, 150],  // Royal blue with opacity
+    [135, 206, 235, 100], // Sky blue with opacity
+    [240, 248, 255, 0]    // Fully transparent at the bottom
+  ];
+  
+  // Draw the overlay gradient from top to about 1/3 of the screen
+  // Note: In p5.js with ortho mode, negative Y is at the top of the screen
+  for (let i = 0; i < skyOverlayColors.length; i++) {
+    const y1 = map(i, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.3);
+    const y2 = map(i + 1, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.3);
+    
+    fill(skyOverlayColors[i]);
+    rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
+  }
+  
+  // Add a few stars that appear on top of everything
+  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+    fill(255, 255, 255, 180);
+    for (let i = 0; i < 20; i++) { // Fewer stars than the background
+      const starSize = random(1, 2);
+      const x = random(-extraSize, width + extraSize);
+      const y = random(-height/2 - extraSize, -height/2 + height * 0.15); // Only at the very top of screen
+      
+      // Make stars twinkle
+      if (frameCount % 30 === 0 && random() > 0.7) {
+        ellipse(x, y, starSize * 1.5, starSize * 1.5);
+      } else {
+        ellipse(x, y, starSize, starSize);
+      }
+    }
   }
   
   // Restore the previous state
