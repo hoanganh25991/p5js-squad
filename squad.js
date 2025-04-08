@@ -937,6 +937,38 @@ function setup() {
   }
 }
 
+// Prevent default touch behavior to disable zooming and selection
+function touchStarted() {
+  // Prevent default touch behavior (zooming, scrolling, etc.)
+  if (isMobileDevice) {
+    return false; // Returning false prevents default browser behavior
+  }
+  return true;
+}
+
+function touchMoved() {
+  // Prevent default touch behavior during movement
+  if (isMobileDevice) {
+    return false;
+  }
+  return true;
+}
+
+function touchEnded() {
+  // Prevent default touch behavior when touch ends
+  if (isMobileDevice) {
+    return false;
+  }
+  return true;
+}
+
+// Prevent double-tap zoom on mobile
+document.addEventListener('touchstart', function(event) {
+  if (event.touches.length > 1) {
+    event.preventDefault();
+  }
+}, { passive: false });
+
 // Initialize all UI elements
 function initializeUI() {
   createUiUsingDomElements();

@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Squad</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
@@ -21,6 +21,13 @@
       position: fixed;
       overscroll-behavior: none;
       touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
     }
 
     canvas {
@@ -48,6 +55,23 @@
   <script src="sounds.js"></script>
   <script src="squad.js"></script>
   <script>
+    // Prevent zooming on mobile devices
+    document.addEventListener('touchmove', function(event) {
+      if (event.scale !== 1) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+    
+    // Prevent double-tap to zoom
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+    
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
         navigator.serviceWorker.register("service-worker.js").then(
