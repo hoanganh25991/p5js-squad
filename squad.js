@@ -789,72 +789,52 @@ function checkMemoryUsage() {
 
 // Create UI for performance settings
 function createPerformanceSettingsUI() {
-  // Create a container for performance settings
-  const perfContainer = createStyledContainer(width - 180, 70, 160, {
-    id: "performance-settings",
-    styles: {
-      fontSize: "12px",
-      display: "none" // Hidden by default
+  try {
+    // First, remove any existing button to avoid duplicates
+    const existingBtn = select("#pause-resume-button");
+    if (existingBtn) {
+      existingBtn.remove();
     }
-  });
-
-  // Add a title
-  const title = createDiv("Performance");
-  title.style("font-weight", "bold");
-  title.style("margin-bottom", "5px");
-  perfContainer.child(title);
-
-  // Create radio buttons for performance modes
-  const modes = Object.values(PerformanceLevel);
-
-  for (let mode of modes) {
-    const label = createDiv("");
-    label.style("display", "flex");
-    label.style("align-items", "center");
-    label.style("margin", "3px 0");
-
-    const radio = createRadio();
-    radio.attribute("type", "radio");
-    radio.attribute("name", "perfMode");
-    radio.attribute("value", mode);
-    radio.style("margin-right", "5px");
-    if (mode === performanceMode) {
-      radio.attribute("checked", true);
+    
+    // Create a static pause/resume button as a placeholder
+    // This will be updated dynamically based on game state in updatePauseResumeButton
+    let buttonText = "⏸️";
+    let buttonAction = pauseGame;
+    let buttonVisibility = "visible";
+    
+    if (gameState === GameState.PLAYING) {
+      // Pause button when game is playing
+      buttonText = "⏸️";
+      buttonAction = pauseGame;
+    } else if (gameState === GameState.PAUSED) {
+      // Resume button when game is paused
+      buttonText = "▶️";
+      buttonAction = resumeGame;
+    } else {
+      // Hidden button for other states
+      buttonVisibility = "hidden";
     }
-
-    radio.changed(() => {
-      performanceMode = mode;
-      PerformanceManager.setPerformanceLevel();
-      PerformanceManager.applyWebGLSettings();
-      console.log("Performance mode changed to:", mode);
+    
+    // Create the button with appropriate settings
+    createStyledButton(buttonText, width - 180, 20, {
+      id: "pause-resume-button",
+      styles: {
+        borderRadius: "50%",
+        width: "40px",
+        height: "40px",
+        fontSize: "20px",
+        padding: "0",
+        textAlign: "center",
+        lineHeight: "40px",
+        visibility: buttonVisibility
+      },
+      onClick: buttonAction
     });
-
-    label.child(radio);
-    label.html(label.html() + mode.charAt(0).toUpperCase() + mode.slice(1));
-    perfContainer.child(label);
+    
+    console.log("Created pause/resume button with state:", gameState);
+  } catch (e) {
+    console.error("Error creating pause/resume button:", e);
   }
-
-  // Add current FPS display
-  const fpsDisplay = createDiv("FPS: --");
-  fpsDisplay.id("fps-display");
-  perfContainer.child(fpsDisplay);
-
-  // Add toggle button for settings
-  const toggleBtn = createStyledButton("⚙️", width - 180, 20, {
-    styles: {
-      borderRadius: "50%",
-      width: "40px",
-      height: "40px",
-      fontSize: "20px",
-      padding: "0",
-      textAlign: "center",
-      lineHeight: "40px"
-    },
-    onClick: () => {
-      const isVisible = perfContainer.style("display") !== "none";
-      perfContainer.style("display", isVisible ? "none" : "block");
-    }
-  });
 }
 
 // Update FPS display and track history
@@ -869,16 +849,59 @@ function updatePerformanceMetrics() {
     fpsHistory.shift();
   }
 
-  // Update FPS display if it exists
-  const fpsDisplay = select("#fps-display");
-  if (fpsDisplay) {
-    fpsDisplay.html(`FPS: ${Math.round(currentFPS)}`);
-  }
-
   // Check if we need to adjust performance level
   if (frameCount - lastPerformanceCheck > performanceCheckInterval) {
     PerformanceManager.setPerformanceLevel();
     lastPerformanceCheck = frameCount;
+  }
+  
+  // Update pause/resume button based on current game state
+  updatePauseResumeButton();
+}
+
+// Function to update the pause/resume button based on game state
+function updatePauseResumeButton() {
+  try {
+    // Get the existing button
+    const pauseResumeBtn = select("#pause-resume-button");
+    
+    // If button doesn't exist, create it
+    if (!pauseResumeBtn) {
+      createPerformanceSettingsUI();
+      return;
+    }
+    
+    // Update button based on game state
+    if (gameState === GameState.PLAYING) {
+      // Show pause button
+      pauseResumeBtn.html("⏸️");
+      pauseResumeBtn.style("visibility", "visible");
+      
+      // Update click handler
+      pauseResumeBtn.mousePressed(() => {
+        pauseGame();
+      });
+    } else if (gameState === GameState.PAUSED) {
+      // Show resume button
+      pauseResumeBtn.html("▶️");
+      pauseResumeBtn.style("visibility", "visible");
+      
+      // Update click handler
+      pauseResumeBtn.mousePressed(() => {
+        resumeGame();
+      });
+    } else {
+      // Hide button for menu and game over states
+      pauseResumeBtn.style("visibility", "hidden");
+    }
+  } catch (e) {
+    console.warn("Error updating pause/resume button:", e);
+    // If there was an error, try to recreate the button
+    try {
+      createPerformanceSettingsUI();
+    } catch (e2) {
+      console.error("Failed to recreate pause/resume button:", e2);
+    }
   }
 }
 
@@ -7468,17 +7491,35 @@ function drawPauseContainer() {
   // But we keep it for backward compatibility
 }
 
+// Global variables for pause/resume containers
+let pauseContainer;
+let resumeContainer;
+
 function pauseGame() {
-  gameState = "paused";
+  gameState = GameState.PAUSED;
 
   // Stop all sounds when game is paused
-  stopAllSounds();
-  
-  // Switch from pause button to resume button
-  if (pauseContainer) {
-    pauseContainer.remove();
+  if (typeof stopAllSounds === 'function') {
+    stopAllSounds();
   }
-  createResumeElement();
+  
+  // The pause/resume button will be updated in updatePauseResumeButton
+  // which is called from updatePerformanceMetrics in the draw loop
+  
+  // For backward compatibility, also update the old UI elements if they exist
+  try {
+    if (typeof createResumeElement === 'function') {
+      // Remove old pause button if it exists
+      if (pauseContainer && typeof pauseContainer.remove === 'function') {
+        pauseContainer.remove();
+      }
+      
+      // Create resume button
+      createResumeElement();
+    }
+  } catch (e) {
+    console.warn("Error updating legacy UI elements:", e);
+  }
 }
 
 // Draw resume button in top right corner
@@ -7488,13 +7529,25 @@ function drawResumeContainer() {
 }
 
 function resumeGame() {
-  gameState = "playing";
+  gameState = GameState.PLAYING;
   
-  // Switch from resume button to pause button
-  if (resumeContainer) {
-    resumeContainer.remove();
+  // The pause/resume button will be updated in updatePauseResumeButton
+  // which is called from updatePerformanceMetrics in the draw loop
+  
+  // For backward compatibility, also update the old UI elements if they exist
+  try {
+    if (typeof createPauseElement === 'function') {
+      // Remove old resume button if it exists
+      if (resumeContainer && typeof resumeContainer.remove === 'function') {
+        resumeContainer.remove();
+      }
+      
+      // Create pause button
+      createPauseElement();
+    }
+  } catch (e) {
+    console.warn("Error updating legacy UI elements:", e);
   }
-  createPauseElement();
 }
 
 function drawGameOverContainer() {
@@ -8822,21 +8875,18 @@ function keyPressed() {
     }
   }
 
-  // Toggle pause with Escape key
+  // Toggle pause with P key
   if (key === "p" || key === "P") {
-    if (gameState === "playing") {
-      // Start or restart game
+    if (gameState === GameState.PLAYING) {
       pauseGame();
-      gameState = "paused";
       gameStartTime = frameCount;
-    } else {
-      gameState = "playing";
-      resetGame();
+    } else if (gameState === GameState.PAUSED) {
+      resumeGame();
     }
   }
 
   // Only process skill keys during gameplay
-  if (gameState === "playing") {
+  if (gameState === GameState.PLAYING) {
     // Bottom row skills (A, S, D, F)
     if (key === "a" || key === "A") {
       activateSkill(1);
