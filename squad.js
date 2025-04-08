@@ -1736,9 +1736,9 @@ function draw() {
 // Memory leak tracking and prevention
 let lastMemoryCleanup = 0;
 const MEMORY_CLEANUP_INTERVAL = 300; // Run garbage collection helper every 5 seconds (300 frames at 60fps)
-const MAX_OBJECTS = 1_000; // Maximum total number of game objects
+const MAX_OBJECTS = 10_000; // Maximum total number of game objects
 const MAX_PROJECTILES = 300; // Maximum projectiles
-const MAX_EFFECTS = 500; // Maximum visual effects
+const MAX_EFFECTS = 300; // Maximum visual effects
 
 // Function to limit effects based on performance level
 function limitEffects() {
@@ -3162,8 +3162,21 @@ function drawEffects() {
     ),
   ];
 
+  // Process delayed effects before rendering
+  // This replaces the setTimeout approach with a frame-based delay system
+  for (let i = effects.length - 1; i >= 0; i--) {
+    if (effects[i].delayFrames !== undefined) {
+      effects[i].delayFrames--;
+      if (effects[i].delayFrames <= 0) {
+        // Remove the delay property and keep the effect
+        delete effects[i].delayFrames;
+      }
+    }
+  }
+  
   // Draw visual effects - optimized with distance culling
-  for (let effect of effectsToRender) {
+  // Skip effects that are still delayed
+  for (let effect of effectsToRender.filter(e => e.delayFrames === undefined)) {
     // Skip rendering effects too far from the player (distance culling)
     // Find closest squad member to use as reference
     if (squad.length > 0) {
@@ -9264,14 +9277,29 @@ function applyEnemyEffects() {
       if (enemy.effects.frozen) {
         enemy.effects.frozen.duration--;
 
-        // Create ice effect occasionally
-        if (frameCount % 30 === 0) {
-          createIceEffect(enemy.x, enemy.y, enemy.z);
+        // OPTIMIZATION: Create ice effects based on the configured interval
+        // This allows for different frequencies on different performance levels
+        if (enemy.effects.frozen.iceEffectInterval > 0 && 
+            frameCount >= enemy.effects.frozen.nextIceEffectFrame) {
+          // Create a simplified ice effect (just one crystal instead of many)
+          effects.push({
+            x: enemy.x,
+            y: enemy.y,
+            z: enemy.z,
+            type: "iceCrystal",
+            size: 15,
+            life: 30,
+            color: [200, 240, 255],
+            growthTime: 5,
+          });
+          
+          // Schedule next ice effect
+          enemy.effects.frozen.nextIceEffectFrame = frameCount + enemy.effects.frozen.iceEffectInterval;
         }
 
         if (enemy.effects.frozen.duration <= 0) {
           // Reset speed when effect expires
-          enemy.speed /= enemy.effects.frozen.slowFactor;
+          enemy.speed = enemy.effects.frozen.originalSpeed;
           delete enemy.effects.frozen;
         }
       }
@@ -10235,7 +10263,8 @@ function activateFreezeSkill() {
   const visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
   const enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
   const freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
-  const freezeRadius = 1500; // Reduced radius for better performance
+  // OPTIMIZATION: Reduce radius on low performance devices
+  const freezeRadius = freezeIsLowPerformance ? 1000 : (freezeIsMediumPerformance ? 1250 : 1500);
 
   // Activate freeze mode
   skills.skill4.active = true;
@@ -10250,29 +10279,18 @@ function activateFreezeSkill() {
   // Apply freeze effect to enemies
   applyFreezeEffectToEnemies(freezeCenter, freezeRadius, enemyFreezeEffectDuration, freezeStrength, freezeIsLowPerformance, freezeIsMediumPerformance);
 
-  // Schedule deactivation after visual duration
-  setTimeout(() => {
-    skills.skill4.active = false;
-
-    // OPTIMIZATION: Simplified end effect
-    // Create just one final effect at the center
-    effects.push({
-      x: freezeCenter.x,
-      y: freezeCenter.y,
-      z: freezeCenter.z + 20,
-      type: "frostBurst",
-      size: 60,
-      life: 30,
-      color: [200, 240, 255],
-    });
-  }, visualEffectDuration * (1000 / 60)); // Convert frames to ms
+  // OPTIMIZATION: Use frameCount-based deactivation instead of setTimeout
+  // This avoids potential issues with setTimeout in p5.js
+  // The actual deactivation will happen in the draw loop when frameCount >= skills.skill4.endTime
 }
 
 /**
  * Helper function to create freeze visual effects
  */
 function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDuration, isLowPerformance, isMediumPerformance) {
-  // 1. Create a single shockwave instead of multiple on low performance devices
+  // OPTIMIZATION: Limit the number of effects based on performance level
+  
+  // 1. Create a single shockwave - essential for visual feedback
   effects.push({
     x: freezeCenter.x,
     y: freezeCenter.y,
@@ -10282,40 +10300,40 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
     life: 60,
     color: [100, 200, 255], // Ice blue color
     layer: 0,
-    forceRenderDetail: false,
+    forceRenderDetail: true, // Force render this important effect
   });
   
   // Add additional shockwaves only for medium/high performance
+  // OPTIMIZATION: Store delayed effects in an array with their spawn time instead of using setTimeout
   if (!isLowPerformance) {
-    setTimeout(() => {
+    // Second shockwave with delay
+    effects.push({
+      x: freezeCenter.x,
+      y: freezeCenter.y,
+      z: freezeCenter.z,
+      type: "shockwave",
+      size: freezeRadius * 0.7,
+      life: 50,
+      color: [100, 200, 255],
+      layer: 1,
+      forceRenderDetail: false,
+      delayFrames: 6, // Approximately 100ms at 60fps
+    });
+    
+    // Third shockwave only for high performance
+    if (!isMediumPerformance) {
       effects.push({
         x: freezeCenter.x,
         y: freezeCenter.y,
         z: freezeCenter.z,
         type: "shockwave",
-        size: freezeRadius * 0.7,
-        life: 50,
+        size: freezeRadius * 0.9,
+        life: 40,
         color: [100, 200, 255],
-        layer: 1,
+        layer: 2,
         forceRenderDetail: false,
+        delayFrames: 12, // Approximately 200ms at 60fps
       });
-    }, 100);
-    
-    // Third shockwave only for high performance
-    if (!isMediumPerformance) {
-      setTimeout(() => {
-        effects.push({
-          x: freezeCenter.x,
-          y: freezeCenter.y,
-          z: freezeCenter.z,
-          type: "shockwave",
-          size: freezeRadius * 0.9,
-          life: 40,
-          color: [100, 200, 255],
-          layer: 2,
-          forceRenderDetail: false,
-        });
-      }, 200);
     }
   }
 
@@ -10328,13 +10346,13 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
     size: freezeRadius,
     life: visualEffectDuration,
     color: [200, 240, 255, 150], // Light blue with transparency
-    forceRenderDetail: false,
+    forceRenderDetail: true, // Force render this important effect
   });
 
   // 3. OPTIMIZATION: Skip ice crystal formations on low performance devices
   if (!isLowPerformance) {
     // Create just a few ice crystals on medium performance
-    const crystalCount = isMediumPerformance ? 2 : 4;
+    const crystalCount = isMediumPerformance ? 1 : 2; // Reduced count
     
     for (let i = 0; i < crystalCount; i++) {
       const angle = random(TWO_PI);
@@ -10361,19 +10379,30 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
     type: "globalFrost",
     life: visualEffectDuration,
     intensity: 0.6 + aoeBoost * 0.03,
-    forceRenderDetail: false,
+    forceRenderDetail: true, // Force render this important effect
   });
 
   // Add a small screen shake effect for impact (reduced on low performance)
-  cameraShake = isLowPerformance ? 2 : 4;
+  cameraShake = isLowPerformance ? 1 : (isMediumPerformance ? 2 : 3); // Reduced shake intensity
 }
 
 /**
  * Helper function to apply freeze effect to enemies
  */
 function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freezeStrength, isLowPerformance, isMediumPerformance) {
-  // Sort enemies by distance to prioritize closest ones
-  const sortedEnemies = [...enemies].sort((a, b) => {
+  // OPTIMIZATION: Only affect enemies within the freeze radius
+  const freezeRadiusSquared = freezeRadius * freezeRadius;
+  
+  // Filter enemies that are within the freeze radius
+  const enemiesInRange = enemies.filter(enemy => {
+    const dx = enemy.x - freezeCenter.x;
+    const dy = enemy.y - freezeCenter.y;
+    const distSquared = dx * dx + dy * dy;
+    return distSquared <= freezeRadiusSquared;
+  });
+  
+  // Sort enemies by distance to prioritize closest ones for visual effects
+  const sortedEnemies = [...enemiesInRange].sort((a, b) => {
     const dxA = a.x - freezeCenter.x;
     const dyA = a.y - freezeCenter.y;
     const distA = dxA * dxA + dyA * dyA;
@@ -10387,60 +10416,63 @@ function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freeze
 
   // OPTIMIZATION: Limit visual effects to just a few enemies
   const maxEnemiesWithVisuals = isLowPerformance ? 
-    Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on low performance
+    Math.min(2, sortedEnemies.length) : // Only 2 enemies get visuals on low performance
     (isMediumPerformance ? 
-      Math.min(5, sortedEnemies.length) : // Only 5 enemies get visuals on medium performance
-      Math.min(10, sortedEnemies.length)); // Only 10 enemies get visuals on high performance
+      Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on medium performance
+      Math.min(5, sortedEnemies.length)); // Only 5 enemies get visuals on high performance
 
-  // OPTIMIZATION: Apply gameplay effect to all enemies but batch the processing
-  // Process enemies in batches to avoid too many simultaneous timeouts
-  const batchSize = 10;
-  const batches = Math.ceil(sortedEnemies.length / batchSize);
-  
-  for (let batch = 0; batch < batches; batch++) {
-    const startIdx = batch * batchSize;
-    const endIdx = Math.min(startIdx + batchSize, sortedEnemies.length);
+  // OPTIMIZATION: Apply gameplay effect to all enemies at once
+  // No batching or timeouts - process all enemies immediately
+  for (let i = 0; i < sortedEnemies.length; i++) {
+    const enemy = sortedEnemies[i];
     
-    setTimeout(() => {
-      for (let i = startIdx; i < endIdx; i++) {
-        const enemy = sortedEnemies[i];
-        
-        // Store original speed for restoration
-        if (!enemy.originalSpeed) {
-          enemy.originalSpeed = enemy.speed;
-        }
-        
-        // Apply freeze effect to enemy
-        if (!enemy.effects) enemy.effects = {};
-        enemy.effects.frozen = {
-          duration: duration,
-          slowFactor: max(0.05, freezeStrength),
-          originalSpeed: enemy.originalSpeed || enemy.speed,
-        };
-        
-        // Apply slowdown
-        enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
-        
-        // Only create visual effects for a limited number of enemies
-        if (i < maxEnemiesWithVisuals) {
-          // Create a single visual effect for each visible enemy
-          createIceEffect(enemy.x, enemy.y, enemy.z);
-          
-          // Add a frost burst effect only for the closest enemies
-          if (i < maxEnemiesWithVisuals / 2) {
-            effects.push({
-              x: enemy.x,
-              y: enemy.y,
-              z: enemy.z + 20,
-              type: "frostBurst",
-              size: 30,
-              life: 20,
-              color: [200, 240, 255],
-            });
-          }
-        }
+    // Store original speed for restoration
+    if (!enemy.originalSpeed) {
+      enemy.originalSpeed = enemy.speed;
+    }
+    
+    // Apply freeze effect to enemy
+    if (!enemy.effects) enemy.effects = {};
+    enemy.effects.frozen = {
+      duration: duration,
+      slowFactor: max(0.05, freezeStrength),
+      originalSpeed: enemy.originalSpeed || enemy.speed,
+      // OPTIMIZATION: Flag to control periodic ice effects
+      nextIceEffectFrame: frameCount + 60, // First ice effect after 1 second
+      iceEffectInterval: isLowPerformance ? 0 : (isMediumPerformance ? 90 : 60) // No/less frequent ice effects on low/medium performance
+    };
+    
+    // Apply slowdown
+    enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
+    
+    // Only create visual effects for a limited number of enemies
+    if (i < maxEnemiesWithVisuals) {
+      // Create a single visual effect for each visible enemy
+      // OPTIMIZATION: Simplified ice effect for performance
+      effects.push({
+        x: enemy.x,
+        y: enemy.y,
+        z: enemy.z,
+        type: "iceCrystal",
+        size: 25,
+        life: 120,
+        color: [200, 240, 255],
+        growthTime: 10,
+      });
+      
+      // Add a frost burst effect only for the closest enemies
+      if (i < maxEnemiesWithVisuals / 2) {
+        effects.push({
+          x: enemy.x,
+          y: enemy.y,
+          z: enemy.z + 20,
+          type: "frostBurst",
+          size: 30,
+          life: 20,
+          color: [200, 240, 255],
+        });
       }
-    }, batch * 50); // Stagger batches by 50ms
+    }
   }
 
   // OPTIMIZATION: Skip additional visual effects on low performance devices
