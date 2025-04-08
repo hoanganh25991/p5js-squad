@@ -712,7 +712,7 @@ function createPerformanceSettingsUI() {
   perfContainer.child(fpsDisplay);
 
   // Add toggle button for settings
-  const toggleBtn = createStyledButton("⚙️", width - 70, 20, {
+  const toggleBtn = createStyledButton("⚙️", width - 180, 20, {
     styles: {
       borderRadius: "50%",
       width: "40px",
@@ -7364,6 +7364,7 @@ function createStatusBoardElements() {
   statusBoard = createDiv("");
   statusBoard.id("status-board");
   statusBoard.position(10, 10);
+  statusBoard.style("background-color", "rgba(0, 0, 0, 0.8)");
   statusBoard.style("color", "white");
   statusBoard.style("padding", "10px");
   statusBoard.style("border-radius", "5px");
@@ -7413,6 +7414,7 @@ function createTechnicalBoardElements() {
   techBoard = createDiv("");
   techBoard.id("tech-board");
   techBoard.position(windowWidth - 270, 10);
+  techBoard.style("background-color", "rgba(0, 0, 0, 0.8)");
   techBoard.style("color", "white");
   techBoard.style("padding", "10px");
   techBoard.style("border-radius", "5px");
