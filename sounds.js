@@ -1,6 +1,30 @@
 // Sound Manager for Squad Survival
 // Handles loading, playing, and managing all game sounds
 
+// Skill name constants (duplicated from squad.js for sound system)
+const SkillName = {
+  STAR_BLAST: "STAR_BLAST",
+  MACHINE_GUN: "MACHINE_GUN",
+  SHIELD: "SHIELD",
+  FREEZE: "FREEZE",
+  REJUVENATION: "REJUVENATION",
+  INFERNAL_RAGE: "INFERNAL_RAGE",
+  QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
+  APOCALYPTIC_DEVASTATION: "APOCALYPTIC_DEVASTATION"
+};
+
+// Mapping of skill numbers to names for backward compatibility
+const skillNumberToName = {
+  1: SkillName.STAR_BLAST,
+  2: SkillName.MACHINE_GUN,
+  3: SkillName.SHIELD,
+  4: SkillName.FREEZE,
+  5: SkillName.REJUVENATION,
+  6: SkillName.INFERNAL_RAGE,
+  7: SkillName.QUANTUM_ACCELERATION,
+  8: SkillName.APOCALYPTIC_DEVASTATION
+};
+
 // Sound storage
 let sounds = {
   // Background music
@@ -516,18 +540,42 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
 }
 
 // Play skill sound
-function playSkillSound(skillNumber) {
-  const skillName = `skill${skillNumber}`;
-  if (sounds.skills[skillName]) {
+function playSkillSound(skillNameOrNumber) {
+  let skillNumber;
+  
+  // Handle different input types
+  if (typeof skillNameOrNumber === 'number') {
+    // It's already a number
+    skillNumber = skillNameOrNumber;
+  } else if (typeof skillNameOrNumber === 'string') {
+    if (skillNameOrNumber.startsWith('skill')) {
+      // It's in the format 'skill1', 'skill2', etc.
+      skillNumber = parseInt(skillNameOrNumber.replace('skill', ''));
+    } else {
+      // It's a skill name constant, find the corresponding number
+      for (const [num, name] of Object.entries(skillNumberToName)) {
+        if (name === skillNameOrNumber) {
+          skillNumber = parseInt(num);
+          break;
+        }
+      }
+    }
+  }
+  
+  // If we couldn't determine the skill number, return
+  if (!skillNumber) return;
+  
+  const skillSoundKey = `skill${skillNumber}`;
+  if (sounds.skills[skillSoundKey]) {
     // Use specific skill volume if available, otherwise use default sfx volume
-    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillName]
-      ? soundSettings.skillVolume[skillName]
+    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillSoundKey]
+      ? soundSettings.skillVolume[skillSoundKey]
       : soundSettings.sfxVolume;
     
     // Skills have high priority
     const priority = soundSettings.soundPriority.skills || 8;
     
-    playSound(sounds.skills[skillName], volume, 1.0, 0, 'skill', priority);
+    playSound(sounds.skills[skillSoundKey], volume, 1.0, 0, 'skill', priority);
   }
 }
 

@@ -7006,16 +7006,49 @@ function checkWaveCompletion() {
 const ATOMIC_BOMB_FALL_DURATION = 150; // 2.5 seconds at 60fps
 const ATOMIC_BOMB_FALL_DURATION_MS = ATOMIC_BOMB_FALL_DURATION * (1000 / 60); // in milliseconds
 
+// Skill name constants
+const SkillName = {
+  STAR_BLAST: "STAR_BLAST",
+  MACHINE_GUN: "MACHINE_GUN",
+  SHIELD: "SHIELD",
+  FREEZE: "FREEZE",
+  REJUVENATION: "REJUVENATION",
+  INFERNAL_RAGE: "INFERNAL_RAGE",
+  QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
+  APOCALYPTIC_DEVASTATION: "APOCALYPTIC_DEVASTATION"
+};
+
+// Mapping of skill numbers to names for backward compatibility
+const skillNumberToName = {
+  1: SkillName.STAR_BLAST,
+  2: SkillName.MACHINE_GUN,
+  3: SkillName.SHIELD,
+  4: SkillName.FREEZE,
+  5: SkillName.REJUVENATION,
+  6: SkillName.INFERNAL_RAGE,
+  7: SkillName.QUANTUM_ACCELERATION,
+  8: SkillName.APOCALYPTIC_DEVASTATION
+};
+
 // Skill system
-function activateSkill(skillNumber) {
-  // Handle both string and number formats
-  let skillKey;
-  if (typeof skillNumber === "string" && skillNumber.startsWith("skill")) {
-    skillKey = skillNumber;
-    skillNumber = parseInt(skillNumber.replace("skill", ""));
+function activateSkill(skillNameOrNumber) {
+  // Convert number to skill name if needed
+  let skillName = skillNameOrNumber;
+  let skillNumber;
+  
+  if (typeof skillNameOrNumber === "number") {
+    skillName = skillNumberToName[skillNameOrNumber];
+    skillNumber = skillNameOrNumber;
+  } else if (typeof skillNameOrNumber === "string" && skillNameOrNumber.startsWith("skill")) {
+    // Handle legacy string format "skill1", "skill2", etc.
+    skillNumber = parseInt(skillNameOrNumber.replace("skill", ""));
+    skillName = skillNumberToName[skillNumber];
   } else {
-    skillKey = `skill${skillNumber}`;
+    // It's already a skill name, find the corresponding number for legacy code
+    skillNumber = Object.keys(skillNumberToName).find(key => skillNumberToName[key] === skillName);
   }
+  
+  const skillKey = `skill${skillNumber}`;
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
   if (
@@ -7031,36 +7064,36 @@ function activateSkill(skillNumber) {
   playSkillSound(skillNumber);
 
   // Apply skill effect with accumulative power-ups
-  switch (skillNumber) {
-    case 1: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
+  switch (skillName) {
+    case SkillName.STAR_BLAST: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
       activateStarBlastSkill();
       break;
 
-    case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
+    case SkillName.MACHINE_GUN: // Machine Gun - fire much faster for 5 seconds for each squad member
       activateMachineGunSkill();
       break;
 
-    case 3: // Shield - protective barrier that follows the squad
+    case SkillName.SHIELD: // Shield - protective barrier that follows the squad
       activateShieldSkill();
       break;
 
-    case 4: // Freeze - ice effect that freezes enemies
+    case SkillName.FREEZE: // Freeze - ice effect that freezes enemies
       activateFreezeSkill();
       break;
 
-    case 5: // Rejuvenation Field - Advanced healing with regeneration over time
+    case SkillName.REJUVENATION: // Rejuvenation Field - Advanced healing with regeneration over time
       activateRejuvenationSkill();
       break;
 
-    case 6: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
+    case SkillName.INFERNAL_RAGE: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
       activateInfernalRageSkill();
       break;
 
-    case 7: // Quantum Acceleration - Advanced speed boost with time dilation effects
+    case SkillName.QUANTUM_ACCELERATION: // Quantum Acceleration - Advanced speed boost with time dilation effects
       activateQuantumAccelerationSkill();
       break;
 
-    case 8: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
+    case SkillName.APOCALYPTIC_DEVASTATION: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
       activateApocalypticDevastation();
       break;
   }
@@ -8102,6 +8135,8 @@ function createSkillBarElement() {
 
     // Add click/touch event handler to activate the skill
     const skillNumber = i; // Capture the current skill number
+    // Map skill number to skill name
+    const skillNameForButton = skillNumberToName[skillNumber];
 
     // Visual feedback on mouse/touch down
     skillDiv.mousePressed(function () {
@@ -8111,7 +8146,7 @@ function createSkillBarElement() {
         this.style("background-color", "rgba(80, 80, 80, 0.9)");
 
         // Activate the skill
-        activateSkill(skillNumber);
+        activateSkill(skillNameForButton);
 
         // Reset visual state after a short delay
         setTimeout(() => {
@@ -8129,7 +8164,7 @@ function createSkillBarElement() {
         this.style("background-color", "rgba(80, 80, 80, 0.9)");
 
         // Activate the skill
-        activateSkill(skillNumber);
+        activateSkill(skillNameForButton);
 
         // Reset visual state after a short delay
         setTimeout(() => {
@@ -8723,24 +8758,24 @@ function keyPressed() {
   if (gameState === GameState.PLAYING) {
     // Bottom row skills (A, S, D, F)
     if (key === "a" || key === "A") {
-      activateSkill(1);
+      activateSkill(SkillName.STAR_BLAST);
     } else if (key === "s" || key === "S") {
-      activateSkill(2);
+      activateSkill(SkillName.MACHINE_GUN);
     } else if (key === "d" || key === "D") {
-      activateSkill(3);
+      activateSkill(SkillName.SHIELD);
     } else if (key === "f" || key === "F") {
-      activateSkill(4);
+      activateSkill(SkillName.FREEZE);
     }
 
     // Top row skills (Q, W, E, R)
     if (key === "q" || key === "Q") {
-      activateSkill(5);
+      activateSkill(SkillName.REJUVENATION);
     } else if (key === "w" || key === "W") {
-      activateSkill(6);
+      activateSkill(SkillName.INFERNAL_RAGE);
     } else if (key === "e" || key === "E") {
-      activateSkill(7);
+      activateSkill(SkillName.QUANTUM_ACCELERATION);
     } else if (key === "r" || key === "R") {
-      activateSkill(8);
+      activateSkill(SkillName.APOCALYPTIC_DEVASTATION);
     }
   }
 }
@@ -9427,30 +9462,30 @@ function keyPressed() {
 
   // Handle skill activation with keyboard shortcuts
   if (gameState === "playing") {
-    // Map keys A, S, D, F, Q, W, E, R to skills 1-8
+    // Map keys A, S, D, F, Q, W, E, R to skills
     if (key === "a" || key === "A") {
-      activateSkill(1);
+      activateSkill(SkillName.STAR_BLAST);
       return false;
     } else if (key === "s" || key === "S") {
-      activateSkill(2);
+      activateSkill(SkillName.MACHINE_GUN);
       return false;
     } else if (key === "d" || key === "D") {
-      activateSkill(3);
+      activateSkill(SkillName.SHIELD);
       return false;
     } else if (key === "f" || key === "F") {
-      activateSkill(4);
+      activateSkill(SkillName.FREEZE);
       return false;
     } else if (key === "q" || key === "Q") {
-      activateSkill(5);
+      activateSkill(SkillName.REJUVENATION);
       return false;
     } else if (key === "w" || key === "W") {
-      activateSkill(6);
+      activateSkill(SkillName.INFERNAL_RAGE);
       return false;
     } else if (key === "e" || key === "E") {
-      activateSkill(7);
+      activateSkill(SkillName.QUANTUM_ACCELERATION);
       return false;
     } else if (key === "r" || key === "R") {
-      activateSkill(8);
+      activateSkill(SkillName.APOCALYPTIC_DEVASTATION);
       return false;
     }
   }
