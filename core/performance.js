@@ -211,8 +211,17 @@ const PerformanceManager = {
     // Enable hardware acceleration hints
     if (typeof _renderer !== 'undefined' && _renderer.GL) {
       const gl = _renderer.GL;
-      gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
-      gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
+      
+      // Check if GENERATE_MIPMAP_HINT is available
+      if (gl.GENERATE_MIPMAP_HINT !== undefined) {
+        gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
+      }
+      
+      // Check if FRAGMENT_SHADER_DERIVATIVE_HINT is available
+      // This is part of the OES_standard_derivatives extension and may not be available in all WebGL implementations
+      if (gl.FRAGMENT_SHADER_DERIVATIVE_HINT !== undefined) {
+        gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
+      }
     }
   },
   

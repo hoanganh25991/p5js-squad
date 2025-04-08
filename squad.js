@@ -317,10 +317,6 @@ function setup() {
 }
 
 // Initialize all UI elements
-function initializeUI() {
-  createUiUsingDomElements();
-  createPerformanceSettingsUI();
-}
 
 // Clean up memory and optimize performance
 function cleanupMemory() {
@@ -340,24 +336,6 @@ function cleanupMemory() {
       }
     }
   }, 1000);
-}
-
-function createUiUsingDomElements() {
-  // Create the HUD DOM elements
-  createStatusBoardElements();
-  createTechnicalBoardElements();
-  // Create Menu - Control
-  createMenuElement();
-  createPauseElement();
-  createResumeElement();
-  createGameOverElement();
-  // Create container for controls
-  createControlsContainer();
-  // Create skill bar and d-pad inside the container
-  createDirectionalPadElement();
-  createSkillBarElement();
-  // Create sound toggle button but don't initialize sounds yet
-  createSoundToggleButton();
 }
 
 // ===== MEMORY MANAGEMENT =====
@@ -7258,25 +7236,6 @@ function updateStatusBoard() {
 
 let lastTechUpdateTime = 0;
 const TECH_UPDATE_INTERVAL = 15; // Update tech stats less frequently (every 15 frames)
-
-function createTechnicalBoardElements() {
-  // if (!DEBUG_MODE) {
-  //   return;
-  // }
-  // Create technical board element
-  techBoard = createDiv("");
-  techBoard.id("tech-board");
-  techBoard.position(windowWidth - 270, 10);
-  techBoard.style("background-color", "rgba(0, 0, 0, 0.8)");
-  techBoard.style("color", "white");
-  techBoard.style("padding", "10px");
-  techBoard.style("border-radius", "5px");
-  techBoard.style("width", "250px");
-  techBoard.style("font-family", "monospace");
-  techBoard.style("z-index", "1000");
-  techBoard.style("text-align", "right");
-  techBoard.style("use-select", "none");
-}
 
 // FPS smoothing for more stable display
 // fpsHistory is already declared at the top of the file
