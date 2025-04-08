@@ -613,71 +613,114 @@ function isGPUAccelerationEnabled() {
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight, WEBGL);
-
-  // Detect if we're on a mobile device
-  isMobileDevice = PerformanceManager.detectMobileDevice();
-  console.log("Mobile device detected:", isMobileDevice);
-
-  // Add orientation change listener for mobile devices
-  if (isMobileDevice) {
-    // Use multiple methods to detect orientation changes for better cross-browser support
-
-    // Method 1: matchMedia (modern browsers)
-    if (window.matchMedia) {
-      window
-        .matchMedia("(orientation: portrait)")
-        .addEventListener("change", handleOrientationChange);
+  try {
+    // Create WebGL canvas with error handling
+    try {
+      createCanvas(windowWidth, windowHeight, WEBGL);
+    } catch (e) {
+      console.error("Error creating WebGL canvas:", e);
+      // Try again with default renderer as fallback
+      createCanvas(windowWidth, windowHeight);
     }
 
-    // Method 2: orientationchange event (older mobile browsers)
-    window.addEventListener("orientationchange", handleOrientationChange);
+    // Detect if we're on a mobile device
+    isMobileDevice = PerformanceManager.detectMobileDevice();
+    console.log("Mobile device detected:", isMobileDevice);
+    
+    // Set WebGL attributes based on device
+    if (isMobileDevice) {
+      console.log("Using mobile-optimized WebGL settings");
+      // Use more conservative WebGL settings for mobile
+      try {
+        setAttributes('antialias', false);
+        setAttributes('alpha', false);
+        setAttributes('depth', true);
+        setAttributes('preserveDrawingBuffer', false);
+      } catch (e) {
+        console.warn("Error setting WebGL attributes:", e);
+      }
+    }
 
-    // Method 3: resize event as fallback (will catch orientation changes too)
-    window.addEventListener("resize", debounce(handleOrientationChange, 250));
+    // Add orientation change listener for mobile devices
+    if (isMobileDevice) {
+      // Use multiple methods to detect orientation changes for better cross-browser support
+
+      // Method 1: matchMedia (modern browsers)
+      if (window.matchMedia) {
+        window
+          .matchMedia("(orientation: portrait)")
+          .addEventListener("change", handleOrientationChange);
+      }
+
+      // Method 2: orientationchange event (older mobile browsers)
+      window.addEventListener("orientationchange", handleOrientationChange);
+
+      // Method 3: resize event as fallback (will catch orientation changes too)
+      window.addEventListener("resize", debounce(handleOrientationChange, 250));
+    }
+
+    // Function to handle orientation changes
+    function handleOrientationChange() {
+      // Use a single timeout with a longer delay to ensure the browser has fully
+      // updated dimensions and WebGL context is stable
+      setTimeout(() => {
+        // Force WebGL context reset to prevent WebGL errors
+        try {
+          // Get the current WebGL canvas
+          const canvas = document.querySelector('canvas');
+          if (canvas) {
+            // Resize canvas to trigger WebGL context refresh
+            resizeCanvas(windowWidth, windowHeight);
+            
+            // Update perspective for the new aspect ratio
+            perspective(PI / 4, width / height, 0.1, 5000);
+            
+            // Update camera zoom based on new dimensions
+            cameraZoom = calculateDynamicCameraZoom();
+            
+            console.log(`Orientation update: zoom=${cameraZoom.toFixed(2)}, dimensions=${windowWidth}x${windowHeight}`);
+          }
+        } catch (e) {
+          console.error("Error handling orientation change:", e);
+        }
+      }, 500); // Single longer delay to ensure stability
+    }
+
+    // Helper function to update camera zoom with delay (kept for compatibility)
+    function updateCameraZoomWithDelay(delay) {
+      setTimeout(() => {
+        cameraZoom = calculateDynamicCameraZoom();
+        console.log(
+          `Orientation update (${delay}ms): zoom=${cameraZoom.toFixed(2)}`
+        );
+      }, delay);
+    }
+
+    // Debounce function to limit how often a function can be called
+    function debounce(func, wait) {
+      let timeout;
+      return function () {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
+    }
+
+    // Detect GPU capabilities
+    PerformanceManager.detectGPUCapabilities();
+
+    // Set initial performance level
+    PerformanceManager.setPerformanceLevel();
+
+    // Apply WebGL settings based on performance level
+    PerformanceManager.applyWebGLSettings();
+
+    // Set the font for all text
+    textFont(gameFont);
+  } catch (e) {
+    console.error("Error in setup:", e);
   }
-
-  // Function to handle orientation changes
-  function handleOrientationChange() {
-    // Multiple timeouts to ensure we catch the correct dimensions after orientation change
-    // Some browsers update dimensions at different times
-    updateCameraZoomWithDelay(100);
-    updateCameraZoomWithDelay(300);
-    updateCameraZoomWithDelay(500);
-  }
-
-  // Helper function to update camera zoom with delay
-  function updateCameraZoomWithDelay(delay) {
-    setTimeout(() => {
-      cameraZoom = calculateDynamicCameraZoom();
-      console.log(
-        `Orientation update (${delay}ms): zoom=${cameraZoom.toFixed(2)}`
-      );
-    }, delay);
-  }
-
-  // Debounce function to limit how often a function can be called
-  function debounce(func, wait) {
-    let timeout;
-    return function () {
-      const context = this;
-      const args = arguments;
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-  }
-
-  // Detect GPU capabilities
-  PerformanceManager.detectGPUCapabilities();
-
-  // Set initial performance level
-  PerformanceManager.setPerformanceLevel();
-
-  // Apply WebGL settings based on performance level
-  PerformanceManager.applyWebGLSettings();
-
-  // Set the font for all text
-  textFont(gameFont);
 
   // Initialize the squad with a single member
   squad.push(squadLeader);
@@ -1325,6 +1368,29 @@ function updateTechBoardVisibility() {
 
 // ===== GAME LOOP =====
 function draw() {
+  // Special handling for mobile landscape mode
+  if (isMobileDevice && windowWidth > windowHeight) {
+    // In mobile landscape mode, use a simplified rendering approach to avoid WebGL errors
+    try {
+      // Clear the background
+      background(0);
+      
+      // Display a message encouraging portrait mode
+      push();
+      resetMatrix();
+      fill(255);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("For the best experience, please rotate your device to portrait mode", width/2, height/2 - 20);
+      
+      // Continue rendering the game with simplified graphics
+      // This will use our error-handling code in the rendering functions
+      pop();
+    } catch (e) {
+      console.error("Error in mobile landscape mode handling:", e);
+    }
+  }
+  
   // Performance and memory management
   MemoryManager.checkMemoryUsage();
   updatePerformanceMetrics();
@@ -1542,30 +1608,50 @@ function draw() {
   }
 
   // Apply camera transformations with optional shake effect
-  let shakeX = 0;
-  let shakeY = 0;
+  try {
+    let shakeX = 0;
+    let shakeY = 0;
 
-  // Apply camera shake if active
-  if (typeof cameraShake === "undefined") {
-    cameraShake = 0;
+    // Apply camera shake if active
+    if (typeof cameraShake === "undefined") {
+      cameraShake = 0;
+    }
+
+    if (cameraShake > 0) {
+      shakeX = random(-cameraShake, cameraShake);
+      shakeY = random(-cameraShake, cameraShake);
+      cameraShake *= 0.9; // Decay the shake effect
+      if (cameraShake < 0.5) cameraShake = 0;
+    }
+
+    // Apply camera transformations
+    translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
+    rotateX(PI / 4); // Angle to show the entire bridge from bottom to top
+
+    // Draw the 3D game elements
+    drawGame();
+
+    // Draw the sky overlay on top of the game elements
+    // Only if not in mobile landscape mode (handled inside the function)
+    drawSkyOverlay();
+  } catch (e) {
+    console.error("Error in camera/rendering setup:", e);
+    
+    // Try to recover by resetting the WebGL context
+    try {
+      resetMatrix();
+      
+      // Display a simple error message if rendering fails
+      if (isMobileDevice && windowWidth > windowHeight) {
+        fill(0);
+        textSize(16);
+        textAlign(CENTER, CENTER);
+        text("Please rotate your device to portrait mode for better experience", width/2, height/2);
+      }
+    } catch (e2) {
+      console.error("Failed to recover from rendering error:", e2);
+    }
   }
-
-  if (cameraShake > 0) {
-    shakeX = random(-cameraShake, cameraShake);
-    shakeY = random(-cameraShake, cameraShake);
-    cameraShake *= 0.9; // Decay the shake effect
-    if (cameraShake < 0.5) cameraShake = 0;
-  }
-
-  translate(cameraOffsetX + shakeX, -cameraOffsetY + shakeY, -cameraZoom);
-  // rotateX(PI / 6.5); // Much flatter angle to show the entire bridge from bottom to top
-  rotateX(PI / 4); // Much flatter angle to show the entire bridge from bottom to top
-
-  // 3D
-  drawGame();
-
-  // Draw the sky overlay on top of the game elements
-  drawSkyOverlay();
 
   if (gameState == "playing") {
     updateGame();
@@ -1885,68 +1971,112 @@ function drawSkyAndMountains() {
 
 // Function to draw clouds that appear on top of the bridge at the horizon
 function drawSkyOverlay() {
-  // Save the current WebGL state
-  push();
-
-  // Completely reset the matrix to draw in 2D screen space
-  resetMatrix();
-
-  // Switch to 2D rendering mode
-  ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
-
-  // Move in front of everything
-  translate(0, 0, 1000);
-
-  noStroke();
-
-  // Extra size to ensure coverage beyond screen edges
-  const extraSize = Math.max(1000, width);
-
-  // ===== CLOUDS OVERLAY =====
-  // Add clouds that appear on top of the bridge near the horizon
-  // Use noise for cloud positions
-  for (let i = 0; i < 6; i++) {
-    // Reduced number of clouds
-    // Position clouds near the horizon (middle of screen)
-    const cloudX =
-      noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
-
-    // Position clouds slightly above the horizon line for better visibility of the bridge/wall
-    // Adjust based on device - higher on mobile to show more of the bridge
-    const cloudY = 420; // Slightly above center of screen in ortho mode
-
-    const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
-    const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
-
-    // Draw cloud as a series of overlapping ellipses
-    for (let j = 0; j < 5; j++) {
-      const offsetX = ((j - 2) * cloudWidth) / 6;
-      const offsetY = sin(j * 0.5) * 6;
-
-      // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
-      fill(255, 255, 255, map(j, 0, 4, 80, 120));
-      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+  try {
+    // Check if we're in mobile landscape mode - if so, skip drawing clouds
+    // This is a workaround for the WebGL context issue in mobile landscape
+    if (isMobileDevice && windowWidth > windowHeight) {
+      return; // Skip drawing clouds in mobile landscape mode
     }
-  }
+    
+    // Save the current WebGL state
+    push();
 
-  // Restore the previous state
-  pop();
+    try {
+      // Completely reset the matrix to draw in 2D screen space
+      resetMatrix();
+
+      // Switch to 2D rendering mode - use try/catch to handle potential WebGL errors
+      try {
+        ortho(-width / 2, width / 2, height / 2, -height / 2, -10000, 10000);
+      } catch (e) {
+        console.warn("Error setting ortho projection:", e);
+        // If ortho fails, try to use a simpler approach
+        resetMatrix();
+      }
+
+      // Move in front of everything
+      translate(0, 0, 1000);
+
+      noStroke();
+
+      // Extra size to ensure coverage beyond screen edges
+      const extraSize = Math.max(1000, width);
+
+      // ===== CLOUDS OVERLAY =====
+      // Add clouds that appear on top of the bridge near the horizon
+      // Use noise for cloud positions
+      for (let i = 0; i < 6; i++) {
+        // Reduced number of clouds
+        // Position clouds near the horizon (middle of screen)
+        const cloudX =
+          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
+
+        // Position clouds slightly above the horizon line for better visibility of the bridge/wall
+        // Adjust based on device - higher on mobile to show more of the bridge
+        const cloudY = 420; // Slightly above center of screen in ortho mode
+
+        const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
+        const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
+
+        // Draw cloud as a series of overlapping ellipses
+        for (let j = 0; j < 5; j++) {
+          try {
+            const offsetX = ((j - 2) * cloudWidth) / 6;
+            const offsetY = sin(j * 0.5) * 6;
+
+            // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
+            fill(255, 255, 255, map(j, 0, 4, 80, 120));
+            
+            // Use try/catch for each ellipse to prevent errors from stopping the entire function
+            try {
+              ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+            } catch (e) {
+              console.warn("Error drawing cloud ellipse:", e);
+            }
+          } catch (e) {
+            console.warn("Error in cloud calculation:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error in sky overlay rendering:", e);
+    }
+    
+    // Always try to restore the previous state
+    pop();
+  } catch (e) {
+    console.error("Critical error in drawSkyOverlay:", e);
+  }
 }
 
 function drawGame() {
-  drawPowerUpLane();
+  try {
+    // Draw the power-up lane first
+    drawPowerUpLane();
+    
+    // Draw power-up lane details (now in a separate function)
+    drawPowerUpLaneDetails();
 
-  drawPowerUps();
+    // Draw power-ups
+    drawPowerUps();
 
-  drawMainLane();
+    // Draw the main lane
+    drawMainLane();
 
-  drawSquad();
+    // Draw squad members
+    drawSquad();
 
-  drawEnemies();
+    // Draw enemies
+    drawEnemies();
 
-  drawProjectiles();
+    // Draw projectiles
+    drawProjectiles();
 
-  drawEffects();
+    // Draw visual effects
+    drawEffects();
+  } catch (e) {
+    console.error("Error in drawGame:", e);
+  }
 }
 
 function drawMainLane() {
@@ -2298,91 +2428,176 @@ function drawWallAndGate() {
 }
 
 function drawPowerUpLane() {
-  // Draw the power-up lane (extended to match main bridge)
-  push();
-  translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
-
-  // Use a slightly different fill color for better contrast
-  fill(...POWER_UP_LANE_COLOR);
-
-  // Draw the base power-up lane
-  box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
-
-  // Add lane markers/decorations for better visual guidance
-  const laneMarkers = 30; // Further increased number of lane markers for the even longer bridge
-  const stepSize = BRIDGE_LENGTH / laneMarkers;
-
-  // Draw lane markers
-  for (let i = 0; i < laneMarkers; i++) {
-    const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
+  try {
+    // Draw the power-up lane (extended to match main bridge)
     push();
-    translate(0, yPos, 5); // Position slightly above the lane
-    fill(180, 220, 255, 150); // Lighter blue with transparency
-    box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
-    pop();
-  }
+    translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
 
-  // Add power-up lane details if not on low performance mode
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    // Add glowing edge to power-up lane
-    push();
-    translate(POWER_UP_LANE_WIDTH / 2 - 5, 0, 2);
-    fill(100, 200, 255, 180); // Brighter blue for the edge
-    box(3, BRIDGE_LENGTH, 4);
-    pop();
+    // Use a slightly different fill color for better contrast
+    fill(...POWER_UP_LANE_COLOR);
 
-    // Add floating energy particles along the lane
-    const particleCount = 15;
-    const particleSpacing = BRIDGE_LENGTH / particleCount;
-
-    for (let i = 0; i < particleCount; i++) {
-      const yPos =
-        -BRIDGE_LENGTH / 2 + i * particleSpacing + particleSpacing / 2;
-
-      // Only draw particles that would be visible
-      if (yPos > -BRIDGE_LENGTH / 2 && yPos < BRIDGE_LENGTH / 2) {
-        push();
-        // Use sin function to make particles float up and down
-        const floatOffset = sin(frameCount * 0.05 + i) * 10;
-        translate(
-          random(-POWER_UP_LANE_WIDTH / 3, POWER_UP_LANE_WIDTH / 3),
-          yPos,
-          10 + floatOffset
-        );
-
-        // Pulsing glow effect
-        const pulseSize = 5 + sin(frameCount * 0.1 + i * 0.5) * 2;
-
-        // No stroke for better performance
-        noStroke();
-
-        // Inner bright core
-        fill(200, 230, 255);
-        sphere(pulseSize * 0.3);
-
-        // Outer glow
-        fill(100, 200, 255, 100);
-        sphere(pulseSize);
-        pop();
-      }
-    }
-
-    // Add support structures connecting to main bridge
-    const supportCount = 5;
-    const supportSpacing = BRIDGE_LENGTH / supportCount;
-
-    for (let i = 0; i < supportCount; i++) {
-      const yPos = -BRIDGE_LENGTH / 2 + i * supportSpacing + supportSpacing / 2;
-
+    // Draw the base power-up lane - use try/catch to handle potential WebGL errors
+    try {
+      box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
+    } catch (e) {
+      console.warn("Error drawing power-up lane box:", e);
+      // Fallback to a simpler shape if box fails
       push();
-      translate(-POWER_UP_LANE_WIDTH / 2 + 10, yPos, -5);
-      fill(130, 170, 200);
-      box(20, 30, 10);
+      translate(0, 0, 0);
+      plane(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
       pop();
     }
-  }
 
-  pop();
+    // Add lane markers/decorations for better visual guidance
+    const laneMarkers = 30; // Further increased number of lane markers for the even longer bridge
+    const stepSize = BRIDGE_LENGTH / laneMarkers;
+
+    // Draw lane markers
+    for (let i = 0; i < laneMarkers; i++) {
+      const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
+      push();
+      translate(0, yPos, 5); // Position slightly above the lane
+      fill(180, 220, 255, 150); // Lighter blue with transparency
+      
+      try {
+        box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
+      } catch (e) {
+        // Fallback to a simpler shape if box fails
+        plane(POWER_UP_LANE_WIDTH - 20, 5);
+      }
+      
+      pop();
+    }
+    
+    pop(); // Close the main push
+  } catch (e) {
+    console.error("Error in drawPowerUpLane:", e);
+  }
+}
+
+function drawPowerUpLaneDetails() {
+  try {
+    // Skip drawing detailed effects in mobile landscape mode to avoid WebGL errors
+    if (isMobileDevice && windowWidth > windowHeight) {
+      return;
+    }
+    
+    // Add power-up lane details if not on low performance mode
+    if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
+      // Add glowing edge to power-up lane
+      push();
+      translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
+      
+      try {
+        translate(POWER_UP_LANE_WIDTH / 2 - 5, 0, 2);
+        fill(100, 200, 255, 180); // Brighter blue for the edge
+        box(3, BRIDGE_LENGTH, 4);
+      } catch (e) {
+        console.warn("Error drawing power-up lane edge:", e);
+        // Fallback to a simpler shape
+        try {
+          translate(0, 0, 0);
+          fill(100, 200, 255, 150);
+          plane(3, BRIDGE_LENGTH);
+        } catch (e2) {
+          console.warn("Fallback rendering also failed:", e2);
+        }
+      }
+      pop();
+
+      // Add floating energy particles along the lane
+      const particleCount = 15;
+      const particleSpacing = BRIDGE_LENGTH / particleCount;
+
+      for (let i = 0; i < particleCount; i++) {
+        const yPos = -BRIDGE_LENGTH / 2 + i * particleSpacing + particleSpacing / 2;
+
+        // Only draw particles that would be visible
+        if (yPos > -BRIDGE_LENGTH / 2 && yPos < BRIDGE_LENGTH / 2) {
+          push();
+          // Use sin function to make particles float up and down
+          const floatOffset = sin(frameCount * 0.05 + i) * 10;
+          translate(
+            BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2 + random(-POWER_UP_LANE_WIDTH / 3, POWER_UP_LANE_WIDTH / 3),
+            yPos,
+            10 + floatOffset
+          );
+
+          try {
+            // Pulsing glow effect
+            const pulseSize = 5 + sin(frameCount * 0.1 + i * 0.5) * 2;
+
+            // No stroke for better performance
+            noStroke();
+
+            // Use simpler shapes instead of spheres to avoid shader errors
+            // Inner bright core
+            fill(200, 230, 255);
+            
+            // Try to use a box instead of a sphere
+            try {
+              box(pulseSize * 0.6);
+            } catch (e) {
+              // If box fails, try an even simpler shape
+              try {
+                plane(pulseSize * 0.6, pulseSize * 0.6);
+              } catch (e2) {
+                console.warn("All fallback rendering failed for particle core");
+              }
+            }
+
+            // Outer glow - use a slightly larger box with transparency
+            fill(100, 200, 255, 100);
+            try {
+              box(pulseSize * 2);
+            } catch (e) {
+              // If box fails, try an even simpler shape
+              try {
+                plane(pulseSize * 2, pulseSize * 2);
+              } catch (e2) {
+                console.warn("All fallback rendering failed for particle glow");
+              }
+            }
+          } catch (e) {
+            console.warn("Error drawing particle:", e);
+          }
+          
+          pop();
+        }
+      }
+
+      // Add support structures connecting to main bridge
+      // Only if not in mobile landscape mode (to avoid WebGL errors)
+      if (!(isMobileDevice && windowWidth > windowHeight)) {
+        const supportCount = 5;
+        const supportSpacing = BRIDGE_LENGTH / supportCount;
+
+        for (let i = 0; i < supportCount; i++) {
+          const yPos = -BRIDGE_LENGTH / 2 + i * supportSpacing + supportSpacing / 2;
+
+          push();
+          translate(BRIDGE_WIDTH / 2 + 10, yPos, -5);
+          fill(130, 170, 200);
+          
+          try {
+            box(20, 30, 10);
+          } catch (e) {
+            console.warn("Error drawing support structure:", e);
+            // Fallback to a simpler shape
+            try {
+              plane(20, 30);
+            } catch (e2) {
+              console.warn("Fallback rendering also failed for support structure");
+            }
+          }
+          
+          pop();
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error in drawPowerUpLaneDetails:", e);
+  }
 }
 
 function drawSquad() {
@@ -10045,26 +10260,67 @@ function calculateDynamicCameraZoom() {
 
 // Window resize handling
 function windowResized() {
-  // Resize the canvas
-  resizeCanvas(windowWidth, windowHeight);
+  try {
+    // Detect orientation change
+    const wasLandscape = width > height;
+    const isNowLandscape = windowWidth > windowHeight;
+    const orientationChanged = wasLandscape !== isNowLandscape;
+    
+    // If this is a mobile device and orientation is changing to landscape,
+    // we need special handling to prevent WebGL context issues
+    if (isMobileDevice && orientationChanged && isNowLandscape) {
+      console.log("Orientation changing to landscape on mobile - using special handling");
+    }
+    
+    // Resize the canvas
+    resizeCanvas(windowWidth, windowHeight);
 
-  // Update perspective for the new aspect ratio
-  perspective(PI / 4, width / height, 0.1, 5000);
+    // Update perspective for the new aspect ratio - wrap in try/catch to handle WebGL errors
+    try {
+      perspective(PI / 4, width / height, 0.1, 5000);
+    } catch (e) {
+      console.warn("Error updating perspective:", e);
+    }
 
-  // Update camera zoom based on new dimensions
-  cameraZoom = calculateDynamicCameraZoom();
+    // Update camera zoom based on new dimensions
+    cameraZoom = calculateDynamicCameraZoom();
+    
+    // If orientation changed on mobile, force a WebGL context reset
+    if (isMobileDevice && orientationChanged) {
+      // Add a small delay to allow the browser to complete the resize
+      setTimeout(() => {
+        try {
+          // Force WebGL context refresh
+          resetMatrix();
+          
+          // Re-apply perspective
+          try {
+            perspective(PI / 4, width / height, 0.1, 5000);
+          } catch (e) {
+            console.warn("Error re-applying perspective after orientation change:", e);
+          }
+          
+          console.log("WebGL context reset after orientation change");
+        } catch (e) {
+          console.error("Error resetting WebGL context:", e);
+        }
+      }, 300);
+    }
 
-  // Remove existing UI elements to prevent duplicates
-  if (controlsContainer) controlsContainer.remove();
-  if (skillBar) skillBar.remove();
-  if (dPad) dPad.remove();
-  if (statusBoard) statusBoard.remove();
-  if (techBoard) techBoard.remove();
-  if (menuContainer) menuContainer.remove();
-  if (pauseContainer) pauseContainer.remove();
-  if (resumeContainer) resumeContainer.remove();
-  if (gameOverContainer) gameOverContainer.remove();
-  if (soundToggleButton) soundToggleButton.remove();
+    // Remove existing UI elements to prevent duplicates
+    if (controlsContainer) controlsContainer.remove();
+    if (skillBar) skillBar.remove();
+    if (dPad) dPad.remove();
+    if (statusBoard) statusBoard.remove();
+    if (techBoard) techBoard.remove();
+    if (menuContainer) menuContainer.remove();
+    if (pauseContainer) pauseContainer.remove();
+    if (resumeContainer) resumeContainer.remove();
+    if (gameOverContainer) gameOverContainer.remove();
+    if (soundToggleButton) soundToggleButton.remove();
+  } catch (e) {
+    console.error("Error in windowResized:", e);
+  }
 
   // Recreate all UI elements with the new window dimensions
   createUiUsingDomElements();
