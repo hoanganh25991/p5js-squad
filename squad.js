@@ -233,6 +233,10 @@ function preload() {
 const PerformanceManager = {
   gpuInfo: null,
   gpuTier: 0, // 0=unknown, 1=low, 2=medium, 3=high
+  targetFPS: 60, // Default target FPS
+  frameRateLimited: false, // Track if we've limited the frame rate
+  lastFPSAdjustment: 0, // Last time we adjusted the frame rate
+  benchmarkComplete: false, // Flag to track if initial benchmark is complete
   
   // Detect GPU capabilities
   detectGPUCapabilities: function() {
@@ -278,7 +282,12 @@ const PerformanceManager = {
         // Check for mid-range GPUs
         else if (rendererLower.includes('intel') || 
                  rendererLower.includes('mali-t') ||
-                 rendererLower.includes('adreno 6')) {
+                 rendererLower.includes('adreno 6') ||
+                 // Add more mid-range mobile GPUs
+                 rendererLower.includes('mali-g') ||
+                 rendererLower.includes('adreno 5') ||
+                 rendererLower.includes('apple a12') ||
+                 rendererLower.includes('apple a13')) {
           this.gpuTier = 2; // Mid-range
         }
         // Everything else is considered low-end
@@ -323,6 +332,21 @@ const PerformanceManager = {
     if (fpsHistory.length === 0) return 60; // Default to 60 if no history
     return fpsHistory.reduce((sum, fps) => sum + fps, 0) / fpsHistory.length;
   },
+  
+  // Get stable FPS (removing outliers)
+  getStableFPS: function() {
+    if (fpsHistory.length < 5) return this.getAverageFPS();
+    
+    // Sort FPS values
+    const sortedFPS = [...fpsHistory].sort((a, b) => a - b);
+    
+    // Remove top and bottom 10% to eliminate outliers
+    const cutoff = Math.floor(sortedFPS.length * 0.1);
+    const stableFPS = sortedFPS.slice(cutoff, sortedFPS.length - cutoff);
+    
+    // Calculate average of remaining values
+    return stableFPS.reduce((sum, fps) => sum + fps, 0) / stableFPS.length;
+  },
 
   // Set performance level based on device, GPU and FPS
   setPerformanceLevel: function() {
@@ -337,6 +361,7 @@ const PerformanceManager = {
     }
 
     const avgFPS = this.getAverageFPS();
+    const stableFPS = this.getStableFPS();
 
     // If we're on a mobile device, use more conservative settings
     if (isMobileDevice) {
@@ -354,13 +379,27 @@ const PerformanceManager = {
 
       // If we have enough FPS history and it's consistently low, adjust down
       if (fpsHistory.length >= 10) {
-        if (avgFPS < 30) {
+        if (stableFPS < 45) {
           currentPerformanceLevel = PerformanceLevel.LOW;
+        } else if (stableFPS > 55 && currentPerformanceLevel === PerformanceLevel.LOW) {
+          // If we're getting good performance on LOW, try upgrading to MEDIUM
+          currentPerformanceLevel = PerformanceLevel.MEDIUM;
         }
+      }
+      
+      // Set target FPS based on device capabilities
+      // For mobile, we aim for stable 60 FPS on high-end, 45-60 on mid-range
+      if (this.gpuTier === 3) {
+        this.targetFPS = 60;
+      } else if (this.gpuTier === 2) {
+        this.targetFPS = stableFPS > 55 ? 60 : 45;
+      } else {
+        this.targetFPS = 30; // Low-end devices target 30 FPS
       }
     } else {
       // On desktop, start with high performance
       currentPerformanceLevel = PerformanceLevel.HIGH;
+      this.targetFPS = 60; // Desktop always targets 60 FPS
       
       // If we have GPU info, use it to refine our decision
       if (this.gpuTier === 1) {
@@ -370,28 +409,65 @@ const PerformanceManager = {
 
       // If we have enough FPS history and it's consistently low, adjust
       if (fpsHistory.length >= 10) {
-        if (avgFPS < 30) {
+        if (stableFPS < 45) {
           currentPerformanceLevel = PerformanceLevel.MEDIUM;
-        } else if (avgFPS < 20) {
+        } else if (stableFPS < 30) {
           currentPerformanceLevel = PerformanceLevel.LOW;
         }
       }
     }
 
-    console.log("Performance level set to:", currentPerformanceLevel);
+    // Apply frame rate limiting if needed
+    this.applyFrameRateLimiting();
+    
+    console.log("Performance level set to:", currentPerformanceLevel, "Target FPS:", this.targetFPS);
+  },
+  
+  // Apply frame rate limiting based on device capabilities
+  applyFrameRateLimiting: function() {
+    // Only adjust frame rate every 5 seconds to avoid constant changes
+    const now = millis();
+    if (now - this.lastFPSAdjustment < 5000 && this.frameRateLimited) return;
+    
+    this.lastFPSAdjustment = now;
+    
+    // If we're on a mobile device, limit the frame rate to our target
+    if (isMobileDevice) {
+      frameRate(this.targetFPS);
+      this.frameRateLimited = true;
+    } else {
+      // On desktop, we can use the default frame rate
+      frameRate(60);
+      this.frameRateLimited = true;
+    }
   },
 
   // Get multipliers for effect counts based on performance level
   getEffectMultiplier: function() {
-    switch (currentPerformanceLevel) {
-      case PerformanceLevel.LOW:
-        return 0.3; // 30% of normal effects
-      case PerformanceLevel.MEDIUM:
-        return 0.6; // 60% of normal effects
-      case PerformanceLevel.HIGH:
-        return 1.0; // 100% of normal effects
-      default:
-        return 0.6; // Default to medium
+    // More aggressive reduction for mobile
+    if (isMobileDevice) {
+      switch (currentPerformanceLevel) {
+        case PerformanceLevel.LOW:
+          return 0.2; // 20% of normal effects
+        case PerformanceLevel.MEDIUM:
+          return 0.4; // 40% of normal effects
+        case PerformanceLevel.HIGH:
+          return 0.7; // 70% of normal effects
+        default:
+          return 0.4; // Default to medium
+      }
+    } else {
+      // Desktop can handle more effects
+      switch (currentPerformanceLevel) {
+        case PerformanceLevel.LOW:
+          return 0.3; // 30% of normal effects
+        case PerformanceLevel.MEDIUM:
+          return 0.6; // 60% of normal effects
+        case PerformanceLevel.HIGH:
+          return 1.0; // 100% of normal effects
+        default:
+          return 0.6; // Default to medium
+      }
     }
   },
 
@@ -403,10 +479,12 @@ const PerformanceManager = {
       setAttributes("perPixelLighting", false);
       setAttributes("depth", false);
       setAttributes("preserveDrawingBuffer", false);
+      setAttributes("alpha", false); // Disable alpha for better performance
     } else if (currentPerformanceLevel === PerformanceLevel.MEDIUM) {
-      setAttributes("antialias", true);
+      setAttributes("antialias", isMobileDevice ? false : true);
       setAttributes("perPixelLighting", false);
       setAttributes("preserveDrawingBuffer", false);
+      setAttributes("alpha", true);
       if (isMobileDevice) {
         setAttributes("depth", false);
       } else {
@@ -414,9 +492,10 @@ const PerformanceManager = {
       }
     } else {
       setAttributes("antialias", true);
-      setAttributes("perPixelLighting", true);
+      setAttributes("perPixelLighting", isMobileDevice ? false : true);
       setAttributes("depth", true);
       setAttributes("preserveDrawingBuffer", false);
+      setAttributes("alpha", true);
     }
 
     // Disable texture mipmapping to save memory
@@ -427,12 +506,73 @@ const PerformanceManager = {
       const gl = _renderer.GL;
       gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
       gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
+      
+      // Additional WebGL optimizations
+      if (isMobileDevice) {
+        // Disable depth testing for transparent objects on mobile
+        gl.disable(gl.DEPTH_TEST);
+        // Use simpler blending mode
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      }
     }
+  },
+  
+  // Run a quick benchmark to determine optimal settings
+  runBenchmark: function() {
+    if (this.benchmarkComplete) return;
+    
+    console.log("Running performance benchmark...");
+    
+    // Clear FPS history to start fresh
+    fpsHistory = [];
+    
+    // Set a timer to evaluate performance after 3 seconds
+    setTimeout(() => {
+      const benchmarkFPS = this.getStableFPS();
+      console.log("Benchmark FPS:", benchmarkFPS);
+      
+      // Set initial performance level based on benchmark
+      if (benchmarkFPS < 30) {
+        currentPerformanceLevel = PerformanceLevel.LOW;
+        this.targetFPS = 30;
+      } else if (benchmarkFPS < 50) {
+        currentPerformanceLevel = PerformanceLevel.MEDIUM;
+        this.targetFPS = 45;
+      } else {
+        currentPerformanceLevel = PerformanceLevel.HIGH;
+        this.targetFPS = 60;
+      }
+      
+      // Apply settings
+      this.applyWebGLSettings();
+      this.applyFrameRateLimiting();
+      
+      console.log("Benchmark complete. Performance level:", currentPerformanceLevel);
+      this.benchmarkComplete = true;
+    }, 3000);
   },
   
   // Check if we can use advanced GPU features
   canUseAdvancedFeatures: function() {
-    return this.gpuTier >= 1 && currentPerformanceLevel !== PerformanceLevel.LOW;
+    return this.gpuTier >= 2 && currentPerformanceLevel !== PerformanceLevel.LOW;
+  },
+  
+  // Get distance for object culling based on performance level
+  getCullingDistance: function() {
+    if (isMobileDevice) {
+      switch (currentPerformanceLevel) {
+        case PerformanceLevel.LOW:
+          return 2000; // Aggressive culling
+        case PerformanceLevel.MEDIUM:
+          return 3000;
+        case PerformanceLevel.HIGH:
+          return 4000;
+        default:
+          return 3000;
+      }
+    } else {
+      return 5000; // Desktop can render further
+    }
   }
 };
 
@@ -906,8 +1046,20 @@ function updatePerformanceMetrics() {
 
   // Check if we need to adjust performance level
   if (frameCount - lastPerformanceCheck > performanceCheckInterval) {
+    // Run initial benchmark if not done yet
+    if (!PerformanceManager.benchmarkComplete && frameCount > 180) { // Wait 3 seconds before benchmarking
+      PerformanceManager.runBenchmark();
+    }
+    
+    // Adjust performance settings based on current metrics
     PerformanceManager.setPerformanceLevel();
     lastPerformanceCheck = frameCount;
+    
+    // Log performance metrics for debugging
+    if (DEBUG_MODE) {
+      console.log(`FPS: ${Math.round(PerformanceManager.getStableFPS())}, Target: ${PerformanceManager.targetFPS}, Level: ${currentPerformanceLevel}`);
+      console.log(`Objects: Enemies: ${enemies.length}, Projectiles: ${projectiles.length}, Effects: ${effects.length}`);
+    }
   }
   
   // Update pause/resume button based on current game state
@@ -1255,15 +1407,15 @@ const MAX_EFFECTS = 500; // Maximum visual effects
 function limitEffects() {
   // Get maximum effects based on performance level
   const maxEffects = isMobileDevice
-    ? currentPerformanceLevel === "low"
-      ? 100
-      : currentPerformanceLevel === "medium"
-      ? 200
-      : 300
-    : currentPerformanceLevel === "low"
-    ? 200
-    : currentPerformanceLevel === "medium"
-    ? 350
+    ? currentPerformanceLevel === PerformanceLevel.LOW
+      ? 50  // Much more aggressive limit for low-end mobile
+      : currentPerformanceLevel === PerformanceLevel.MEDIUM
+      ? 100 // Reduced for medium mobile
+      : 150 // Reduced for high-end mobile too
+    : currentPerformanceLevel === PerformanceLevel.LOW
+    ? 150
+    : currentPerformanceLevel === PerformanceLevel.MEDIUM
+    ? 250
     : MAX_EFFECTS;
 
   // If we have too many effects, remove the oldest ones
