@@ -8868,6 +8868,10 @@ function createDirectionalPadElement() {
   const fontSize = isMobile ? 24 : 28;
   const centerOffset = dPadSize / 2 - buttonSize / 2;
   const edgeOffset = isMobile ? 15 : 20;
+  
+  // Define larger touch area size (invisible hit area)
+  const touchAreaSize = isMobile ? 80 : 90; // Much larger touch area for mobile
+  const touchAreaOffset = dPadSize / 2 - touchAreaSize / 2;
 
   // Create main d-pad container
   dPad = createDiv("");
@@ -8888,7 +8892,59 @@ function createDirectionalPadElement() {
 
   dPad.style("display", "block");
   dPad.style("pointer-events", "auto");
+  
+  // Create invisible touch areas first (they'll be below the visible buttons)
+  
+  // Up touch area
+  const upTouchArea = createDiv("");
+  upTouchArea.id("up-touch-area");
+  upTouchArea.style("position", "absolute");
+  upTouchArea.style("top", "0px");
+  upTouchArea.style("left", touchAreaOffset + "px");
+  upTouchArea.style("width", touchAreaSize + "px");
+  upTouchArea.style("height", dPadSize / 2 + "px"); // Top half of d-pad
+  upTouchArea.style("background-color", "rgba(255, 255, 255, 0)"); // Completely transparent
+  upTouchArea.style("cursor", "pointer");
+  upTouchArea.style("z-index", "1601"); // Above the d-pad background but below the buttons
+  
+  // Down touch area
+  const downTouchArea = createDiv("");
+  downTouchArea.id("down-touch-area");
+  downTouchArea.style("position", "absolute");
+  downTouchArea.style("bottom", "0px");
+  downTouchArea.style("left", touchAreaOffset + "px");
+  downTouchArea.style("width", touchAreaSize + "px");
+  downTouchArea.style("height", dPadSize / 2 + "px"); // Bottom half of d-pad
+  downTouchArea.style("background-color", "rgba(255, 255, 255, 0)");
+  downTouchArea.style("cursor", "pointer");
+  downTouchArea.style("z-index", "1601");
+  
+  // Left touch area
+  const leftTouchArea = createDiv("");
+  leftTouchArea.id("left-touch-area");
+  leftTouchArea.style("position", "absolute");
+  leftTouchArea.style("top", touchAreaOffset + "px");
+  leftTouchArea.style("left", "0px");
+  leftTouchArea.style("width", dPadSize / 2 + "px"); // Left half of d-pad
+  leftTouchArea.style("height", touchAreaSize + "px");
+  leftTouchArea.style("background-color", "rgba(255, 255, 255, 0)");
+  leftTouchArea.style("cursor", "pointer");
+  leftTouchArea.style("z-index", "1601");
+  
+  // Right touch area
+  const rightTouchArea = createDiv("");
+  rightTouchArea.id("right-touch-area");
+  rightTouchArea.style("position", "absolute");
+  rightTouchArea.style("top", touchAreaOffset + "px");
+  rightTouchArea.style("right", "0px");
+  rightTouchArea.style("width", dPadSize / 2 + "px"); // Right half of d-pad
+  rightTouchArea.style("height", touchAreaSize + "px");
+  rightTouchArea.style("background-color", "rgba(255, 255, 255, 0)");
+  rightTouchArea.style("cursor", "pointer");
+  rightTouchArea.style("z-index", "1601");
 
+  // Create visible buttons (these will be on top of the touch areas)
+  
   // Create up button
   upButton = createDiv("▲");
   upButton.id("up-button");
@@ -8909,6 +8965,7 @@ function createDirectionalPadElement() {
   upButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   upButton.style("transition", "transform 0.1s, background-color 0.2s");
   upButton.style("-webkit-tap-highlight-color", "transparent");
+  upButton.style("z-index", "1602"); // Above the touch areas
 
   // Create down button
   downButton = createDiv("▼");
@@ -8930,6 +8987,7 @@ function createDirectionalPadElement() {
   downButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   downButton.style("transition", "transform 0.1s, background-color 0.2s");
   downButton.style("-webkit-tap-highlight-color", "transparent");
+  downButton.style("z-index", "1602");
 
   // Create left button
   leftButton = createDiv("◀");
@@ -8951,6 +9009,7 @@ function createDirectionalPadElement() {
   leftButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   leftButton.style("transition", "transform 0.1s, background-color 0.2s");
   leftButton.style("-webkit-tap-highlight-color", "transparent");
+  leftButton.style("z-index", "1602");
 
   // Create right button
   rightButton = createDiv("▶");
@@ -8972,6 +9031,7 @@ function createDirectionalPadElement() {
   rightButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   rightButton.style("transition", "transform 0.1s, background-color 0.2s");
   rightButton.style("-webkit-tap-highlight-color", "transparent");
+  rightButton.style("z-index", "1602");
 
   // Create center button (optional - can be used for special actions)
   const centerButton = createDiv("•");
@@ -8993,19 +9053,33 @@ function createDirectionalPadElement() {
   centerButton.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
   centerButton.style("transition", "transform 0.1s, background-color 0.2s");
   centerButton.style("-webkit-tap-highlight-color", "transparent");
+  centerButton.style("z-index", "1602");
 
-  // Add buttons to the d-pad
+  // Add touch areas to the d-pad first (lower z-index)
+  dPad.child(upTouchArea);
+  dPad.child(downTouchArea);
+  dPad.child(leftTouchArea);
+  dPad.child(rightTouchArea);
+  
+  // Add visible buttons to the d-pad (higher z-index)
   dPad.child(upButton);
   dPad.child(downButton);
   dPad.child(leftButton);
   dPad.child(rightButton);
   dPad.child(centerButton);
 
-  // Add event handlers for buttons
+  // Add event handlers for visible buttons
   setupDirectionalButton(upButton, "up");
   setupDirectionalButton(downButton, "down");
   setupDirectionalButton(leftButton, "left");
   setupDirectionalButton(rightButton, "right");
+  
+  // Add event handlers for the larger touch areas
+  // These will trigger the same actions but provide a larger hit area
+  setupDirectionalButton(upTouchArea, "up", upButton);
+  setupDirectionalButton(downTouchArea, "down", downButton);
+  setupDirectionalButton(leftTouchArea, "left", leftButton);
+  setupDirectionalButton(rightTouchArea, "right", rightButton);
 
   // Initially hide the d-pad
   dPad.style("visibility", "hidden");
@@ -9506,15 +9580,26 @@ function createControlsContainer() {
 }
 
 // Helper function to set up event handlers for directional buttons
-function setupDirectionalButton(button, direction) {
+function setupDirectionalButton(button, direction, visualButton = null) {
+  // If visualButton is null, this is a regular button that handles both input and visual feedback
+  // If visualButton is provided, this is a touch area that triggers actions on the visual button
+  const targetButton = visualButton || button;
+  
   // Mouse down event - start moving in that direction
   button.mousePressed(function () {
     if (gameState === "playing") {
       activeDirections[direction] = true;
 
-      // Visual feedback
-      this.style("transform", "scale(0.95)");
-      this.style("background-color", "rgba(100, 100, 255, 0.9)");
+      // Visual feedback - only apply to the visual button
+      if (visualButton) {
+        // If this is a touch area, update the visual button
+        visualButton.style("transform", "scale(0.95)");
+        visualButton.style("background-color", "rgba(100, 100, 255, 0.9)");
+      } else {
+        // This is a regular button, update itself
+        this.style("transform", "scale(0.95)");
+        this.style("background-color", "rgba(100, 100, 255, 0.9)");
+      }
     }
   });
 
@@ -9523,8 +9608,13 @@ function setupDirectionalButton(button, direction) {
     activeDirections[direction] = false;
 
     // Reset visual state
-    this.style("transform", "scale(1.0)");
-    this.style("background-color", "rgba(50, 50, 50, 0.8)");
+    if (visualButton) {
+      visualButton.style("transform", "scale(1.0)");
+      visualButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+    } else {
+      this.style("transform", "scale(1.0)");
+      this.style("background-color", "rgba(50, 50, 50, 0.8)");
+    }
   });
 
   // Touch events for mobile
@@ -9533,8 +9623,13 @@ function setupDirectionalButton(button, direction) {
       activeDirections[direction] = true;
 
       // Visual feedback
-      this.style("transform", "scale(0.95)");
-      this.style("background-color", "rgba(100, 100, 255, 0.9)");
+      if (visualButton) {
+        visualButton.style("transform", "scale(0.95)");
+        visualButton.style("background-color", "rgba(100, 100, 255, 0.9)");
+      } else {
+        this.style("transform", "scale(0.95)");
+        this.style("background-color", "rgba(100, 100, 255, 0.9)");
+      }
 
       return false; // Prevent default
     }
@@ -9544,8 +9639,13 @@ function setupDirectionalButton(button, direction) {
     activeDirections[direction] = false;
 
     // Reset visual state
-    this.style("transform", "scale(1.0)");
-    this.style("background-color", "rgba(50, 50, 50, 0.8)");
+    if (visualButton) {
+      visualButton.style("transform", "scale(1.0)");
+      visualButton.style("background-color", "rgba(50, 50, 50, 0.8)");
+    } else {
+      this.style("transform", "scale(1.0)");
+      this.style("background-color", "rgba(50, 50, 50, 0.8)");
+    }
 
     return false; // Prevent default
   });
