@@ -503,37 +503,41 @@ const PerformanceManager = {
         alpha: true,
         depth: true,
         preserveDrawingBuffer: false,
-        perPixelLighting: currentPerformanceLevel === PerformanceLevel.HIGH && !isMobileDevice
+        perPixelLighting:
+          currentPerformanceLevel === PerformanceLevel.HIGH && !isMobileDevice,
       };
-      
+
       // Apply all attributes at once to avoid partial state changes
       setAttributes(attributes);
-      
+
       // Disable texture mipmapping to save memory
       textureMode(NORMAL);
-      
+
       // Enable hardware acceleration hints if renderer is available
       if (typeof _renderer !== "undefined" && _renderer.GL) {
         const gl = _renderer.GL;
-        
+
         // Use fastest hint for mipmaps and shader derivatives
         gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
         if (gl.FRAGMENT_SHADER_DERIVATIVE_HINT) {
           gl.hint(gl.FRAGMENT_SHADER_DERIVATIVE_HINT, gl.FASTEST);
         }
-        
+
         // Set consistent blending mode
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        
+
         // Ensure depth test is enabled for 3D rendering
         gl.enable(gl.DEPTH_TEST);
-        
+
         // Set depth function to less than or equal for better z-fighting handling
         gl.depthFunc(gl.LEQUAL);
       }
-      
-      console.log("WebGL settings applied for performance level:", currentPerformanceLevel);
+
+      console.log(
+        "WebGL settings applied for performance level:",
+        currentPerformanceLevel
+      );
     } catch (e) {
       console.error("Error applying WebGL settings:", e);
     }
@@ -635,16 +639,16 @@ function setup() {
     // Detect if we're on a mobile device
     isMobileDevice = PerformanceManager.detectMobileDevice();
     console.log("Mobile device detected:", isMobileDevice);
-    
+
     // Set WebGL attributes based on device
     if (isMobileDevice) {
       console.log("Using mobile-optimized WebGL settings");
       // Use more conservative WebGL settings for mobile
       try {
-        setAttributes('antialias', false);
-        setAttributes('alpha', false);
-        setAttributes('depth', true);
-        setAttributes('preserveDrawingBuffer', false);
+        setAttributes("antialias", false);
+        setAttributes("alpha", false);
+        setAttributes("depth", true);
+        setAttributes("preserveDrawingBuffer", false);
       } catch (e) {
         console.warn("Error setting WebGL attributes:", e);
       }
@@ -676,18 +680,22 @@ function setup() {
         // Force WebGL context reset to prevent WebGL errors
         try {
           // Get the current WebGL canvas
-          const canvas = document.querySelector('canvas');
+          const canvas = document.querySelector("canvas");
           if (canvas) {
             // Resize canvas to trigger WebGL context refresh
             resizeCanvas(windowWidth, windowHeight);
-            
+
             // Update perspective for the new aspect ratio
             perspective(PI / 4, width / height, 0.1, 5000);
-            
+
             // Update camera zoom based on new dimensions
             cameraZoom = calculateDynamicCameraZoom();
-            
-            console.log(`Orientation update: zoom=${cameraZoom.toFixed(2)}, dimensions=${windowWidth}x${windowHeight}`);
+
+            console.log(
+              `Orientation update: zoom=${cameraZoom.toFixed(
+                2
+              )}, dimensions=${windowWidth}x${windowHeight}`
+            );
           }
         } catch (e) {
           console.error("Error handling orientation change:", e);
@@ -741,30 +749,40 @@ function setup() {
   cameraZoom = calculateDynamicCameraZoom();
 
   // Add WebGL context lost/restored event handlers
-  const canvas = document.querySelector('canvas');
+  const canvas = document.querySelector("canvas");
   if (canvas) {
     // Handle WebGL context loss
-    canvas.addEventListener('webglcontextlost', function(e) {
-      console.warn('WebGL context lost. Preventing default behavior.');
-      e.preventDefault(); // Allow context to be restored
-      
-      // Notify user of the issue
-      alert('Graphics context was lost. The game will try to recover automatically.');
-    }, false);
-    
+    canvas.addEventListener(
+      "webglcontextlost",
+      function (e) {
+        console.warn("WebGL context lost. Preventing default behavior.");
+        e.preventDefault(); // Allow context to be restored
+
+        // Notify user of the issue
+        alert(
+          "Graphics context was lost. The game will try to recover automatically."
+        );
+      },
+      false
+    );
+
     // Handle WebGL context restoration
-    canvas.addEventListener('webglcontextrestored', function() {
-      console.log('WebGL context restored. Reinitializing...');
-      
-      // Reapply WebGL settings
-      PerformanceManager.applyWebGLSettings();
-      
-      // Reset perspective
-      perspective(PI / 4, width / height, 0.1, 5000);
-      
-      // Recalculate camera zoom
-      cameraZoom = calculateDynamicCameraZoom();
-    }, false);
+    canvas.addEventListener(
+      "webglcontextrestored",
+      function () {
+        console.log("WebGL context restored. Reinitializing...");
+
+        // Reapply WebGL settings
+        PerformanceManager.applyWebGLSettings();
+
+        // Reset perspective
+        perspective(PI / 4, width / height, 0.1, 5000);
+
+        // Recalculate camera zoom
+        cameraZoom = calculateDynamicCameraZoom();
+      },
+      false
+    );
   }
 
   // Initialize GPU acceleration systems if supported
@@ -1410,15 +1428,19 @@ function draw() {
     try {
       // Clear the background
       background(0);
-      
+
       // Display a message encouraging portrait mode
       push();
       resetMatrix();
       fill(255);
       textSize(16);
       textAlign(CENTER, CENTER);
-      text("For the best experience, please rotate your device to portrait mode", width/2, height/2 - 20);
-      
+      text(
+        "For the best experience, please rotate your device to portrait mode",
+        width / 2,
+        height / 2 - 20
+      );
+
       // Continue rendering the game with simplified graphics
       // This will use our error-handling code in the rendering functions
       pop();
@@ -1426,7 +1448,7 @@ function draw() {
       console.error("Error in mobile landscape mode handling:", e);
     }
   }
-  
+
   // Performance and memory management
   MemoryManager.checkMemoryUsage();
   updatePerformanceMetrics();
@@ -1672,17 +1694,21 @@ function draw() {
     drawSkyOverlay();
   } catch (e) {
     console.error("Error in camera/rendering setup:", e);
-    
+
     // Try to recover by resetting the WebGL context
     try {
       resetMatrix();
-      
+
       // Display a simple error message if rendering fails
       if (isMobileDevice && windowWidth > windowHeight) {
         fill(0);
         textSize(16);
         textAlign(CENTER, CENTER);
-        text("Please rotate your device to portrait mode for better experience", width/2, height/2);
+        text(
+          "Please rotate your device to portrait mode for better experience",
+          width / 2,
+          height / 2
+        );
       }
     } catch (e2) {
       console.error("Failed to recover from rendering error:", e2);
@@ -2013,7 +2039,7 @@ function drawSkyOverlay() {
     if (isMobileDevice && windowWidth > windowHeight) {
       return; // Skip drawing clouds in mobile landscape mode
     }
-    
+
     // Save the current WebGL state
     push();
 
@@ -2045,7 +2071,8 @@ function drawSkyOverlay() {
         // Reduced number of clouds
         // Position clouds near the horizon (middle of screen)
         const cloudX =
-          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) - extraSize;
+          noise(i * 0.5, frameCount * 0.0005) * (width + extraSize * 2) -
+          extraSize;
 
         // Position clouds slightly above the horizon line for better visibility of the bridge/wall
         // Adjust based on device - higher on mobile to show more of the bridge
@@ -2062,10 +2089,15 @@ function drawSkyOverlay() {
 
             // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
             fill(255, 255, 255, map(j, 0, 4, 80, 120));
-            
+
             // Use try/catch for each ellipse to prevent errors from stopping the entire function
             try {
-              ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth / 3, cloudHeight);
+              ellipse(
+                cloudX + offsetX,
+                cloudY + offsetY,
+                cloudWidth / 3,
+                cloudHeight
+              );
             } catch (e) {
               console.warn("Error drawing cloud ellipse:", e);
             }
@@ -2077,7 +2109,7 @@ function drawSkyOverlay() {
     } catch (e) {
       console.error("Error in sky overlay rendering:", e);
     }
-    
+
     // Always try to restore the previous state
     pop();
   } catch (e) {
@@ -2085,18 +2117,17 @@ function drawSkyOverlay() {
   }
 }
 
-
 function drawGame() {
   try {
     // Draw each component in a separate try-catch block to prevent cascading failures
-    
+
     // Draw the power-up lane first
     try {
       drawPowerUpLane();
     } catch (e) {
       console.error("Error drawing power-up lane:", e);
     }
-    
+
     // Draw power-ups
     try {
       drawPowerUps();
@@ -2187,7 +2218,8 @@ function drawMainLane() {
         const pillarSpacing = BRIDGE_LENGTH / pillarCount;
 
         for (let i = 0; i < pillarCount; i++) {
-          const yPos = -BRIDGE_LENGTH / 2 + i * pillarSpacing + pillarSpacing / 2;
+          const yPos =
+            -BRIDGE_LENGTH / 2 + i * pillarSpacing + pillarSpacing / 2;
 
           // Skip pillars too close to the wall
           if (Math.abs(yPos - WALL_Y) < 100) continue;
@@ -2244,7 +2276,12 @@ function drawMainLane() {
             -BRIDGE_WIDTH / 4,
             dashLength / 2
           );
-          line(BRIDGE_WIDTH / 4, -dashLength / 2, BRIDGE_WIDTH / 4, dashLength / 2);
+          line(
+            BRIDGE_WIDTH / 4,
+            -dashLength / 2,
+            BRIDGE_WIDTH / 4,
+            dashLength / 2
+          );
           pop();
         }
       } catch (e) {
@@ -2262,13 +2299,13 @@ function drawMainLane() {
     }
   } catch (e) {
     console.error("Critical error in drawMainLane:", e);
-    
+
     // Attempt to recover WebGL context if possible
     if (typeof _renderer !== "undefined" && _renderer.GL) {
       try {
         // Reset WebGL state
         resetMatrix();
-        
+
         // Reapply WebGL settings
         PerformanceManager.applyWebGLSettings();
       } catch (err) {
@@ -2537,21 +2574,21 @@ function drawPowerUpLane() {
       try {
         push();
         translate(BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2, 0, 0);
-        
+
         // Use a slightly different fill color for better contrast
         fill(...POWER_UP_LANE_COLOR);
-        
+
         // Use a 2D rect for mobile - most compatible approach
         push();
         rectMode(CENTER);
         translate(0, 0, 0);
         rect(0, 0, POWER_UP_LANE_WIDTH, BRIDGE_LENGTH);
         pop();
-        
+
         // Add minimal lane markers for mobile
         const laneMarkers = 10; // Even fewer markers for mobile
         const stepSize = BRIDGE_LENGTH / laneMarkers;
-        
+
         for (let i = 0; i < laneMarkers; i++) {
           const yPos = -BRIDGE_LENGTH / 2 + i * stepSize + stepSize / 2;
           push();
@@ -2561,14 +2598,14 @@ function drawPowerUpLane() {
           rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
           pop();
         }
-        
+
         pop();
       } catch (e) {
         console.warn("Error in mobile power-up lane rendering:", e);
       }
       return; // Exit early for mobile devices
     }
-    
+
     // For desktop devices, continue with the more detailed rendering
     try {
       // Draw the power-up lane (extended to match main bridge)
@@ -2590,7 +2627,11 @@ function drawPowerUpLane() {
         // For high-performance devices, try the 3D version with fallback
         try {
           // Check if WebGL context is still valid before drawing
-          if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
+          if (
+            drawingContext &&
+            drawingContext.isContextLost &&
+            !drawingContext.isContextLost()
+          ) {
             box(POWER_UP_LANE_WIDTH, BRIDGE_LENGTH, 0);
           } else {
             throw new Error("WebGL context is lost or invalid");
@@ -2607,7 +2648,8 @@ function drawPowerUpLane() {
       }
 
       // Add lane markers/decorations for better visual guidance
-      const laneMarkers = currentPerformanceLevel === PerformanceLevel.LOW ? 15 : 30;
+      const laneMarkers =
+        currentPerformanceLevel === PerformanceLevel.LOW ? 15 : 30;
       const stepSize = BRIDGE_LENGTH / laneMarkers;
 
       // Draw lane markers
@@ -2617,7 +2659,7 @@ function drawPowerUpLane() {
           push();
           translate(0, yPos, 5); // Position slightly above the lane
           fill(180, 220, 255, 150); // Lighter blue with transparency
-          
+
           if (currentPerformanceLevel === PerformanceLevel.LOW) {
             // Use rect() for low performance mode
             rectMode(CENTER);
@@ -2625,7 +2667,11 @@ function drawPowerUpLane() {
           } else {
             // For high performance, try 3D with fallback
             try {
-              if (drawingContext && drawingContext.isContextLost && !drawingContext.isContextLost()) {
+              if (
+                drawingContext &&
+                drawingContext.isContextLost &&
+                !drawingContext.isContextLost()
+              ) {
                 box(POWER_UP_LANE_WIDTH - 20, 5, 1); // Thin horizontal marker
               } else {
                 throw new Error("WebGL context is lost or invalid");
@@ -2636,14 +2682,14 @@ function drawPowerUpLane() {
               rect(0, 0, POWER_UP_LANE_WIDTH - 20, 5);
             }
           }
-          
+
           pop();
         } catch (e) {
           console.warn("Error drawing lane marker:", e);
           continue; // Skip this marker and continue with the next one
         }
       }
-      
+
       pop(); // Close the main push
     } catch (e) {
       console.warn("Error in desktop power-up lane rendering:", e);
@@ -3173,10 +3219,12 @@ function drawEffects() {
       }
     }
   }
-  
+
   // Draw visual effects - optimized with distance culling
   // Skip effects that are still delayed
-  for (let effect of effectsToRender.filter(e => e.delayFrames === undefined)) {
+  for (let effect of effectsToRender.filter(
+    (e) => e.delayFrames === undefined
+  )) {
     // Skip rendering effects too far from the player (distance culling)
     // Find closest squad member to use as reference
     if (squad.length > 0) {
@@ -3412,71 +3460,71 @@ function drawEffects() {
     } else if (effect.type === "barrier") {
       // Barrier effect - wall that enemies target first
       noStroke();
-      
+
       // Calculate health percentage for color
       const healthPercent = effect.health / effect.maxHealth;
-      
+
       // Color changes from yellow brick to red as health decreases
       const r = 230 + (1 - healthPercent) * 25; // 230 to 255
-      const g = 180 - (1 - healthPercent) * 130;  // 180 to 50
+      const g = 180 - (1 - healthPercent) * 130; // 180 to 50
       const b = 60 - (1 - healthPercent) * 10; // 60 to 50
-      
+
       // Draw the barrier wall
       push();
       fill(r, g, b, 200 * (effect.life / effect.life));
-      
+
       // Draw the main barrier wall
       box(effect.width, effect.thickness, effect.height);
-      
+
       // Draw health bar above the barrier
       push();
       translate(0, 0, effect.height / 2 + 20);
-      
+
       // Background of health bar
       fill(50, 50, 50, 200);
       box(effect.width * 0.8, 10, 5);
-      
+
       // Actual health bar
       translate(-effect.width * 0.4 * (1 - healthPercent), 0, 0);
       fill(r, g, b, 230);
       box(effect.width * 0.8 * healthPercent, 10, 5);
       pop();
-      
+
       // Add some detail to the barrier
       if (currentPerformanceLevel !== PerformanceLevel.LOW) {
         // Add vertical supports
         const supportCount = Math.min(5, Math.floor(effect.width / 50));
         for (let i = 0; i < supportCount; i++) {
           const offsetX = (i / (supportCount - 1) - 0.5) * effect.width;
-          
+
           push();
           translate(offsetX, 0, 0);
           fill(r * 0.8, g * 0.8, b * 0.8, 230);
           box(effect.thickness * 1.5, effect.thickness * 1.5, effect.height);
           pop();
         }
-        
+
         // Add horizontal reinforcements
         push();
         translate(0, 0, -effect.height * 0.25);
         fill(r * 0.9, g * 0.9, b * 0.9, 230);
         box(effect.width, effect.thickness * 1.2, effect.thickness * 1.2);
         pop();
-        
+
         push();
         translate(0, 0, effect.height * 0.25);
         fill(r * 0.9, g * 0.9, b * 0.9, 230);
         box(effect.width, effect.thickness * 1.2, effect.thickness * 1.2);
         pop();
       }
-      
+
       // Add energy field effect
       if (currentPerformanceLevel === PerformanceLevel.HIGH) {
         for (let i = 0; i < 5; i++) {
           if (frameCount % 10 === i) {
-            const offsetX = random(-effect.width/2, effect.width/2);
-            const offsetZ = random(-effect.height/2, effect.height/2);
-            
+            const offsetX = random(-effect.width / 2, effect.width / 2);
+            const offsetZ = random(-effect.height / 2, effect.height / 2);
+
             effects.push({
               x: effect.x + offsetX,
               y: effect.y,
@@ -3490,7 +3538,7 @@ function drawEffects() {
           }
         }
       }
-      
+
       pop();
     } else if (effect.type === "machineGun") {
       // Machine Gun effect - visual indicator for active machine gun skill
@@ -5766,15 +5814,15 @@ function drawPowerUps() {
         try {
           push();
           translate(powerUp.x, powerUp.y, powerUp.z + POWER_UP_SIZE / 2);
-          
+
           // Simplified rotation for mobile
           let rotationAmount = powerUp.rotation || 0;
           rotationAmount += powerUp.rotationSpeed || 0.02;
           powerUp.rotation = rotationAmount;
-          
+
           rotateX(rotationAmount);
           rotateY(rotationAmount * 0.7);
-          
+
           // Use simplified shapes for all power-ups on mobile
           if (powerUp.type === "mirror") {
             fill(WEAPON_COLORS.mirror);
@@ -5810,7 +5858,7 @@ function drawPowerUps() {
       }
       return; // Skip the rest of the function for mobile devices
     }
-    
+
     // For desktop devices, continue with the full rendering
     try {
       // Clear any remaining visual artifacts at the beginning of each frame
@@ -5848,7 +5896,8 @@ function drawPowerUps() {
         rotateY(rotationAmount * 0.7);
 
         // Add a slight hover effect
-        const hoverOffset = sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
+        const hoverOffset =
+          sin(frameCount * 0.05 + (powerUp.pulsePhase || 0)) * 3;
         translate(0, 0, hoverOffset);
 
         // Different shapes for different power-up types - with simplified rendering for distant power-ups
@@ -6565,7 +6614,7 @@ function updateEnemies() {
   let shieldX = shieldEffect ? shieldEffect.x : targetX;
   let shieldY = shieldEffect ? shieldEffect.y : targetY;
   let shieldRadius = shieldEffect ? shieldEffect.size : 0; // Adjust size factor as needed
-  
+
   // Find the barrier effect
   let barrierEffect = effects.find((effect) => effect.type === "barrier");
   let barrierX = barrierEffect ? barrierEffect.x : null;
@@ -6606,38 +6655,44 @@ function updateEnemies() {
     // Check if there's an active barrier to target
     let hasBarrier = barrierEffect !== undefined && barrierX !== null;
     let targetingBarrier = false;
-    
+
     if (hasBarrier) {
       // Calculate distance to barrier
       const distToBarrierY = Math.abs(barrierY - enemy.y);
       const distToBarrierX = Math.abs(barrierX - enemy.x);
-      
+
       // Check if enemy is within range to target the barrier
       // Only target the barrier if the enemy is close enough and within the barrier's width
-      if (distToBarrierY < ENEMY_FIGHT_DISTANCE_THRESHOLD && distToBarrierX < barrierWidth/2 + enemy.size) {
+      if (
+        distToBarrierY < ENEMY_FIGHT_DISTANCE_THRESHOLD &&
+        distToBarrierX < barrierWidth / 2 + enemy.size
+      ) {
         targetingBarrier = true;
-        
+
         // Calculate vector to barrier
         const dx = barrierX - enemy.x;
         const dy = barrierY - enemy.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
+
         // Normalize and apply speed consistently
         if (dist > 0) {
           enemy.x += (dx / dist) * enemy.speed * 2;
           enemy.y += (dy / dist) * enemy.speed * 2;
         }
-        
+
         // Check for collision with barrier
         const barrierThickness = barrierEffect.thickness || WALL_THICKNESS;
-        if (dist < enemy.size/2 + barrierThickness/2) {
+        if (dist < enemy.size / 2 + barrierThickness / 2) {
           // Enemy is hitting the barrier
-          
+
           // Damage the barrier
-          const damageAmount = enemy.type.includes('boss') ? 5 : 
-                             enemy.type === 'elite' ? 2 : 1;
+          const damageAmount = enemy.type.includes("boss")
+            ? 5
+            : enemy.type === "elite"
+            ? 2
+            : 1;
           barrierEffect.health -= damageAmount;
-          
+
           // Create hit effect
           if (frameCount % 5 === 0) {
             effects.push({
@@ -6650,27 +6705,33 @@ function updateEnemies() {
               color: [200, 100, 100],
             });
           }
-          
+
           // If barrier is destroyed, remove it
           if (barrierEffect.health <= 0) {
             // Find the barrier effect index and remove it
-            const barrierIndex = effects.findIndex(effect => effect === barrierEffect);
+            const barrierIndex = effects.findIndex(
+              (effect) => effect === barrierEffect
+            );
             if (barrierIndex !== -1) {
               // Call the onDestroy callback if it exists
-              if (typeof barrierEffect.onDestroy === 'function') {
+              if (typeof barrierEffect.onDestroy === "function") {
                 barrierEffect.onDestroy();
               } else {
                 // Fallback to the old method if onDestroy doesn't exist
                 createBarrierCollapseEffect(
-                  {x: barrierEffect.x, y: barrierEffect.y, z: barrierEffect.z},
+                  {
+                    x: barrierEffect.x,
+                    y: barrierEffect.y,
+                    z: barrierEffect.z,
+                  },
                   barrierEffect.width,
                   barrierEffect.height
                 );
-                
+
                 // Decrement active barriers count
                 skills.skill9.activeBarriers--;
               }
-              
+
               // Remove the barrier
               effects.splice(barrierIndex, 1);
             }
@@ -6678,7 +6739,7 @@ function updateEnemies() {
         }
       }
     }
-    
+
     // If not targeting barrier, check if enemy is close to the squad
     if (!targetingBarrier) {
       const distanceToSquadY = Math.abs(targetY - enemy.y);
@@ -7202,19 +7263,24 @@ function activateSkill(skillNameOrNumber) {
   // Convert number to skill name if needed
   let skillName = skillNameOrNumber;
   let skillNumber;
-  
+
   if (typeof skillNameOrNumber === "number") {
     skillName = skillNumberToName[skillNameOrNumber];
     skillNumber = skillNameOrNumber;
-  } else if (typeof skillNameOrNumber === "string" && skillNameOrNumber.startsWith("skill")) {
+  } else if (
+    typeof skillNameOrNumber === "string" &&
+    skillNameOrNumber.startsWith("skill")
+  ) {
     // Handle legacy string format "skill1", "skill2", etc.
     skillNumber = parseInt(skillNameOrNumber.replace("skill", ""));
     skillName = skillNumberToName[skillNumber];
   } else {
     // It's already a skill name, find the corresponding number for legacy code
-    skillNumber = Object.keys(skillNumberToName).find(key => skillNumberToName[key] === skillName);
+    skillNumber = Object.keys(skillNumberToName).find(
+      (key) => skillNumberToName[key] === skillName
+    );
   }
-  
+
   const skillKey = `skill${skillNumber}`;
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
@@ -7263,7 +7329,7 @@ function activateSkill(skillNameOrNumber) {
     case SkillName.APOCALYPTIC_DEVASTATION: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
       activateApocalypticDevastation();
       break;
-      
+
     case SkillName.BARRIER: // Barrier - Places a wall that enemies target first
       activateBarrierSkill();
       break;
@@ -7399,18 +7465,18 @@ function activateApocalypticDevastation() {
  * Places a wall that enemies target first, protecting the squad
  */
 function activateBarrierSkill() {
-    // Check if maximum number of barriers has been reached
-    if (skills.skill9.activeBarriers >= skills.skill9.maxBarriers) {
-      // Play error sound and show error message
-      playUISound("error");
-      return; // Exit the function without creating a barrier
-    }
-    
+  // Check if maximum number of barriers has been reached
+  if (skills.skill9.activeBarriers >= skills.skill9.maxBarriers) {
+    // Play error sound and show error message
+    playUISound("error");
+    return; // Exit the function without creating a barrier
+  }
+
   // Calculate barrier parameters based on player stats
   const barrierHealth = skills.skill9.health + damageBoost * 20; // Barrier health enhanced by damage boost
   const barrierWidth = BRIDGE_WIDTH * 0.8 + aoeBoost * 10; // Barrier width enhanced by AOE boost
   const barrierHeight = WALL_HEIGHT * 0.8 + aoeBoost * 5; // Barrier height enhanced by AOE boost
-  
+
   // Calculate barrier position - 200 units in front of the squad
   let barrierPosition = { x: 0, y: 0, z: 0 };
   if (squad.length > 0) {
@@ -7420,10 +7486,10 @@ function activateBarrierSkill() {
       z: squad[0].z,
     };
   }
-  
+
   // Increment active barriers count
   skills.skill9.activeBarriers++;
-  
+
   // Create a barrier effect with no lifetime (will exist until destroyed)
   const barrier = {
     x: barrierPosition.x,
@@ -7439,15 +7505,15 @@ function activateBarrierSkill() {
     color: [230, 180, 60, 200], // Yellow brick color for the barrier
     forceRenderDetail: true,
     // Add a callback for when the barrier is destroyed
-    onDestroy: function() {
+    onDestroy: function () {
       skills.skill9.activeBarriers--; // Decrement active barriers count
       createBarrierCollapseEffect(barrierPosition, barrierWidth, barrierHeight);
-    }
+    },
   };
-  
+
   // Add the barrier to effects
   effects.push(barrier);
-  
+
   // Create deployment effect
   createBarrierDeploymentEffect(barrierPosition, barrierWidth, barrierHeight);
 }
@@ -7467,13 +7533,13 @@ function createBarrierDeploymentEffect(position, width, height) {
     color: [230, 180, 60],
     forceRenderDetail: true,
   });
-  
+
   // Create particle effects along the barrier
   const particleCount = Math.min(20, Math.floor(width / 20)); // 1 particle per 20 units of width, max 20
-  
+
   for (let i = 0; i < particleCount; i++) {
     const offsetX = (i / (particleCount - 1) - 0.5) * width;
-    
+
     effects.push({
       x: position.x + offsetX,
       y: position.y,
@@ -7502,14 +7568,14 @@ function createBarrierCollapseEffect(position, width, height) {
     color: [230, 180, 60, 150],
     forceRenderDetail: false,
   });
-  
+
   // Create particle effects for the collapse
   const particleCount = Math.min(15, Math.floor(width / 30)); // 1 particle per 30 units of width, max 15
-  
+
   for (let i = 0; i < particleCount; i++) {
     const offsetX = (i / (particleCount - 1) - 0.5) * width;
-    const offsetZ = random(-height/4, height/4);
-    
+    const offsetZ = random(-height / 4, height / 4);
+
     effects.push({
       x: position.x + offsetX,
       y: position.y,
@@ -7529,16 +7595,16 @@ function applyApocalypticDamage(bombCenter, atomicDamage) {
   // This reduces the number of distance calculations and improves performance
   const BATCH_SIZE = 20; // Process enemies in batches
   const totalBatches = Math.ceil(enemies.length / BATCH_SIZE);
-  
+
   for (let batch = 0; batch < totalBatches; batch++) {
     const startIdx = batch * BATCH_SIZE;
     const endIdx = Math.min(startIdx + BATCH_SIZE, enemies.length);
-    
+
     // Process this batch of enemies
     for (let i = startIdx; i < endIdx; i++) {
       const enemy = enemies[i];
       if (!enemy) continue; // Skip if enemy doesn't exist
-      
+
       // Calculate distance from explosion center
       const dx = enemy.x - bombCenter.x;
       const dy = enemy.y - bombCenter.y;
@@ -7577,7 +7643,7 @@ function applyRadiationDamage(bombCenter) {
       // Apply radiation damage
       const radiationDamage = 50 + damageBoost * 5;
       enemy.health -= radiationDamage;
-      
+
       // Create a single visual indicator at random positions in the radiation field
       // instead of on each enemy
       if (random() > 0.95) {
@@ -8503,247 +8569,164 @@ function updateSkillBar() {
 
   skillBar.style("visibility", "visible");
   for (let i = 1; i <= 12; i++) {
-    const skillKey = `skill${i}`;
-    const skill = skills[skillKey];
+    const skill = skills[`skill${i}`];
+
     if (!skill) {
+      console.log(`Skill ${i} not defined`);
       continue;
     }
-    const cooldownRemaining =
-    skill.cooldown - (frameCount - skill.lastUsed);
-    const cooldownPercent =
-      max(0, cooldownRemaining) / skill.cooldown;
+
+    const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
+    const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
 
     // Get skill element and check for active state
     const skillDiv = select(`#skill${i}`);
 
+    if (!skillDiv) {
+      console.log(`skillDiv ${i} not exists`)
+      return;
+    }
+
     // Check if skills are active
-    const isStarBlastActive = i === 1 && skills.skill1.active;
-    const isMachineGunActive = i === 2 && skills.skill2.active;
-    const isShieldActive = i === 3 && skills.skill3.active;
-    const isFreezeActive = i === 4 && skills.skill4.active;
+    const isSkillActive = skill.active;
     const isAtomicBombActive =
-      i === 8 && frameCount - skills.skill8.lastUsed < 120; // Show atomic effect for 2 seconds after activation
+      i == 8 && frameCount - skills.skill8.lastUsed < 120; // Show atomic effect for 2 seconds after activation
 
-    const isSkillActive =
-      isStarBlastActive ||
-      isMachineGunActive ||
-      isShieldActive ||
-      isFreezeActive;
+    if (isSkillActive) {
 
-    // Update active skill appearance
-    if (skillDiv) {
-      if (isStarBlastActive) {
-        // Pulsing red/orange background for active star blast skill
-        const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
-        skillDiv.style(
-          "background-color",
-          `rgba(255, 100, 0, ${pulseIntensity})`
-        );
-        skillDiv.style("box-shadow", "0 0 10px rgba(255, 100, 0, 0.8)");
+      // Get colors for current skill
+      const colors = generateSkillColors(i);
 
-        // Calculate remaining time percentage for active skill
-        const activeTimeRemaining = skills.skill1.endTime - frameCount;
+      // Pulsing background effect
+      const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
+      const [r, g, b] = colors.primary;
 
-        // Add a timer overlay for active duration
-        select(`#skillName${i}`).html(
-          `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
-        );
+      // Apply visual effects
+      skillDiv.style(
+        "background-color",
+        `rgba(${r}, ${g}, ${b}, ${pulseIntensity})`
+      );
+      skillDiv.style("box-shadow", `0 0 10px rgba(${r}, ${g}, ${b}, 0.8)`);
 
-        // Skill key should appear in bright orange
-        select(`#skillKey${i}`).style("color", "rgba(255, 255, 200, 1.0)");
-      } else if (isMachineGunActive) {
-        // Pulsing yellow/gold background for active machine gun skill
-        const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
-        skillDiv.style(
-          "background-color",
-          `rgba(255, 215, 0, ${pulseIntensity})`
-        );
-        skillDiv.style("box-shadow", "0 0 10px rgba(255, 215, 0, 0.8)");
+      // Calculate remaining time percentage for active skill
+      const activeTimeRemaining = skills[`skill${i}`].endTime - frameCount;
 
-        // Calculate remaining time percentage for active skill
-        const activeTimeRemaining = skills.skill2.endTime - frameCount;
-        const activeTimePercent =
-          activeTimeRemaining / skills.skill2.activeDuration;
+      // Add a timer overlay for active duration
+      select(`#skillName${i}`).html(
+        `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
+      );
 
-        // Add a timer overlay for active duration
-        select(`#skillName${i}`).html(
-          `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
-        );
-      } else if (isShieldActive) {
-        // Pulsing blue background for active shield skill
-        const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
-        skillDiv.style(
-          "background-color",
-          `rgba(0, 150, 255, ${pulseIntensity})`
-        );
-        skillDiv.style("box-shadow", "0 0 10px rgba(0, 150, 255, 0.8)");
+      // Skill key should appear in bright color
+      select(`#skillKey${i}`).style("color", colors.keyColor);
+    } else if (isAtomicBombActive) {
+      // Atomic bomb explosion effect in skill bar
+      // Rapidly flashing red/orange/yellow background
+      const explosionPhase = frameCount % 6; // Create a rapid flashing effect
+      let bgColor;
 
-        // Calculate remaining time percentage for active skill
-        const activeTimeRemaining = skills.skill3.endTime - frameCount;
-        const activeTimePercent =
-          activeTimeRemaining / skills.skill3.activeDuration;
-
-        // Add a timer overlay for active duration
-        select(`#skillName${i}`).html(
-          `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
-        );
-
-        // Skill key should appear in bright blue
-        select(`#skillKey${i}`).style("color", "rgba(200, 255, 255, 1.0)");
-      } else if (isFreezeActive) {
-        // Pulsing ice blue background for active freeze skill
-        const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
-        skillDiv.style(
-          "background-color",
-          `rgba(100, 200, 255, ${pulseIntensity})`
-        );
-        skillDiv.style("box-shadow", "0 0 10px rgba(100, 200, 255, 0.8)");
-
-        // Calculate remaining time percentage for active skill
-        const activeTimeRemaining = skills.skill4.endTime - frameCount;
-
-        // Add a timer overlay for active duration
-        select(`#skillName${i}`).html(
-          `${getSkillName(i)} (${Math.ceil(activeTimeRemaining / 60)}s)`
-        );
-
-        // Skill key should appear in bright ice blue
-        select(`#skillKey${i}`).style("color", "rgba(200, 240, 255, 1.0)");
-      } else if (isAtomicBombActive) {
-        // Atomic bomb explosion effect in skill bar
-        // Rapidly flashing red/orange/yellow background
-        const explosionPhase = frameCount % 6; // Create a rapid flashing effect
-        let bgColor;
-
-        // Cycle through explosion colors
-        if (explosionPhase < 2) {
-          bgColor = "rgba(255, 255, 220, 0.9)"; // Bright flash
-        } else if (explosionPhase < 4) {
-          bgColor = "rgba(255, 150, 50, 0.8)"; // Orange fire
-        } else {
-          bgColor = "rgba(150, 50, 0, 0.7)"; // Dark red/brown
-        }
-
-        // Apply explosion styles
-        skillDiv.style("background-color", bgColor);
-        skillDiv.style("box-shadow", "0 0 20px rgba(255, 100, 0, 0.9)");
-
-        // Create pulsing size effect
-        const pulseScale = 1.0 + 0.1 * Math.sin(frameCount * 0.5);
-        skillDiv.style("transform", `scale(${pulseScale})`);
-
-        // Mushroom cloud icon on the skill
-        select(`#skillKey${i}`).html("☢");
-        select(`#skillKey${i}`).style("color", "rgba(255, 50, 0, 1.0)");
-        select(`#skillKey${i}`).style("text-shadow", "0 0 10px white");
-
-        // Add explosion text effect
-        select(`#skillName${i}`).html("☢ BOOM! ☢");
-        select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+      // Cycle through explosion colors
+      if (explosionPhase < 2) {
+        bgColor = "rgba(255, 255, 220, 0.9)"; // Bright flash
+      } else if (explosionPhase < 4) {
+        bgColor = "rgba(255, 150, 50, 0.8)"; // Orange fire
       } else {
-        // Reset to normal appearance
-        skillDiv.style("background-color", "rgba(50, 50, 50, 0.27)");
-        skillDiv.style("box-shadow", "none");
-        skillDiv.style("transform", "scale(1.0)");
-
-        // Reset the skill name to normal
-        select(`#skillName${i}`).html(getSkillName(i));
-        select(`#skillName${i}`).style("color", "white");
-
-        // Reset key display
-        if (i === 8) {
-          select(`#skillKey${i}`).html("R");
-        }
-
-        // Reset key color
-        select(`#skillKey${i}`).style("color", "white");
-        select(`#skillKey${i}`).style("text-shadow", "none");
+        bgColor = "rgba(150, 50, 0, 0.7)"; // Dark red/brown
       }
+
+      // Apply explosion styles
+      skillDiv.style("background-color", bgColor);
+      skillDiv.style("box-shadow", "0 0 20px rgba(255, 100, 0, 0.9)");
+
+      // Create pulsing size effect
+      const pulseScale = 1.0 + 0.1 * Math.sin(frameCount * 0.5);
+      skillDiv.style("transform", `scale(${pulseScale})`);
+
+      // Mushroom cloud icon on the skill
+      select(`#skillKey${i}`).html("☢");
+      select(`#skillKey${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+      select(`#skillKey${i}`).style("text-shadow", "0 0 10px white");
+
+      // Add explosion text effect
+      select(`#skillName${i}`).html("☢ BOOM! ☢");
+      select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+    } else {
+      // Reset to normal appearance
+      skillDiv.style("background-color", "rgba(50, 50, 50, 0.27)");
+      skillDiv.style("box-shadow", "none");
+      skillDiv.style("transform", "scale(1.0)");
+
+      // Reset the skill name to normal
+      select(`#skillName${i}`).html(getSkillName(i));
+      select(`#skillName${i}`).style("color", "white");
+
+      // Reset key display
+      if (i === 8) {
+        select(`#skillKey${i}`).html("R");
+      }
+
+      // Reset key color
+      select(`#skillKey${i}`).style("color", "white");
+      select(`#skillKey${i}`).style("text-shadow", "none");
     }
 
     // Update needle rotation
     const needleDiv = select(`#needle${i}`);
     const overlayDiv = select(`#overlay${i}`);
-    if (needleDiv && overlayDiv) {
-      const rotationDegree = 360 * (1 - cooldownPercent); // Counterclockwise rotation
-      needleDiv.style(
-        "transform",
-        `translate(-50%, -100%) rotate(${rotationDegree}deg)`
+    if (!needleDiv || !overlayDiv) {
+      console.log(`needleDiv/overlayDiv ${i} not exists`);
+      return;
+    }
+
+    const rotationDegree = 360 * (1 - cooldownPercent); // Counterclockwise rotation
+    needleDiv.style(
+      "transform",
+      `translate(-50%, -100%) rotate(${rotationDegree}deg)`
+    );
+    needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
+
+    // Update overlay gradient - special color for active skills
+    if (isSkillActive) {
+      // Get colors for current skill
+      const colors = generateSkillColors(i);
+      const [r, g, b] = colors.primary;
+
+      // Apply overlay with the appropriate color
+      overlayDiv.style(
+        "background",
+        `conic-gradient(rgba(${r}, ${g}, ${b}, 0.3) ${rotationDegree}deg, rgba(${r}, ${g}, ${b}, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
       );
-      needleDiv.style("opacity", cooldownPercent > 0 ? 1 : 0); // Hide needle when cooldown is complete
+      overlayDiv.style("border-radius", "10px"); // Maintain border radius
+    } else if (isAtomicBombActive) {
+      // Atomic bomb gets a red/orange overlay with animated effect
+      const explosionPhase = frameCount % 6; // Match the flash effect
+      let overlayColor;
 
-      // Update overlay gradient - special color for active skills
-      if (isStarBlastActive) {
-        // Active star blast skill gets an orange overlay
-        overlayDiv.style(
-          "background",
-          `conic-gradient(rgba(255, 100, 0, 0.3) ${rotationDegree}deg, rgba(255, 100, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
-      } else if (isMachineGunActive) {
-        // Active machine gun skill gets a yellow/gold overlay
-        overlayDiv.style(
-          "background",
-          `conic-gradient(rgba(255, 215, 0, 0.3) ${rotationDegree}deg, rgba(255, 215, 0, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
-      } else if (isShieldActive) {
-        // Active shield skill gets a blue overlay
-        overlayDiv.style(
-          "background",
-          `conic-gradient(rgba(0, 150, 255, 0.3) ${rotationDegree}deg, rgba(0, 150, 255, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
-      } else if (isFreezeActive) {
-        // Active freeze skill gets an ice blue overlay
-        overlayDiv.style(
-          "background",
-          `conic-gradient(rgba(100, 200, 255, 0.3) ${rotationDegree}deg, rgba(100, 200, 255, 0.3) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
-      } else if (isAtomicBombActive) {
-        // Atomic bomb gets a red/orange overlay with animated effect
-        const explosionPhase = frameCount % 6; // Match the flash effect
-        let overlayColor;
-
-        if (explosionPhase < 2) {
-          overlayColor = "rgba(255, 255, 50, 0.4)"; // Bright yellow
-        } else if (explosionPhase < 4) {
-          overlayColor = "rgba(255, 100, 0, 0.4)"; // Orange
-        } else {
-          overlayColor = "rgba(255, 0, 0, 0.3)"; // Red
-        }
-
-        overlayDiv.style(
-          "background",
-          `conic-gradient(${overlayColor} ${rotationDegree}deg, ${overlayColor} ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+      if (explosionPhase < 2) {
+        overlayColor = "rgba(255, 255, 50, 0.4)"; // Bright yellow
+      } else if (explosionPhase < 4) {
+        overlayColor = "rgba(255, 100, 0, 0.4)"; // Orange
       } else {
-        // Normal overlay for other skills or inactive skills
-        overlayDiv.style(
-          "background",
-          `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
-        );
-        overlayDiv.style("border-radius", "10px"); // Maintain border radius
+        overlayColor = "rgba(255, 0, 0, 0.3)"; // Red
       }
 
-      // Add visual indicator for ready skills
-      const skillDiv = select(`#skill${i}`);
-      if (skillDiv) {
-        if (cooldownPercent <= 0) {
-          // Skill is ready - add subtle pulsing effect
-          const pulseScale = 1.0 + 0.03 * Math.sin(frameCount * 0.1);
-          skillDiv.style("transform", `scale(${pulseScale})`);
-          skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
-        } else {
-          // Skill on cooldown - normal state
-          skillDiv.style("transform", "scale(1.0)");
-          skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-        }
-      }
+      overlayDiv.style(
+        "background",
+        `conic-gradient(${overlayColor} ${rotationDegree}deg, ${overlayColor} ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+      );
+      overlayDiv.style("border-radius", "10px"); // Maintain border radius
     } else {
-      console.error(`Needle or overlay element for skill #${i} not found`);
+      // Normal overlay for other skills or inactive skills
+      overlayDiv.style(
+        "background",
+        `conic-gradient(rgba(0, 0, 0, 0.5) ${rotationDegree}deg, rgba(0, 0, 0, 0.5) ${rotationDegree}deg, transparent ${rotationDegree}deg, transparent 360deg)`
+      );
+      overlayDiv.style("border-radius", "10px"); // Maintain border radius
+    }
+
+    if (cooldownPercent <= 0) {
+      skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
+    } else {
+      skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
     }
   }
 }
@@ -9275,8 +9258,10 @@ function applyEnemyEffects() {
 
         // OPTIMIZATION: Create ice effects based on the configured interval
         // This allows for different frequencies on different performance levels
-        if (enemy.effects.frozen.iceEffectInterval > 0 && 
-            frameCount >= enemy.effects.frozen.nextIceEffectFrame) {
+        if (
+          enemy.effects.frozen.iceEffectInterval > 0 &&
+          frameCount >= enemy.effects.frozen.nextIceEffectFrame
+        ) {
           // Create a simplified ice effect (just one crystal instead of many)
           effects.push({
             x: enemy.x,
@@ -9288,9 +9273,10 @@ function applyEnemyEffects() {
             color: [200, 240, 255],
             growthTime: 5,
           });
-          
+
           // Schedule next ice effect
-          enemy.effects.frozen.nextIceEffectFrame = frameCount + enemy.effects.frozen.iceEffectInterval;
+          enemy.effects.frozen.nextIceEffectFrame =
+            frameCount + enemy.effects.frozen.iceEffectInterval;
         }
 
         if (enemy.effects.frozen.duration <= 0) {
@@ -9516,13 +9502,15 @@ function windowResized() {
     const wasLandscape = width > height;
     const isNowLandscape = windowWidth > windowHeight;
     const orientationChanged = wasLandscape !== isNowLandscape;
-    
+
     // If this is a mobile device and orientation is changing to landscape,
     // we need special handling to prevent WebGL context issues
     if (isMobileDevice && orientationChanged && isNowLandscape) {
-      console.log("Orientation changing to landscape on mobile - using special handling");
+      console.log(
+        "Orientation changing to landscape on mobile - using special handling"
+      );
     }
-    
+
     // Resize the canvas
     resizeCanvas(windowWidth, windowHeight);
 
@@ -9535,7 +9523,7 @@ function windowResized() {
 
     // Update camera zoom based on new dimensions
     cameraZoom = calculateDynamicCameraZoom();
-    
+
     // If orientation changed on mobile, force a WebGL context reset
     if (isMobileDevice && orientationChanged) {
       // Add a small delay to allow the browser to complete the resize
@@ -9543,14 +9531,17 @@ function windowResized() {
         try {
           // Force WebGL context refresh
           resetMatrix();
-          
+
           // Re-apply perspective
           try {
             perspective(PI / 4, width / height, 0.1, 5000);
           } catch (e) {
-            console.warn("Error re-applying perspective after orientation change:", e);
+            console.warn(
+              "Error re-applying perspective after orientation change:",
+              e
+            );
           }
-          
+
           console.log("WebGL context reset after orientation change");
         } catch (e) {
           console.error("Error resetting WebGL context:", e);
@@ -9849,21 +9840,23 @@ function drawIcePattern(x, y, size, angle, depth, alpha, color) {
  */
 function calculateSquadCenter() {
   const center = { x: 0, y: 0, z: 0 };
-  
+
   if (squad.length > 0) {
-    let totalX = 0, totalY = 0, totalZ = 0;
-    
+    let totalX = 0,
+      totalY = 0,
+      totalZ = 0;
+
     for (let member of squad) {
       totalX += member.x;
       totalY += member.y;
       totalZ += member.z;
     }
-    
+
     center.x = totalX / squad.length;
     center.y = totalY / squad.length;
     center.z = totalZ / squad.length;
   }
-  
+
   return center;
 }
 
@@ -9872,9 +9865,11 @@ function calculateSquadCenter() {
  * @returns {Array} Array of direction indices
  */
 function getStarBlastDirections() {
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-  
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance =
+    currentPerformanceLevel === PerformanceLevel.MEDIUM;
+
   // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
   if (isLowPerformance) {
     return [0, 2, 4, 6]; // Only 4 cardinal directions on low performance
@@ -9911,38 +9906,43 @@ function createExplosionEffect(position, size, life, color) {
  */
 function activateStarBlastSkill() {
   // Performance check
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-  
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance =
+    currentPerformanceLevel === PerformanceLevel.MEDIUM;
+
   // Calculate damage parameters based on player stats
   const areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
   const areaDamageAmount = 100 + damageBoost * 15; // Base damage + bonus from damage boost
   const starBlastDuration = skills.skill1.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
-  
+
   // Get squad center position
   const squadCenter = calculateSquadCenter();
-  
+
   // Get directions based on performance level
   const directions = getStarBlastDirections();
-  
+
   // Activate star blast mode
   skills.skill1.active = true;
   skills.skill1.endTime = frameCount + starBlastDuration;
-  
+
   // Initial star blast
   fireStarBlast(squadCenter, directions, areaDamageRadius, areaDamageAmount);
-  
+
   // Create initial explosion effect
   createExplosionEffect(squadCenter, 50, 30, [255, 100, 0]);
-  
+
   // Calculate periodic blast parameters based on performance
-  const blastInterval = isLowPerformance ? 90 : (isMediumPerformance ? 60 : 45);
-  const maxIntervals = isLowPerformance ? 2 : (isMediumPerformance ? 3 : 5);
-  const totalIntervals = Math.min(maxIntervals, Math.floor(starBlastDuration / blastInterval));
-  
+  const blastInterval = isLowPerformance ? 90 : isMediumPerformance ? 60 : 45;
+  const maxIntervals = isLowPerformance ? 2 : isMediumPerformance ? 3 : 5;
+  const totalIntervals = Math.min(
+    maxIntervals,
+    Math.floor(starBlastDuration / blastInterval)
+  );
+
   // Store the squad center reference to avoid recalculating in each timeout
-  let lastCenter = {...squadCenter};
-  
+  let lastCenter = { ...squadCenter };
+
   // Schedule periodic star blasts
   for (let i = 1; i <= totalIntervals; i++) {
     setTimeout(() => {
@@ -9950,36 +9950,46 @@ function activateStarBlastSkill() {
       if (skills.skill1.active && frameCount < skills.skill1.endTime) {
         // Determine whether to recalculate center position
         let currentCenter;
-        
+
         if (i % 2 === 0 || !isLowPerformance) {
           // Get updated squad center position
           currentCenter = calculateSquadCenter();
-          lastCenter = {...currentCenter};
+          lastCenter = { ...currentCenter };
         } else {
           // Use the last calculated center to save performance
           currentCenter = lastCenter;
         }
-        
+
         // Fire another star blast with reduced damage
         const reducedDamage = areaDamageAmount * 0.6; // 60% of initial damage
-        fireStarBlast(currentCenter, directions, areaDamageRadius, reducedDamage);
-        
+        fireStarBlast(
+          currentCenter,
+          directions,
+          areaDamageRadius,
+          reducedDamage
+        );
+
         // Create a smaller explosion effect
         createExplosionEffect(currentCenter, 30, 20, [255, 100, 0]);
       }
     }, i * blastInterval * (1000 / 60)); // Convert frames to ms
   }
-  
+
   // Schedule deactivation after duration
   setTimeout(() => {
     skills.skill1.active = false;
-    
+
     // Final star blast when the skill ends
     if (squad.length > 0) {
       // Fire a final star blast with increased damage
       const finalDamage = areaDamageAmount * 1.2; // 120% of initial damage
-      fireStarBlast(lastCenter, directions, areaDamageRadius * 1.2, finalDamage);
-      
+      fireStarBlast(
+        lastCenter,
+        directions,
+        areaDamageRadius * 1.2,
+        finalDamage
+      );
+
       // Create final explosion effect
       createExplosionEffect(lastCenter, 70, 45, [255, 150, 0]);
     }
@@ -10160,10 +10170,12 @@ function activateMachineGunSkill() {
   squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
 
   // Apply visual effects based on performance level
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const maxMembersWithEffects = isLowPerformance ? 
-    Math.min(3, squad.length) : squad.length;
-  
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const maxMembersWithEffects = isLowPerformance
+    ? Math.min(3, squad.length)
+    : squad.length;
+
   // Apply effects to limited number of squad members for better performance
   for (let i = 0; i < maxMembersWithEffects; i++) {
     const member = squad[i];
@@ -10252,15 +10264,21 @@ function activateShieldSkill() {
  */
 function activateFreezeSkill() {
   // OPTIMIZATION: Check device performance
-  const freezeIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const freezeIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-  
+  const freezeIsLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const freezeIsMediumPerformance =
+    currentPerformanceLevel === PerformanceLevel.MEDIUM;
+
   // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
   const visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
   const enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
   const freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
   // OPTIMIZATION: Reduce radius on low performance devices
-  const freezeRadius = freezeIsLowPerformance ? 1000 : (freezeIsMediumPerformance ? 1250 : 1500);
+  const freezeRadius = freezeIsLowPerformance
+    ? 1000
+    : freezeIsMediumPerformance
+    ? 1250
+    : 1500;
 
   // Activate freeze mode
   skills.skill4.active = true;
@@ -10270,25 +10288,44 @@ function activateFreezeSkill() {
   const freezeCenter = calculateSquadCenter();
 
   // Create visual effects based on performance level
-  createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDuration, freezeIsLowPerformance, freezeIsMediumPerformance);
-  
+  createFreezeVisualEffects(
+    freezeCenter,
+    freezeRadius,
+    visualEffectDuration,
+    freezeIsLowPerformance,
+    freezeIsMediumPerformance
+  );
+
   // Apply freeze effect to enemies
-  applyFreezeEffectToEnemies(freezeCenter, freezeRadius, enemyFreezeEffectDuration, freezeStrength, freezeIsLowPerformance, freezeIsMediumPerformance);
+  applyFreezeEffectToEnemies(
+    freezeCenter,
+    freezeRadius,
+    enemyFreezeEffectDuration,
+    freezeStrength,
+    freezeIsLowPerformance,
+    freezeIsMediumPerformance
+  );
 
   // OPTIMIZATION: Use frameCount-based deactivation instead of setTimeout
   // This avoids potential issues with setTimeout in p5.js
   // The actual deactivation will happen in the draw loop when frameCount >= skills.skill4.endTime
   setTimeout(() => {
     skills.skill4.active = false;
-  }, visualEffectDuration * 1000 / 60);
+  }, (visualEffectDuration * 1000) / 60);
 }
 
 /**
  * Helper function to create freeze visual effects
  */
-function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDuration, isLowPerformance, isMediumPerformance) {
+function createFreezeVisualEffects(
+  freezeCenter,
+  freezeRadius,
+  visualEffectDuration,
+  isLowPerformance,
+  isMediumPerformance
+) {
   // OPTIMIZATION: Limit the number of effects based on performance level
-  
+
   // 1. Create a single shockwave - essential for visual feedback
   effects.push({
     x: freezeCenter.x,
@@ -10301,7 +10338,7 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
     layer: 0,
     forceRenderDetail: true, // Force render this important effect
   });
-  
+
   // Add additional shockwaves only for medium/high performance
   // OPTIMIZATION: Store delayed effects in an array with their spawn time instead of using setTimeout
   if (!isLowPerformance) {
@@ -10318,7 +10355,7 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
       forceRenderDetail: false,
       delayFrames: 6, // Approximately 100ms at 60fps
     });
-    
+
     // Third shockwave only for high performance
     if (!isMediumPerformance) {
       effects.push({
@@ -10352,13 +10389,13 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
   if (!isLowPerformance) {
     // Create just a few ice crystals on medium performance
     const crystalCount = isMediumPerformance ? 1 : 2; // Reduced count
-    
+
     for (let i = 0; i < crystalCount; i++) {
       const angle = random(TWO_PI);
       const dist = random(100, 300);
       const x = freezeCenter.x + cos(angle) * dist;
       const y = freezeCenter.y + sin(angle) * dist;
-      
+
       effects.push({
         x: x,
         y: y,
@@ -10382,24 +10419,31 @@ function createFreezeVisualEffects(freezeCenter, freezeRadius, visualEffectDurat
   });
 
   // Add a small screen shake effect for impact (reduced on low performance)
-  cameraShake = isLowPerformance ? 1 : (isMediumPerformance ? 2 : 3); // Reduced shake intensity
+  cameraShake = isLowPerformance ? 1 : isMediumPerformance ? 2 : 3; // Reduced shake intensity
 }
 
 /**
  * Helper function to apply freeze effect to enemies
  */
-function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freezeStrength, isLowPerformance, isMediumPerformance) {
+function applyFreezeEffectToEnemies(
+  freezeCenter,
+  freezeRadius,
+  duration,
+  freezeStrength,
+  isLowPerformance,
+  isMediumPerformance
+) {
   // OPTIMIZATION: Only affect enemies within the freeze radius
   const freezeRadiusSquared = freezeRadius * freezeRadius;
-  
+
   // Filter enemies that are within the freeze radius
-  const enemiesInRange = enemies.filter(enemy => {
+  const enemiesInRange = enemies.filter((enemy) => {
     const dx = enemy.x - freezeCenter.x;
     const dy = enemy.y - freezeCenter.y;
     const distSquared = dx * dx + dy * dy;
     return distSquared <= freezeRadiusSquared;
   });
-  
+
   // Sort enemies by distance to prioritize closest ones for visual effects
   const sortedEnemies = [...enemiesInRange].sort((a, b) => {
     const dxA = a.x - freezeCenter.x;
@@ -10414,22 +10458,22 @@ function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freeze
   });
 
   // OPTIMIZATION: Limit visual effects to just a few enemies
-  const maxEnemiesWithVisuals = isLowPerformance ? 
-    Math.min(2, sortedEnemies.length) : // Only 2 enemies get visuals on low performance
-    (isMediumPerformance ? 
-      Math.min(3, sortedEnemies.length) : // Only 3 enemies get visuals on medium performance
-      Math.min(5, sortedEnemies.length)); // Only 5 enemies get visuals on high performance
+  const maxEnemiesWithVisuals = isLowPerformance
+    ? Math.min(2, sortedEnemies.length) // Only 2 enemies get visuals on low performance
+    : isMediumPerformance
+    ? Math.min(3, sortedEnemies.length) // Only 3 enemies get visuals on medium performance
+    : Math.min(5, sortedEnemies.length); // Only 5 enemies get visuals on high performance
 
   // OPTIMIZATION: Apply gameplay effect to all enemies at once
   // No batching or timeouts - process all enemies immediately
   for (let i = 0; i < sortedEnemies.length; i++) {
     const enemy = sortedEnemies[i];
-    
+
     // Store original speed for restoration
     if (!enemy.originalSpeed) {
       enemy.originalSpeed = enemy.speed;
     }
-    
+
     // Apply freeze effect to enemy
     if (!enemy.effects) enemy.effects = {};
     enemy.effects.frozen = {
@@ -10438,12 +10482,13 @@ function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freeze
       originalSpeed: enemy.originalSpeed || enemy.speed,
       // OPTIMIZATION: Flag to control periodic ice effects
       nextIceEffectFrame: frameCount + 60, // First ice effect after 1 second
-      iceEffectInterval: isLowPerformance ? 0 : (isMediumPerformance ? 90 : 60) // No/less frequent ice effects on low/medium performance
+      iceEffectInterval: isLowPerformance ? 0 : isMediumPerformance ? 90 : 60, // No/less frequent ice effects on low/medium performance
     };
-    
+
     // Apply slowdown
-    enemy.speed = enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
-    
+    enemy.speed =
+      enemy.effects.frozen.originalSpeed * enemy.effects.frozen.slowFactor;
+
     // Only create visual effects for a limited number of enemies
     if (i < maxEnemiesWithVisuals) {
       // Create a single visual effect for each visible enemy
@@ -10458,7 +10503,7 @@ function applyFreezeEffectToEnemies(freezeCenter, freezeRadius, duration, freeze
         color: [200, 240, 255],
         growthTime: 10,
       });
-      
+
       // Add a frost burst effect only for the closest enemies
       if (i < maxEnemiesWithVisuals / 2) {
         effects.push({
@@ -10576,8 +10621,9 @@ function applyInitialHealing(healAmount) {
  */
 function setupRegenerationOverTime(duration, interval, amount) {
   const totalTicks = Math.floor(duration / interval);
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+
   for (let i = 1; i <= totalTicks; i++) {
     setTimeout(() => {
       // Apply regeneration to all squad members
@@ -10607,9 +10653,10 @@ function setupRegenerationOverTime(duration, interval, amount) {
  * Helper function to create healing shockwaves
  */
 function createHealingShockwaves(center, radius) {
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
   const shockwaveCount = isLowPerformance ? 1 : 3;
-  
+
   for (let i = 0; i < shockwaveCount; i++) {
     setTimeout(() => {
       effects.push({
@@ -10644,10 +10691,7 @@ function activateInfernalRageSkill() {
   ).length;
 
   // Dynamically reduce effects when multiple skills are active
-  const rageEffectReduction = Math.max(
-    0.3,
-    1 - rageActiveSkillCount * 0.25
-  ); // Reduce by 25% per active skill, min 30%
+  const rageEffectReduction = Math.max(0.3, 1 - rageActiveSkillCount * 0.25); // Reduce by 25% per active skill, min 30%
 
   // Calculate the center of the squad
   const infernoSquadCenter = calculateSquadCenter();
@@ -10662,13 +10706,26 @@ function activateInfernalRageSkill() {
   };
 
   // Apply damage boost to squad members
-  const originalDamageMultiplier = applyDamageBoostToSquad(damageBoostTotalMultiplier);
+  const originalDamageMultiplier = applyDamageBoostToSquad(
+    damageBoostTotalMultiplier
+  );
 
   // Create visual effects for the inferno
-  createInfernoVisualEffects(infernoCenter, infernoRadius, damageBoostDuration, rageActiveSkillCount, rageEffectReduction);
+  createInfernoVisualEffects(
+    infernoCenter,
+    infernoRadius,
+    damageBoostDuration,
+    rageActiveSkillCount,
+    rageEffectReduction
+  );
 
   // Setup damage over time to enemies in the inferno area
-  const burnInterval = setupInfernoDamageOverTime(infernoCenter, infernoRadius, damageBoostDuration, rageActiveSkillCount);
+  const burnInterval = setupInfernoDamageOverTime(
+    infernoCenter,
+    infernoRadius,
+    damageBoostDuration,
+    rageActiveSkillCount
+  );
 
   // Reset after duration
   setTimeout(() => {
@@ -10676,7 +10733,11 @@ function activateInfernalRageSkill() {
     clearInterval(burnInterval);
 
     // Reset damage multipliers and create end effects
-    resetDamageBoostAndCreateEndEffects(originalDamageMultiplier, infernoCenter, infernoRadius);
+    resetDamageBoostAndCreateEndEffects(
+      originalDamageMultiplier,
+      infernoCenter,
+      infernoRadius
+    );
   }, damageBoostDuration * (1000 / 60)); // Convert frames to ms
 }
 
@@ -10712,7 +10773,13 @@ function applyDamageBoostToSquad(multiplier) {
 /**
  * Helper function to create visual effects for the inferno
  */
-function createInfernoVisualEffects(center, radius, duration, activeSkillCount, effectReduction) {
+function createInfernoVisualEffects(
+  center,
+  radius,
+  duration,
+  activeSkillCount,
+  effectReduction
+) {
   // Create initial massive explosion at inferno center - always include this as it's the main visual
   effects.push({
     x: center.x,
@@ -10795,9 +10862,14 @@ function createInfernoVisualEffects(center, radius, duration, activeSkillCount, 
 /**
  * Helper function to setup damage over time to enemies in the inferno area
  */
-function setupInfernoDamageOverTime(center, radius, duration, activeSkillCount) {
+function setupInfernoDamageOverTime(
+  center,
+  radius,
+  duration,
+  activeSkillCount
+) {
   const burnDamage = 5 + damageBoost * 2; // Base damage per tick
-  
+
   // Create interval to damage enemies in the inferno area
   const burnInterval = setInterval(() => {
     // Check if effect is still active
@@ -10921,7 +10993,11 @@ function setupInfernoDamageOverTime(center, radius, duration, activeSkillCount) 
 /**
  * Helper function to reset damage boost and create end effects
  */
-function resetDamageBoostAndCreateEndEffects(originalMultipliers, center, radius) {
+function resetDamageBoostAndCreateEndEffects(
+  originalMultipliers,
+  center,
+  radius
+) {
   // Reset damage multipliers
   for (let member of squad) {
     if (member && originalMultipliers[member.id]) {
@@ -10986,11 +11062,18 @@ function activateQuantumAccelerationSkill() {
   const accelCenter = calculateSquadCenter();
 
   // OPTIMIZATION: Reduce visual effects based on device
-  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+  const isLowPerformance =
+    isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance =
+    currentPerformanceLevel === PerformanceLevel.MEDIUM;
 
   // Create visual effects
-  createAccelerationVisualEffects(accelCenter, speedBoostDuration, isLowPerformance, isMediumPerformance);
+  createAccelerationVisualEffects(
+    accelCenter,
+    speedBoostDuration,
+    isLowPerformance,
+    isMediumPerformance
+  );
 
   // Store old speed and apply speed boost
   const oldSpeed = squadSpeed;
@@ -11016,7 +11099,12 @@ function activateQuantumAccelerationSkill() {
 /**
  * Helper function to create visual effects for acceleration
  */
-function createAccelerationVisualEffects(center, duration, isLowPerformance, isMediumPerformance) {
+function createAccelerationVisualEffects(
+  center,
+  duration,
+  isLowPerformance,
+  isMediumPerformance
+) {
   // Create a single initial effect instead of multiple
   effects.push({
     x: center.x,
@@ -11043,9 +11131,13 @@ function createAccelerationVisualEffects(center, duration, isLowPerformance, isM
   });
 
   // OPTIMIZATION: Apply visual effects to limited number of squad members
-  const maxMembersWithEffects = isLowPerformance ? 3 : (isMediumPerformance ? 5 : squad.length);
+  const maxMembersWithEffects = isLowPerformance
+    ? 3
+    : isMediumPerformance
+    ? 5
+    : squad.length;
   const membersToShow = squad.slice(0, maxMembersWithEffects);
-  
+
   // Apply effect to limited number of squad members
   for (let member of membersToShow) {
     // OPTIMIZATION: Only create one effect per member
@@ -11067,7 +11159,7 @@ function createAccelerationVisualEffects(center, duration, isLowPerformance, isM
     // Add just a few periodic bursts (not every second)
     const burstCount = isMediumPerformance ? 2 : 4;
     const interval = duration / burstCount;
-    
+
     for (let i = 1; i <= burstCount; i++) {
       setTimeout(() => {
         if (frameCount < skills.skill7.lastUsed + duration) {
@@ -11106,7 +11198,9 @@ function createAccelerationVisualEffects(center, duration, isLowPerformance, isM
 function calculateSquadCenter() {
   const center = { x: 0, y: 0, z: 0 };
   if (squad.length > 0) {
-    let totalX = 0, totalY = 0, totalZ = 0;
+    let totalX = 0,
+      totalY = 0,
+      totalZ = 0;
     for (let member of squad) {
       totalX += member.x;
       totalY += member.y;
@@ -11117,4 +11211,76 @@ function calculateSquadCenter() {
     center.z = totalZ / squad.length;
   }
   return center;
+}
+
+// Define color palette based on skill index
+function generateSkillColors(index){
+  // Use the golden ratio to create visually distinct colors
+  const hue = ((index * 137.5) % 360) / 360;
+
+  // Convert HSV to RGB for primary color (more saturated)
+  const primary = hsvToRgb(hue, 0.7, 0.85);
+
+  // Secondary color is brighter version of primary
+  const secondary = hsvToRgb(hue, 0.6, 1.0);
+
+  // Key color is a light pastel version for UI highlights
+  const keyR = Math.round(secondary[0] * 0.3 + 180);
+  const keyG = Math.round(secondary[1] * 0.3 + 180);
+  const keyB = Math.round(secondary[2] * 0.3 + 180);
+
+  return {
+    primary,
+    secondary,
+    keyColor: `rgba(${keyR}, ${keyG}, ${keyB}, 1.0)`,
+  };
+};
+
+// Helper function to convert HSV to RGB
+function hsvToRgb(h, s, v) {
+  let r, g, b;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+
+  switch (i % 6) {
+    case 0:
+      r = v;
+      g = t;
+      b = p;
+      break;
+    case 1:
+      r = q;
+      g = v;
+      b = p;
+      break;
+    case 2:
+      r = p;
+      g = v;
+      b = t;
+      break;
+    case 3:
+      r = p;
+      g = q;
+      b = v;
+      break;
+    case 4:
+      r = t;
+      g = p;
+      b = v;
+      break;
+    case 5:
+      r = v;
+      g = p;
+      b = q;
+      break;
+  }
+
+  return [
+    Math.round(r * 255),
+    Math.round(g * 255),
+    Math.round(b * 255),
+  ];
 }
