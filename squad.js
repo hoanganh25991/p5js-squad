@@ -8214,7 +8214,6 @@ function createStatusBoardElements() {
   statusBoard.style("background-color", "rgba(0, 0, 0, 0.27)"); // Reduced opacity to 1/3 of 0.8
   statusBoard.style("color", "white");
   statusBoard.style("border-radius", "5px");
-  statusBoard.style("width", "250px");
   statusBoard.style("font-family", "monospace");
   statusBoard.style("z-index", "1000");
   statusBoard.style("use-select", "none");
@@ -8241,11 +8240,11 @@ function updateStatusBoard() {
   statusBoard.html(`
     <h3 style="margin: 0 0 10px 0;">STATUS BOARD</h3>
     <div>Wave: ${currentWave}</div>
-    <div>Score: ${score}</div>
-    <div>Weapon: ${currentWeapon}</div>
+    <!-- <div>Score: ${score}</div> -->
     <div>Squad: ${squad.length}/${SQUAD_SIZE}</div>
-    <div>Total Kills: ${totalEnemiesKilled}</div>
+    <!-- <div>Total Kills: ${totalEnemiesKilled}</div> -->
     <div>Wave Kills: ${waveEnemiesKilled}/${ENEMIES_TO_KILL_FOR_NEXT_WAVE}</div>
+    <div>Weapon: ${currentWeapon}</div>
     <div style="color: ${healthColor};">Health: ${Math.floor(avgHealth)}%</div>
   `);
 }
