@@ -4,7 +4,6 @@ self.addEventListener("install", function (event) {
       const filesToCache = [
         "index.html",
         "squad.js",
-        "sounds.js",
         "assets/logo.png",
         "assets/logo-192x192.png",
         "assets/favicon.ico",

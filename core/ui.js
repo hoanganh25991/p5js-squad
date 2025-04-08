@@ -661,7 +661,7 @@ function updateStatusBoard() {
 
 // Update technical board with performance information
 function updateTechnicalBoard() {
-  if (gameState === "playing" && frameCount % 30 === 0) { // Update every 30 frames
+  if (gameState === "playing" && frameCount % 30 === 0 && technicalBoard) { // Update every 30 frames and check if technicalBoard exists
     technicalBoard.style("display", "block");
     
     // Calculate FPS
@@ -722,7 +722,7 @@ function updateTechnicalBoard() {
       ${gpuCoresInfo}
       <div>${memoryInfo}</div>
     `);
-  } else if (gameState !== "playing") {
+  } else if (gameState !== "playing" && technicalBoard) {
     technicalBoard.style("display", "none");
   }
 }

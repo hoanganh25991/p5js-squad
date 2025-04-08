@@ -8128,9 +8128,13 @@ function createDirectionalPadElement() {
 function updateHUD() {
   // Only update if in playing state to avoid unnecessary DOM operations
   if (gameState === "playing") {
-    updateStatusBoard();
-    updateTechnicalBoard();
-    updateSkillBar();
+    try {
+      updateStatusBoard();
+      updateTechnicalBoard();
+      updateSkillBar();
+    } catch (e) {
+      console.warn("Error updating HUD:", e);
+    }
   }
 }
 
