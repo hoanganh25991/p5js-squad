@@ -7352,7 +7352,7 @@ function activateSkill(skillNumber) {
       let damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
       let damageBoostAdditional = 0.3 * damageBoost; // 30% more per damage boost (increased from 20%)
       let damageBoostTotalMultiplier = damageBoostBase + damageBoostAdditional;
-      let damageBoostDuration = DEBUG_MODE ? 1800 : 600 + fireRateBoost * 60; // 30s in debug mode, 10s + 1s per fire rate in normal mode
+      let damageBoostDuration = 60 + fireRateBoost * 60;
       
       // Count active skills to adjust visual effects
       const rageActiveSkillCount = Object.values(skills).filter(skill => skill.active).length;
@@ -7881,7 +7881,7 @@ function activateSkill(skillNumber) {
         let atomicDamage = 3000 + damageBoost * 150; // Even more devastating damage
 
         // Create massive atomic explosion
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 5; i++) {
           // More explosion layers (increased from 5)
           setTimeout(() => {
             // Create expanding shockwave effect - enormous explosion sizes
@@ -8020,52 +8020,52 @@ function activateSkill(skillNumber) {
 
         // Create persistent radiation field after explosion
         setTimeout(() => {
-          effects.push({
-            x: bombCenter.x,
-            y: bombCenter.y,
-            z: 0, // At ground level
-            type: "radiationField",
-            size: 800,
-            life: 600, // 10 seconds
-            color: [100, 255, 100, 100], // Sickly green
-            pulseRate: 0.03,
-            forceRenderDetail: true,
-          });
+          // effects.push({
+          //   x: bombCenter.x,
+          //   y: bombCenter.y,
+          //   z: 0, // At ground level
+          //   type: "radiationField",
+          //   size: 800,
+          //   life: 600, // 10 seconds
+          //   color: [100, 255, 100, 100], // Sickly green
+          //   pulseRate: 0.03,
+          //   forceRenderDetail: true,
+          // });
 
           // Add atmospheric glow
-          effects.push({
-            type: "globalRadiation",
-            life: 600, // 10 seconds
-            intensity: 0.2 + damageBoost * 0.01,
-            forceRenderDetail: true,
-          });
+          // effects.push({
+          //   type: "globalRadiation",
+          //   life: 600, // 10 seconds
+          //   intensity: 0.2 + damageBoost * 0.01,
+          //   forceRenderDetail: true,
+          // });
 
           // Create floating debris
-          for (let i = 0; i < 30; i++) {
-            setTimeout(() => {
-              const angle = random(TWO_PI);
-              const dist = random(100, 700);
-              const x = bombCenter.x + cos(angle) * dist;
-              const y = bombCenter.y + sin(angle) * dist;
+          // for (let i = 0; i < 30; i++) {
+          //   setTimeout(() => {
+          //     const angle = random(TWO_PI);
+          //     const dist = random(100, 700);
+          //     const x = bombCenter.x + cos(angle) * dist;
+          //     const y = bombCenter.y + sin(angle) * dist;
 
-              effects.push({
-                x: x,
-                y: y,
-                z: random(50, 200),
-                type: "debrisParticle",
-                size: random(10, 30),
-                life: random(300, 500),
-                color: [100, 100, 100, 180],
-                rotationSpeed: random(-0.05, 0.05),
-                velocity: {
-                  x: random(-0.5, 0.5),
-                  y: random(-0.5, 0.5),
-                  z: random(-0.2, 0.1),
-                },
-                forceRenderDetail: false,
-              });
-            }, i * 50);
-          }
+          //     effects.push({
+          //       x: x,
+          //       y: y,
+          //       z: random(50, 200),
+          //       type: "debrisParticle",
+          //       size: random(10, 30),
+          //       life: random(300, 500),
+          //       color: [100, 100, 100, 180],
+          //       rotationSpeed: random(-0.05, 0.05),
+          //       velocity: {
+          //         x: random(-0.5, 0.5),
+          //         y: random(-0.5, 0.5),
+          //         z: random(-0.2, 0.1),
+          //       },
+          //       forceRenderDetail: false,
+          //     });
+          //   }, i * 50);
+          // }
 
           // Apply lingering damage over time to enemies in radiation field
           const radiationInterval = setInterval(() => {
