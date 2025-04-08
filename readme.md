@@ -1,10 +1,12 @@
 # Squad Survival
 
-![](screenshots/screenshot-151545-20250407.jpg)
-![](screenshots/screenshot-231954-20250406.jpg)
-![](screenshots/screenshot-071222-20250407.png)
-![](screenshots/screenshot-2025-04-04T14-14-03-772Z.png)
-![](screenshots/screenshot-2025-03-30T15-41-01-025Z.png)
+<img src="screenshots/demo-20250408.gif" style="width: 100%;" alt="Demo GIF">
+
+<img src="screenshots/screenshot-151545-20250407.jpg" style="width: 100%;" alt="Screenshot 1">
+<img src="screenshots/screenshot-231954-20250406.jpg" style="width: 100%;" alt="Screenshot 2">
+<img src="screenshots/screenshot-071222-20250407.png" style="width: 100%;" alt="Screenshot 3">
+<img src="screenshots/screenshot-2025-04-04T14-14-03-772Z.png" style="width: 100%;" alt="Screenshot 4">
+<img src="screenshots/screenshot-2025-03-30T15-41-01-025Z.png" style="width: 100%;" alt="Screenshot 5">
 
 ## Requirements
 
