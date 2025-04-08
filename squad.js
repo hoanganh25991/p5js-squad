@@ -1771,45 +1771,6 @@ function drawSkyAndMountains() {
     rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
   }
   
-  // ===== STARS =====
-  // Add stars in the upper portion of the sky
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 150);
-    for (let i = 0; i < 80; i++) {
-      const starSize = random(1, 2.5);
-      const x = random(-extraSize, width + extraSize);
-      const y = random(-extraSize, height * 0.3); // Only in upper portion of sky
-      
-      // Make stars twinkle
-      if (frameCount % 30 === 0 && random() > 0.7) {
-        ellipse(x, y, starSize * 1.5, starSize * 1.5);
-      } else {
-        ellipse(x, y, starSize, starSize);
-      }
-    }
-  }
-  
-  // ===== CLOUDS =====
-  // Add clouds near the horizon
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 180);
-    
-    // Use noise for cloud positions
-    // Position clouds more toward the horizon
-    let i = 1;
-    const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
-    const cloudY = height * 0.35 + noise(i * 0.3) * height * 0.15; // Position near horizon
-    const cloudWidth = noise(i * 0.3) * 200 + 100;
-    const cloudHeight = 30 + noise(i) * 20;
-    
-    // Draw cloud as a series of ellipses
-    for (let j = 0; j < 5; j++) {
-      const offsetX = (j - 2) * cloudWidth/6;
-      const offsetY = sin(j * 0.5) * 5;
-      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
-    }
-  }
-  
   // ===== DISTANT MOUNTAINS =====
   // Draw mountain ranges at the horizon
   // First mountain range (furthest)
@@ -1878,7 +1839,7 @@ function drawSkyOverlay() {
   ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
   
   // Move in front of everything
-  translate(0, 0, 5000);
+  translate(0, 0, 4000);
   
   noStroke();
   
@@ -1926,23 +1887,6 @@ function drawSkyOverlay() {
     
     fill(skyOverlayColors[i]);
     rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
-  }
-  
-  // Add a few stars that appear on top of everything
-  if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 150);
-    for (let i = 0; i < 12; i++) { // Even fewer stars
-      const starSize = random(1, 1.8);
-      const x = random(-extraSize, width + extraSize);
-      const y = random(-height/2 - extraSize, -height/2 + height * 0.08); // Only at the very top of screen
-      
-      // Make stars twinkle
-      if (frameCount % 30 === 0 && random() > 0.7) {
-        ellipse(x, y, starSize * 1.5, starSize * 1.5);
-      } else {
-        ellipse(x, y, starSize, starSize);
-      }
-    }
   }
   
   // Restore the previous state
