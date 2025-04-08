@@ -7036,152 +7036,7 @@ function activateSkill(skillNumber) {
   // Apply skill effect with accumulative power-ups
   switch (skillNumber) {
     case 1: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
-      // OPTIMIZATION: Check device performance
-      const starBlastIsLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
-      const starBlastIsMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
-      
-      // Create a powerful multi-directional area damage effect
-      let areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
-      let areaDamageAmount = 100 + damageBoost * 15; // Higher base damage + bonus from damage boost
-      let starBlastDuration = skills.skill1.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
-      let squadCenter = { x: 0, y: 0, z: 0 };
-
-      // Activate star blast mode
-      skills.skill1.active = true;
-      skills.skill1.endTime = frameCount + starBlastDuration;
-
-      // Calculate the center point of the squad for the area effect
-      if (squad.length > 0) {
-        let totalX = 0, totalY = 0, totalZ = 0;
-        for (let member of squad) {
-          totalX += member.x;
-          totalY += member.y;
-          totalZ += member.z;
-        }
-        squadCenter.x = totalX / squad.length;
-        squadCenter.y = totalY / squad.length;
-        squadCenter.z = totalZ / squad.length;
-      }
-
-      // OPTIMIZATION: Reduce directions on mobile/low performance
-      // Define directions for the star blast based on performance level
-      // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
-      const directions = starBlastIsLowPerformance ? 
-        [0, 2, 4, 6] : // Only 4 cardinal directions on low performance
-        (starBlastIsMediumPerformance ? [0, 2, 4, 6, 1, 5] : [0, 1, 2, 3, 4, 5, 6, 7]); // 6 or 8 directions
-
-      // Initial star blast
-      fireStarBlast(
-        squadCenter,
-        directions,
-        areaDamageRadius,
-        areaDamageAmount
-      );
-
-      // Create a central explosion effect
-      effects.push({
-        x: squadCenter.x,
-        y: squadCenter.y,
-        z: squadCenter.z,
-        type: "explosion",
-        size: 50,
-        life: 30,
-        color: [255, 100, 0],
-        forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-      });
-
-      // OPTIMIZATION: Reduce number of periodic blasts on mobile/low performance
-      // Schedule fewer periodic star blasts for the duration
-      const blastInterval = starBlastIsLowPerformance ? 90 : (starBlastIsMediumPerformance ? 60 : 45); // Longer intervals on mobile
-      const maxIntervals = starBlastIsLowPerformance ? 2 : (starBlastIsMediumPerformance ? 3 : 5); // Fewer intervals on mobile
-      const totalIntervals = Math.min(maxIntervals, Math.floor(starBlastDuration / blastInterval));
-
-      // Store the squad center reference to avoid recalculating in each timeout
-      let lastCenter = {...squadCenter};
-      
-      for (let i = 1; i <= totalIntervals; i++) {
-        setTimeout(() => {
-          // Only continue if the skill is still active
-          if (skills.skill1.active && frameCount < skills.skill1.endTime) {
-            // OPTIMIZATION: Only recalculate center position once every other blast on mobile
-            let currentCenter;
-            
-            if (i % 2 === 0 || !starBlastIsLowPerformance) {
-              // Get updated squad center position
-              currentCenter = { x: 0, y: 0, z: 0 };
-              if (squad.length > 0) {
-                let totalX = 0, totalY = 0, totalZ = 0;
-                for (let member of squad) {
-                  totalX += member.x;
-                  totalY += member.y;
-                  totalZ += member.z;
-                }
-                currentCenter.x = totalX / squad.length;
-                currentCenter.y = totalY / squad.length;
-                currentCenter.z = totalZ / squad.length;
-                lastCenter = {...currentCenter};
-              }
-            } else {
-              // Use the last calculated center to save performance
-              currentCenter = lastCenter;
-            }
-
-            // Fire another star blast with reduced damage
-            const reducedDamage = areaDamageAmount * 0.6; // 60% of initial damage for subsequent blasts
-            fireStarBlast(
-              currentCenter,
-              directions,
-              areaDamageRadius,
-              reducedDamage
-            );
-
-            // Create a smaller central explosion
-            effects.push({
-              x: currentCenter.x,
-              y: currentCenter.y,
-              z: currentCenter.z,
-              type: "explosion",
-              size: 30,
-              life: 20,
-              color: [255, 100, 0],
-              forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-            });
-          }
-        }, i * blastInterval * (1000 / 60)); // Convert frames to ms
-      }
-
-      // Schedule deactivation after duration
-      setTimeout(() => {
-        skills.skill1.active = false;
-
-        // Final star blast when the skill ends (keep this for gameplay impact)
-        if (squad.length > 0) {
-          // OPTIMIZATION: Reuse the last center position instead of recalculating
-          const finalCenter = lastCenter;
-
-          // Fire a final star blast with increased damage
-          const finalDamage = areaDamageAmount * 1.2; // 120% of initial damage for final blast
-          fireStarBlast(
-            finalCenter,
-            directions,
-            areaDamageRadius * 1.2,
-            finalDamage
-          );
-
-          // Create final explosion
-          effects.push({
-            x: finalCenter.x,
-            y: finalCenter.y,
-            z: finalCenter.z,
-            type: "explosion",
-            size: 70,
-            life: 45,
-            color: [255, 150, 0],
-            forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-          });
-        }
-      }, starBlastDuration * (1000 / 60)); // Convert frames to ms
-
+      activateStarBlastSkill();
       break;
 
     case 2: // Machine Gun - fire much faster for 5 seconds for each squad member
@@ -8089,181 +7944,206 @@ function activateSkill(skillNumber) {
       break;
 
     case 8: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
-      // Get bomb drop point - farther ahead of the player for better visibility
-      let bombCenter = { x: 0, y: 0, z: 0 };
-      if (squad.length > 0) {
-        bombCenter = {
-          x: squad[0].x,
-          y: squad[0].y - 1200, // Drop far ahead of the squad
-          z: squad[0].z,
-        };
-      }
-
-      // RADICAL OPTIMIZATION: Reduced fall duration for faster effect
-      const OPTIMIZED_FALL_DURATION = 90; // 1.5 seconds at 60fps
-      const OPTIMIZED_FALL_DURATION_MS = OPTIMIZED_FALL_DURATION * (1000 / 60);
-
-      // Add warning siren effect - single global effect instead of multiple
-      effects.push({
-        type: "globalWarning",
-        life: OPTIMIZED_FALL_DURATION,
-        intensity: 0.5,
-        forceRenderDetail: true,
-      });
-
-      // Add screen shake for dramatic effect
-      cameraShake = 3; // Initial shake when launching
-
-      // RADICAL OPTIMIZATION: Single targeting reticle instead of multiple
-      effects.push({
-        x: bombCenter.x,
-        y: bombCenter.y,
-        z: 0, // At ground level
-        type: "targetingReticle",
-        size: 200,
-        life: OPTIMIZED_FALL_DURATION,
-        color: [255, 50, 50, 150],
-        pulseRate: 0.1,
-        forceRenderDetail: true,
-      });
-
-      // Create initial bomb drop effect (small object falling from sky)
-      effects.push({
-        x: bombCenter.x,
-        y: bombCenter.y,
-        z: 1000, // Start high in the sky
-        type: "atomicBomb",
-        size: 40,
-        life: OPTIMIZED_FALL_DURATION,
-        endPos: { ...bombCenter, z: bombCenter.z },
-        fallStartTime: frameCount,
-        forceRenderDetail: true,
-      });
-
-      // RADICAL OPTIMIZATION: Skip atmospheric distortion effect
-      // Create atomic explosion after delay (when bomb hits ground)
-      setTimeout(() => {
-        // Massive camera shake when bomb hits
-        cameraShake = 20;
-
-        // Enhanced damage based on accumulated damage boost - extremely powerful
-        let atomicDamage = 3000 + damageBoost * 150;
-
-        // RADICAL OPTIMIZATION: Single explosion layer with shader-based rendering
-        // Create one main explosion effect that uses efficient rendering techniques
-        effects.push({
-          x: bombCenter.x,
-          y: bombCenter.y,
-          z: bombCenter.z,
-          type: "atomicExplosion",
-          size: 1000, // Single large explosion
-          life: 120,
-          color: [255, 200, 50], // Orange fire color
-          layer: 0,
-          forceRenderDetail: true,
-          radicallyOptimized: true, // Flag for new optimized rendering
-        });
-
-        // Add bright flash during explosion - single flash only
-        effects.push({
-          x: bombCenter.x,
-          y: bombCenter.y,
-          z: bombCenter.z,
-          type: "atomicFlash",
-          size: 6000,
-          life: 45,
-          color: [255, 255, 255],
-          forceRenderDetail: true,
-        });
-
-        // RADICAL OPTIMIZATION: Single shockwave instead of multiple
-        effects.push({
-          x: bombCenter.x,
-          y: bombCenter.y,
-          z: 0, // At ground level
-          type: "shockwave",
-          size: 1200,
-          life: 90,
-          color: [255, 150, 50],
-          layer: 0,
-          forceRenderDetail: true,
-        });
-
-        // RADICAL OPTIMIZATION: Process enemies in batches for damage calculation
-        // This reduces the number of distance calculations and improves performance
-        const BATCH_SIZE = 20; // Process enemies in batches
-        const totalBatches = Math.ceil(enemies.length / BATCH_SIZE);
-        
-        for (let batch = 0; batch < totalBatches; batch++) {
-          const startIdx = batch * BATCH_SIZE;
-          const endIdx = Math.min(startIdx + BATCH_SIZE, enemies.length);
-          
-          // Process this batch of enemies
-          for (let i = startIdx; i < endIdx; i++) {
-            const enemy = enemies[i];
-            if (!enemy) continue; // Skip if enemy doesn't exist
-            
-            // Calculate distance from explosion center
-            const dx = enemy.x - bombCenter.x;
-            const dy = enemy.y - bombCenter.y;
-            const dz = enemy.z - bombCenter.z;
-            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-            // Apply damage with distance falloff
-            // Enormous blast radius of 6000 units
-            const damageMultiplier = Math.max(0.8, 1 - distance / 6000);
-            const damage = atomicDamage * damageMultiplier;
-
-            // Apply damage to enemy
-            enemy.health -= damage;
-
-            // RADICAL OPTIMIZATION: Create visual effects only for nearby enemies
-            // and with much lower probability
-            if (distance < 1500 && random() > 0.8) {
-              createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
-            }
-          }
-        }
-
-        // RADICAL OPTIMIZATION: Apply radiation damage in a single batch operation
-        // instead of creating individual effects for each enemy
-        setTimeout(() => {
-          // Apply one final wave of radiation damage
-          for (let enemy of enemies) {
-            const dx = enemy.x - bombCenter.x;
-            const dy = enemy.y - bombCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < 800) {
-              // Apply radiation damage
-              const radiationDamage = 50 + damageBoost * 5;
-              enemy.health -= radiationDamage;
-              
-              // Create a single visual indicator at random positions in the radiation field
-              // instead of on each enemy
-              if (random() > 0.95) {
-                const angle = random(TWO_PI);
-                const radius = random(800);
-                effects.push({
-                  x: bombCenter.x + cos(angle) * radius,
-                  y: bombCenter.y + sin(angle) * radius,
-                  z: 20,
-                  type: "radiationBurst",
-                  size: random(20, 30),
-                  life: random(20, 30),
-                  color: [100, 255, 100],
-                });
-              }
-            }
-          }
-        }, 300); // Apply radiation damage after a short delay
-      }, OPTIMIZED_FALL_DURATION_MS);
-
+      activateApocalypticDevastation();
       break;
   }
 
   // Set cooldown
   skills[skillKey].lastUsed = frameCount;
+}
+
+/**
+ * Activates the Apocalyptic Devastation skill (Skill 8)
+ * This is a radically optimized ultimate weapon that drops a powerful atomic bomb
+ * causing massive damage to enemies in a large area
+ */
+function activateApocalypticDevastation() {
+  // Get bomb drop point - farther ahead of the player for better visibility
+  let bombCenter = { x: 0, y: 0, z: 0 };
+  if (squad.length > 0) {
+    bombCenter = {
+      x: squad[0].x,
+      y: squad[0].y - 1200, // Drop far ahead of the squad
+      z: squad[0].z,
+    };
+  }
+
+  // RADICAL OPTIMIZATION: Reduced fall duration for faster effect
+  const OPTIMIZED_FALL_DURATION = 90; // 1.5 seconds at 60fps
+  const OPTIMIZED_FALL_DURATION_MS = OPTIMIZED_FALL_DURATION * (1000 / 60);
+
+  // Add warning siren effect - single global effect instead of multiple
+  effects.push({
+    type: "globalWarning",
+    life: OPTIMIZED_FALL_DURATION,
+    intensity: 0.5,
+    forceRenderDetail: true,
+  });
+
+  // Add screen shake for dramatic effect
+  cameraShake = 3; // Initial shake when launching
+
+  // RADICAL OPTIMIZATION: Single targeting reticle instead of multiple
+  effects.push({
+    x: bombCenter.x,
+    y: bombCenter.y,
+    z: 0, // At ground level
+    type: "targetingReticle",
+    size: 200,
+    life: OPTIMIZED_FALL_DURATION,
+    color: [255, 50, 50, 150],
+    pulseRate: 0.1,
+    forceRenderDetail: true,
+  });
+
+  // Create initial bomb drop effect (small object falling from sky)
+  effects.push({
+    x: bombCenter.x,
+    y: bombCenter.y,
+    z: 1000, // Start high in the sky
+    type: "atomicBomb",
+    size: 40,
+    life: OPTIMIZED_FALL_DURATION,
+    endPos: { ...bombCenter, z: bombCenter.z },
+    fallStartTime: frameCount,
+    forceRenderDetail: true,
+  });
+
+  // RADICAL OPTIMIZATION: Skip atmospheric distortion effect
+  // Create atomic explosion after delay (when bomb hits ground)
+  setTimeout(() => {
+    // Massive camera shake when bomb hits
+    cameraShake = 20;
+
+    // Enhanced damage based on accumulated damage boost - extremely powerful
+    let atomicDamage = 3000 + damageBoost * 150;
+
+    // RADICAL OPTIMIZATION: Single explosion layer with shader-based rendering
+    // Create one main explosion effect that uses efficient rendering techniques
+    effects.push({
+      x: bombCenter.x,
+      y: bombCenter.y,
+      z: bombCenter.z,
+      type: "atomicExplosion",
+      size: 1000, // Single large explosion
+      life: 120,
+      color: [255, 200, 50], // Orange fire color
+      layer: 0,
+      forceRenderDetail: true,
+      radicallyOptimized: true, // Flag for new optimized rendering
+    });
+
+    // Add bright flash during explosion - single flash only
+    effects.push({
+      x: bombCenter.x,
+      y: bombCenter.y,
+      z: bombCenter.z,
+      type: "atomicFlash",
+      size: 6000,
+      life: 45,
+      color: [255, 255, 255],
+      forceRenderDetail: true,
+    });
+
+    // RADICAL OPTIMIZATION: Single shockwave instead of multiple
+    effects.push({
+      x: bombCenter.x,
+      y: bombCenter.y,
+      z: 0, // At ground level
+      type: "shockwave",
+      size: 1200,
+      life: 90,
+      color: [255, 150, 50],
+      layer: 0,
+      forceRenderDetail: true,
+    });
+
+    // Apply damage to enemies in batches for better performance
+    applyApocalypticDamage(bombCenter, atomicDamage);
+
+    // Apply radiation damage after a short delay
+    setTimeout(() => {
+      applyRadiationDamage(bombCenter);
+    }, 300);
+  }, OPTIMIZED_FALL_DURATION_MS);
+}
+
+/**
+ * Applies the main explosion damage to enemies in batches
+ * @param {Object} bombCenter - The center point of the explosion
+ * @param {number} atomicDamage - The base damage amount
+ */
+function applyApocalypticDamage(bombCenter, atomicDamage) {
+  // RADICAL OPTIMIZATION: Process enemies in batches for damage calculation
+  // This reduces the number of distance calculations and improves performance
+  const BATCH_SIZE = 20; // Process enemies in batches
+  const totalBatches = Math.ceil(enemies.length / BATCH_SIZE);
+  
+  for (let batch = 0; batch < totalBatches; batch++) {
+    const startIdx = batch * BATCH_SIZE;
+    const endIdx = Math.min(startIdx + BATCH_SIZE, enemies.length);
+    
+    // Process this batch of enemies
+    for (let i = startIdx; i < endIdx; i++) {
+      const enemy = enemies[i];
+      if (!enemy) continue; // Skip if enemy doesn't exist
+      
+      // Calculate distance from explosion center
+      const dx = enemy.x - bombCenter.x;
+      const dy = enemy.y - bombCenter.y;
+      const dz = enemy.z - bombCenter.z;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      // Apply damage with distance falloff
+      // Enormous blast radius of 6000 units
+      const damageMultiplier = Math.max(0.8, 1 - distance / 6000);
+      const damage = atomicDamage * damageMultiplier;
+
+      // Apply damage to enemy
+      enemy.health -= damage;
+
+      // RADICAL OPTIMIZATION: Create visual effects only for nearby enemies
+      // and with much lower probability
+      if (distance < 1500 && random() > 0.8) {
+        createExplosion(enemy.x, enemy.y, enemy.z, [255, 200, 50]);
+      }
+    }
+  }
+}
+
+/**
+ * Applies radiation damage to enemies near the explosion center
+ * @param {Object} bombCenter - The center point of the explosion
+ */
+function applyRadiationDamage(bombCenter) {
+  // Apply one final wave of radiation damage
+  for (let enemy of enemies) {
+    const dx = enemy.x - bombCenter.x;
+    const dy = enemy.y - bombCenter.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 800) {
+      // Apply radiation damage
+      const radiationDamage = 50 + damageBoost * 5;
+      enemy.health -= radiationDamage;
+      
+      // Create a single visual indicator at random positions in the radiation field
+      // instead of on each enemy
+      if (random() > 0.95) {
+        const angle = random(TWO_PI);
+        const radius = random(800);
+        effects.push({
+          x: bombCenter.x + cos(angle) * radius,
+          y: bombCenter.y + sin(angle) * radius,
+          z: 20,
+          type: "radiationBurst",
+          size: random(20, 30),
+          life: random(20, 30),
+          color: [100, 255, 100],
+        });
+      }
+    }
+  }
 }
 
 function getNextItem(list, currentIndex) {
@@ -10535,6 +10415,149 @@ function drawIcePattern(x, y, size, angle, depth, alpha, color) {
   }
 
   pop();
+}
+
+/**
+ * Calculates the center position of the squad
+ * @returns {Object} The center position {x, y, z}
+ */
+function calculateSquadCenter() {
+  const center = { x: 0, y: 0, z: 0 };
+  
+  if (squad.length > 0) {
+    let totalX = 0, totalY = 0, totalZ = 0;
+    
+    for (let member of squad) {
+      totalX += member.x;
+      totalY += member.y;
+      totalZ += member.z;
+    }
+    
+    center.x = totalX / squad.length;
+    center.y = totalY / squad.length;
+    center.z = totalZ / squad.length;
+  }
+  
+  return center;
+}
+
+/**
+ * Determines the directions for star blast based on performance level
+ * @returns {Array} Array of direction indices
+ */
+function getStarBlastDirections() {
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+  
+  // 0: right, 1: up-right, 2: up, 3: up-left, 4: left, 5: down-left, 6: down, 7: down-right
+  if (isLowPerformance) {
+    return [0, 2, 4, 6]; // Only 4 cardinal directions on low performance
+  } else if (isMediumPerformance) {
+    return [0, 2, 4, 6, 1, 5]; // 6 directions on medium performance
+  } else {
+    return [0, 1, 2, 3, 4, 5, 6, 7]; // All 8 directions on high performance
+  }
+}
+
+/**
+ * Creates an explosion effect at the specified position
+ * @param {Object} position - The position {x, y, z}
+ * @param {number} size - The size of the explosion
+ * @param {number} life - The life duration of the explosion
+ * @param {Array} color - The color of the explosion [r, g, b]
+ */
+function createExplosionEffect(position, size, life, color) {
+  effects.push({
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    type: "explosion",
+    size: size,
+    life: life,
+    color: color,
+    forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
+  });
+}
+
+/**
+ * Activates the Star Blast skill
+ * Damages enemies in all directions simultaneously for a duration
+ */
+function activateStarBlastSkill() {
+  // Performance check
+  const isLowPerformance = isMobileDevice || currentPerformanceLevel === PerformanceLevel.LOW;
+  const isMediumPerformance = currentPerformanceLevel === PerformanceLevel.MEDIUM;
+  
+  // Calculate damage parameters based on player stats
+  const areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
+  const areaDamageAmount = 100 + damageBoost * 15; // Base damage + bonus from damage boost
+  const starBlastDuration = skills.skill1.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
+  
+  // Get squad center position
+  const squadCenter = calculateSquadCenter();
+  
+  // Get directions based on performance level
+  const directions = getStarBlastDirections();
+  
+  // Activate star blast mode
+  skills.skill1.active = true;
+  skills.skill1.endTime = frameCount + starBlastDuration;
+  
+  // Initial star blast
+  fireStarBlast(squadCenter, directions, areaDamageRadius, areaDamageAmount);
+  
+  // Create initial explosion effect
+  createExplosionEffect(squadCenter, 50, 30, [255, 100, 0]);
+  
+  // Calculate periodic blast parameters based on performance
+  const blastInterval = isLowPerformance ? 90 : (isMediumPerformance ? 60 : 45);
+  const maxIntervals = isLowPerformance ? 2 : (isMediumPerformance ? 3 : 5);
+  const totalIntervals = Math.min(maxIntervals, Math.floor(starBlastDuration / blastInterval));
+  
+  // Store the squad center reference to avoid recalculating in each timeout
+  let lastCenter = {...squadCenter};
+  
+  // Schedule periodic star blasts
+  for (let i = 1; i <= totalIntervals; i++) {
+    setTimeout(() => {
+      // Only continue if the skill is still active
+      if (skills.skill1.active && frameCount < skills.skill1.endTime) {
+        // Determine whether to recalculate center position
+        let currentCenter;
+        
+        if (i % 2 === 0 || !isLowPerformance) {
+          // Get updated squad center position
+          currentCenter = calculateSquadCenter();
+          lastCenter = {...currentCenter};
+        } else {
+          // Use the last calculated center to save performance
+          currentCenter = lastCenter;
+        }
+        
+        // Fire another star blast with reduced damage
+        const reducedDamage = areaDamageAmount * 0.6; // 60% of initial damage
+        fireStarBlast(currentCenter, directions, areaDamageRadius, reducedDamage);
+        
+        // Create a smaller explosion effect
+        createExplosionEffect(currentCenter, 30, 20, [255, 100, 0]);
+      }
+    }, i * blastInterval * (1000 / 60)); // Convert frames to ms
+  }
+  
+  // Schedule deactivation after duration
+  setTimeout(() => {
+    skills.skill1.active = false;
+    
+    // Final star blast when the skill ends
+    if (squad.length > 0) {
+      // Fire a final star blast with increased damage
+      const finalDamage = areaDamageAmount * 1.2; // 120% of initial damage
+      fireStarBlast(lastCenter, directions, areaDamageRadius * 1.2, finalDamage);
+      
+      // Create final explosion effect
+      createExplosionEffect(lastCenter, 70, 45, [255, 150, 0]);
+    }
+  }, starBlastDuration * (1000 / 60)); // Convert frames to ms
 }
 
 // Fire a star blast in all 8 directions
