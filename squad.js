@@ -1887,8 +1887,7 @@ function drawSkyAndMountains() {
   pop();
 }
 
-// New function to draw a semi-transparent sky overlay at the top of the screen (end of bridge)
-// This will be drawn on top of the bridge and enemies
+// Function to draw clouds that appear on top of the bridge at the horizon
 function drawSkyOverlay() {
   // Save the current WebGL state
   push();
@@ -1899,9 +1898,6 @@ function drawSkyOverlay() {
   // Switch to 2D rendering mode
   ortho(-width/2, width/2, height/2, -height/2, -10000, 10000);
   
-  // Get WebGL context
-  const gl = drawingContext;
-  
   // Move in front of everything
   translate(0, 0, 5000);
   
@@ -1910,20 +1906,44 @@ function drawSkyOverlay() {
   // Extra size to ensure coverage beyond screen edges
   const extraSize = Math.max(1000, width);
   
-  // Create a semi-transparent gradient at the top of the screen (where the bridge ends)
-  // that fades out as it approaches the middle
+  // ===== CLOUDS OVERLAY =====
+  // Add clouds that appear on top of the bridge near the horizon
+  // Use noise for cloud positions
+  for (let i = 0; i < 6; i++) { // Reduced number of clouds
+    // Position clouds near the horizon (middle of screen)
+    const cloudX = (noise(i * 0.5, frameCount * 0.0005) * (width + extraSize*2)) - extraSize;
+    
+    // Position clouds slightly above the horizon line for better visibility of the bridge/wall
+    // Adjust based on device - higher on mobile to show more of the bridge
+    const horizonOffset = isMobileDevice ? -40 : -20; // Move clouds up from center
+    const cloudY = horizonOffset; // Slightly above center of screen in ortho mode
+    
+    const cloudWidth = noise(i * 0.3) * 250 + 120; // Slightly smaller clouds
+    const cloudHeight = 40 + noise(i) * 25; // Slightly smaller height
+    
+    // Draw cloud as a series of overlapping ellipses
+    for (let j = 0; j < 5; j++) {
+      const offsetX = (j - 2) * cloudWidth/6;
+      const offsetY = sin(j * 0.5) * 6;
+      
+      // Add alpha to make clouds much more transparent (80-120 instead of 160-200)
+      fill(255, 255, 255, map(j, 0, 4, 80, 120));
+      ellipse(cloudX + offsetX, cloudY + offsetY, cloudWidth/3, cloudHeight);
+    }
+  }
+  
+  // Add a very subtle sky gradient at the top that fades quickly
   const skyOverlayColors = [
-    [25, 25, 112, 180],   // Midnight blue with opacity (top)
-    [65, 105, 225, 150],  // Royal blue with opacity
-    [135, 206, 235, 100], // Sky blue with opacity
-    [240, 248, 255, 0]    // Fully transparent at the bottom
+    [25, 25, 112, 70],    // Midnight blue with very low opacity (top)
+    [65, 105, 225, 50],   // Royal blue with very low opacity
+    [135, 206, 235, 30],  // Sky blue with extremely low opacity
+    [240, 248, 255, 0]    // Fully transparent
   ];
   
-  // Draw the overlay gradient from top to about 1/3 of the screen
-  // Note: In p5.js with ortho mode, negative Y is at the top of the screen
+  // Draw a subtle gradient just at the very top
   for (let i = 0; i < skyOverlayColors.length; i++) {
-    const y1 = map(i, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.3);
-    const y2 = map(i + 1, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.3);
+    const y1 = map(i, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.12);
+    const y2 = map(i + 1, 0, skyOverlayColors.length, -height/2 - extraSize, -height/2 + height * 0.12);
     
     fill(skyOverlayColors[i]);
     rect(-extraSize, y1, width + extraSize*2, y2 - y1 + 1);
@@ -1931,11 +1951,11 @@ function drawSkyOverlay() {
   
   // Add a few stars that appear on top of everything
   if (!isMobileDevice || currentPerformanceLevel !== PerformanceLevel.LOW) {
-    fill(255, 255, 255, 180);
-    for (let i = 0; i < 20; i++) { // Fewer stars than the background
-      const starSize = random(1, 2);
+    fill(255, 255, 255, 150);
+    for (let i = 0; i < 12; i++) { // Even fewer stars
+      const starSize = random(1, 1.8);
       const x = random(-extraSize, width + extraSize);
-      const y = random(-height/2 - extraSize, -height/2 + height * 0.15); // Only at the very top of screen
+      const y = random(-height/2 - extraSize, -height/2 + height * 0.08); // Only at the very top of screen
       
       // Make stars twinkle
       if (frameCount % 30 === 0 && random() > 0.7) {
@@ -8300,13 +8320,13 @@ function createMenuElement() {
   // Create menu container element
   menuContainer = createDiv("");
   menuContainer.id("menu-container");
-  menuContainer.position(width / 2 - 175, height / 2 - 220); // Center the menu, slightly larger
+  menuContainer.position(width / 2 - 175, height / 2 - 170); // Center the menu, slightly larger
   menuContainer.style("background-color", "rgba(0, 0, 0, 0.7)");
   menuContainer.style("color", "white");
   menuContainer.style("padding", "20px");
   menuContainer.style("border-radius", "10px");
   menuContainer.style("width", "350px");
-  menuContainer.style("height", "440px");
+  menuContainer.style("height", "360px");
   menuContainer.style("box-sizing", "border-box");
   menuContainer.style("font-family", "monospace");
   menuContainer.style("text-align", "center");
@@ -8345,12 +8365,10 @@ function createMenuElement() {
     <h3 style="margin: 10px 0; color: #aaffaa;">KEYBOARD CONTROLS</h3>
     <p style="font-size: 16px; margin: 0 0 5px 0;">Arrow Keys: Move Squad</p>
     <p style="font-size: 16px; margin: 0 0 5px 0;">A/S/D/F/Q/W/E/R: Activate Skills</p>
-    <p style="font-size: 16px; margin: 0 0 15px 0;">Mouse Scroll: Zoom / Mouse Drag: Move Camera</p>
 
     <h3 style="margin: 10px 0; color: #aaffaa;">TOUCH CONTROLS</h3>
-    <p style="font-size: 16px; margin: 0 0 5px 0;"><strong>D-Pad: Move Squad</strong></p>
-    <p style="font-size: 16px; margin: 0 0 5px 0;"><strong>Touch Skills: Activate Skills</strong></p>
-    <p style="font-size: 16px; margin: 0 0 5px 0;">Pinch: Zoom / Drag: Move Camera</p>
+    <p style="font-size: 16px; margin: 0 0 5px 0;">D-Pad: Move Squad</p>
+    <p style="font-size: 16px; margin: 0 0 5px 0;">Touch Skills: Activate Skills</p>
   `);
 
   menuContainer.child(controlsDiv);
@@ -8716,7 +8734,7 @@ function createSkillBarElement() {
 
   // Adjust sizes based on screen size
   const skillBarHeight = isMobile ? 180 : 220;
-  const skillButtonSize = isMobile ? 50 : 80;
+  const skillButtonSize = isMobile ? 50 : 60;
   const skillFontSize = isMobile ? "1.8rem" : "2.2rem";
   const skillNameFontSize = isMobile ? "0.7rem" : "0.8rem";
   const skillMargin = isMobile ? "0 2px" : "0 5px";
@@ -8725,10 +8743,11 @@ function createSkillBarElement() {
   // Create skill bar container
   skillBar = createDiv("");
   skillBar.id("skill-bar");
-  skillBar.style("background-color", "rgba(50, 50, 50, 0.27)"); // Reduced opacity to 1/3 of 0.8
+  // skillBar.style("background-color", "rgba(50, 50, 50, 0.27)"); // Reduced opacity to 1/3 of 0.8
+  skillBar.style("background", "transparent"); // Reduced opacity to 1/3 of 0.8
   skillBar.style("color", "white");
-  skillBar.style("padding", isMobile ? "5px" : "10px");
-  skillBar.style("border-radius", "5px");
+  // skillBar.style("padding", isMobile ? "5px" : "10px");
+  // skillBar.style("border-radius", "5px");
   // skillBar.style("flex", "1"); // Allow it to grow to fill available space
   skillBar.style("height", skillBarHeight + "px");
   skillBar.style("display", "flex");
@@ -8738,7 +8757,7 @@ function createSkillBarElement() {
   skillBar.style("box-sizing", "border-box");
   skillBar.style("margin-left", isMobile ? "5px" : "10px");
   skillBar.style("margin-right", isMobile ? "5px" : "10px");
-  skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)");
+  // skillBar.style("border", "1px solid rgba(100, 100, 100, 0.5)");
   // skillBar.style("max-width", "calc(100% - " + (isMobile ? "190px" : "240px") + ")"); // Ensure it doesn't overlap with d-pad
   skillBar.style("max-width", "500px"); // Ensure it doesn't overlap with d-pad
 
