@@ -43,6 +43,9 @@ const skillNumberToName = {
   7: SkillName.QUANTUM_ACCELERATION,
   8: SkillName.APOCALYPTIC_DEVASTATION,
   9: SkillName.BARRIER,
+  10: "-",
+  11: "-",
+  12: "-",
 };
 
 // ===== GLOBAL VARIABLES =====
@@ -4727,7 +4730,7 @@ function drawEffects() {
         255,
         200 * flashIntensity,
         0,
-        150 * (effect.life / skills.skill2.activeDuration)
+        150 * (effect.life / skills[SkillName.MACHINE_GUN].activeDuration)
       );
       strokeWeight(2);
       sphere(effect.size * 0.9);
@@ -4737,7 +4740,7 @@ function drawEffects() {
         255,
         200 * flashIntensity,
         0,
-        30 * (effect.life / skills.skill2.activeDuration)
+        30 * (effect.life / skills[SkillName.MACHINE_GUN].activeDuration)
       );
       for (let i = 0; i < 2; i++) {
         push();
@@ -8452,6 +8455,10 @@ function activateSkill(skillNameOrNumber) {
   const skillKey = skillName;
   const skill = skills[skillName];
 
+  if (!skill) {
+    return;
+  }
+
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
   if (frameCount - skill.lastUsed < skill.cooldown) {
@@ -9649,9 +9656,17 @@ function createSkillBarElement() {
   skillBar.child(thirdRow);
 
   // Create individual skill elements
-  for (let i = 1; i <= 12; i++) {
+  // Use the skillNumberToName mapping to iterate through available skills
+  const maxSkills = Object.keys(skillNumberToName).length;
+  for (let i = 1; i <= maxSkills; i++) {
+    // Get the skill name from the mapping
+    const skillName = skillNumberToName[i];
+    
+    // Skip if skill name is not defined
+    if (!skillName) continue;
+    
     const skillDiv = createDiv("");
-    skillDiv.id(`skill${i}`);
+    skillDiv.id(`skill${i}`); // Keep the numeric ID for backward compatibility with UI
     skillDiv.style("text-align", "center");
     skillDiv.style("margin", skillMargin);
     skillDiv.style("position", "relative");
@@ -9680,9 +9695,8 @@ function createSkillBarElement() {
     `);
 
     // Add click/touch event handler to activate the skill
-    const skillNumber = i; // Capture the current skill number
-    // Map skill number to skill name
-    const skillNameForButton = skillNumberToName[skillNumber];
+    // Use the skill name directly from the mapping
+    const skillNameForButton = skillName;
 
     // Visual feedback on mouse/touch down
     skillDiv.mousePressed(function () {
@@ -9746,10 +9760,16 @@ function updateSkillBar() {
   }
 
   skillBar.style("visibility", "visible");
-  for (let i = 1; i <= 12; i++) {
-    const skill = skills[`skill${i}`];
+  for (let i = 1; i <= Object.keys(skillNumberToName).length; i++) {
+    const skillName = skillNumberToName[i];
+    if (!skillName) {
+      // Skip if skill name is not defined
+      continue;
+    }
+    
+    const skill = skills[skillName];
     if (!skill) {
-      // console.log(`Skill ${i} not defined`);
+      // console.log(`Skill ${skillName} not defined`);
       continue;
     }
 
@@ -10304,9 +10324,12 @@ function resetGame() {
   };
 
   // Reset skills
-  for (let i = 1; i <= 8; i++) {
-    skills[`skill${i}`].lastUsed = 0;
-  }
+  // Use the skill name constants instead of numeric references
+  Object.values(SkillName).forEach(skillName => {
+    if (skills[skillName]) {
+      skills[skillName].lastUsed = 0;
+    }
+  });
 
   // Reset camera to show the entire bridge
   cameraOffsetX = CAMERA_OFFSET_X;
@@ -10322,7 +10345,7 @@ function applyEffects() {
     // Special handling for machine gun effects
     if (effects[i].type === "machineGun") {
       // Check if the machine gun skill is still active
-      if (!skills.skill2.active) {
+      if (!skills[SkillName.MACHINE_GUN].active) {
         effects[i].life = 0; // Force effect to end if skill is no longer active
       }
 
