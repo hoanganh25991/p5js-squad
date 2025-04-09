@@ -1975,15 +1975,6 @@ function setup() {
   }
 }
 
-// Prevent default touch behavior to disable zooming and selection
-function touchStarted() {
-  // Prevent default touch behavior (zooming, scrolling, etc.)
-  if (isMobileDevice) {
-    return false; // Returning false prevents default browser behavior
-  }
-  return true;
-}
-
 function touchMoved() {
   // Prevent default touch behavior during movement
   if (isMobileDevice) {
@@ -2015,26 +2006,6 @@ document.addEventListener(
 function initializeUI() {
   createUiUsingDomElements();
   createPerformanceSettingsUI();
-}
-
-// Clean up memory and optimize performance
-function cleanupMemory() {
-  // Purge any old references
-  setTimeout(function () {
-    // Clear arrays just in case
-    effects = [];
-    projectiles = [];
-    projectilePool = [];
-
-    // Attempt to trigger garbage collection
-    if (window.gc) {
-      try {
-        window.gc();
-      } catch (e) {
-        // Ignore if gc is not available
-      }
-    }
-  }, 1000);
 }
 
 function createUiUsingDomElements() {
@@ -7829,7 +7800,6 @@ function updateEnemies() {
   let barrierX = barrierEffect ? barrierEffect.x : null;
   let barrierY = barrierEffect ? barrierEffect.y : null;
   let barrierWidth = barrierEffect ? barrierEffect.width : 0;
-  let barrierHeight = barrierEffect ? barrierEffect.height : 0;
 
   // Process enemies from the end of the array to avoid index issues when removing
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -10233,31 +10203,6 @@ function getSkillKey(skillNumber) {
   }
 }
 
-function getSkillName(skillNumber) {
-  switch (skillNumber) {
-    case 1:
-      return "Star Blast";
-    case 2:
-      return "Machine Gun";
-    case 3:
-      return "Shield";
-    case 4:
-      return "Freeze";
-    case 5:
-      return "Rejuvenation";
-    case 6:
-      return "Infernal Rage";
-    case 7:
-      return "Quantum Accel";
-    case 8:
-      return "Atomic Bomb";
-    case 9:
-      return "Wall";
-    default:
-      return "";
-  }
-}
-
 // Input handlers
 function keyPressed() {
   if (keyCode === ENTER) {
@@ -10559,9 +10504,6 @@ function getEnemyMaxHealth(enemyType) {
 
   return Math.floor(baseHealth * (1 + currentWave * 0.1));
 }
-
-// Visual effects functions with object pooling optimization
-// const MAX_EFFECTS = 200; // Maximum number of simultaneous effects
 
 // Create the effect or reuse an existing one from the pool
 function createEffect(type, x, y, z, color, size) {
@@ -11067,32 +11009,6 @@ function drawIcePattern(x, y, size, angle, depth, alpha, color) {
 }
 
 /**
- * Calculates the center position of the squad
- * @returns {Object} The center position {x, y, z}
- */
-function calculateSquadCenter() {
-  const center = { x: 0, y: 0, z: 0 };
-
-  if (squad.length > 0) {
-    let totalX = 0,
-      totalY = 0,
-      totalZ = 0;
-
-    for (let member of squad) {
-      totalX += member.x;
-      totalY += member.y;
-      totalZ += member.z;
-    }
-
-    center.x = totalX / squad.length;
-    center.y = totalY / squad.length;
-    center.z = totalZ / squad.length;
-  }
-
-  return center;
-}
-
-/**
  * Determines the directions for star blast based on performance level
  * @returns {Array} Array of direction indices
  */
@@ -11110,26 +11026,6 @@ function getStarBlastDirections() {
   } else {
     return [0, 1, 2, 3, 4, 5, 6, 7]; // All 8 directions on high performance
   }
-}
-
-/**
- * Creates an explosion effect at the specified position
- * @param {Object} position - The position {x, y, z}
- * @param {number} size - The size of the explosion
- * @param {number} life - The life duration of the explosion
- * @param {Array} color - The color of the explosion [r, g, b]
- */
-function createExplosionEffect(position, size, life, color) {
-  effects.push({
-    x: position.x,
-    y: position.y,
-    z: position.z,
-    type: "explosion",
-    size: size,
-    life: life,
-    color: color,
-    forceRenderDetail: false, // OPTIMIZATION: Remove forced detail
-  });
 }
 
 /**
