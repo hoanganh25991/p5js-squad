@@ -1163,70 +1163,71 @@ const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 let currentWeapon = WEAPON_TYPES[0];
 
 // Skills cooldowns and durations in frames (60 frames = 1 second)
+// Player skills with cooldowns and durations
 let skills = {
-  skill1: {
+  [SkillName.STAR_BLAST]: {
     cooldown: 300,
     lastUsed: -10_000,
     active: false,
     activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
     endTime: 0,
   },
-  skill2: {
+  [SkillName.MACHINE_GUN]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
     activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
     endTime: 0,
   },
-  skill3: {
+  [SkillName.SHIELD]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
     activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
     endTime: 0,
   },
-  skill4: {
+  [SkillName.FREEZE]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
-    activeDuration: 180, // Freeze duration (2 seconds = 120 frames at 60fps)
+    activeDuration: 180, // Freeze duration (3 seconds = 180 frames at 60fps)
     endTime: 0,
   },
-  skill5: {
+  [SkillName.REJUVENATION]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
-    activeDuration: 120,
+    activeDuration: 120, // Rejuvenation duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  skill6: {
+  [SkillName.INFERNAL_RAGE]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
-    activeDuration: 120,
+    activeDuration: 120, // Infernal Rage duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  skill7: {
+  [SkillName.QUANTUM_ACCELERATION]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
-    activeDuration: 120,
+    activeDuration: 120, // Quantum Acceleration duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  skill8: {
+  [SkillName.APOCALYPTIC_DEVASTATION]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
-    activeDuration: 120,
+    activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  skill9: {
+  [SkillName.BARRIER]: {
     cooldown: 480,
     lastUsed: -10_000,
     active: false,
     endTime: 0,
     health: 5_000, // Barrier health
-    activeDuration: 120,
+    activeDuration: 120, // Barrier duration (2 seconds = 120 frames at 60fps)
     maxBarriers: 5, // Maximum number of barriers allowed
     activeBarriers: 0, // Current number of active barriers
   },
@@ -1652,6 +1653,7 @@ function isGPUAccelerationEnabled() {
 
 function setup() {
   try {
+    pixelDensity(1)
     // Create WebGL canvas with error handling
     try {
       createCanvas(windowWidth, windowHeight, WEBGL);
@@ -7461,7 +7463,7 @@ function updateSquad() {
       const volumeMultiplier = 1 + Math.min(1, squad.length / SQUAD_SIZE);
 
       // Check if machine gun skill is active
-      const isMachineGunActive = skills.skill2.active;
+      const isMachineGunActive = skills[SkillName.MACHINE_GUN].active;
 
       // Play a single sound with appropriate volume
       if (isMachineGunActive) {
@@ -7481,7 +7483,7 @@ function updateSquad() {
       fireWeapon(member, false);
 
       // If machine gun skill is active, create small muzzle flash effect
-      if (skills.skill2.active) {
+      if (skills[SkillName.MACHINE_GUN].active) {
         createHitEffect(
           member.x,
           member.y - 10, // Position in front of squad member
@@ -7495,10 +7497,10 @@ function updateSquad() {
   }
 
   // Check if machine gun skill duration has ended
-  if (skills.skill2.active && frameCount >= skills.skill2.endTime) {
+  if (skills[SkillName.MACHINE_GUN].active && frameCount >= skills[SkillName.MACHINE_GUN].endTime) {
     // Reset to normal fire rate
     squadFireRate = 30; // Normal fire rate
-    skills.skill2.active = false;
+    skills[SkillName.MACHINE_GUN].active = false;
   }
 }
 
@@ -12027,7 +12029,7 @@ function setupInfernoDamageOverTime(
   // Create interval to damage enemies in the inferno area
   const burnInterval = setInterval(() => {
     // Check if effect is still active
-    if (frameCount > skills.skill6.lastUsed + duration) {
+    if (frameCount > skills[SkillName.INFERNAL_RAGE].lastUsed + duration) {
       clearInterval(burnInterval);
       return;
     }
@@ -12094,7 +12096,7 @@ function setupInfernoDamageOverTime(
   for (let i = 1; i <= totalBursts; i++) {
     setTimeout(() => {
       // Only create effects if skill is still active
-      if (frameCount < skills.skill6.lastUsed + duration) {
+      if (frameCount < skills[SkillName.INFERNAL_RAGE].lastUsed + duration) {
         // Create fewer flame eruptions when multiple skills active
         const eruptions =
           activeSkillCount > 1
