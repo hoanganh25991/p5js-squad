@@ -29,7 +29,7 @@ const SkillName = {
   INFERNAL_RAGE: "INFERNAL_RAGE",
   QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
   ATOMIC_BOMB: "ATOMIC_BOMB",
-  DEFENSE_WALL: "DEFENSE_WALL",
+  BARRIER: "DEFENSE_WALL",
 };
 
 // Mapping of skill enum values to their display names
@@ -42,7 +42,31 @@ const skillDisplayNames = {
   [SkillName.INFERNAL_RAGE]: "Infernal Rage",
   [SkillName.QUANTUM_ACCELERATION]: "Quantum Accel",
   [SkillName.ATOMIC_BOMB]: "Atomic Bomb",
-  [SkillName.DEFENSE_WALL]: "Defense Wall"
+  [SkillName.BARRIER]: "Defense Wall",
+};
+
+const skillKeys = {
+  [SkillName.STAR_BLAST]: "A",
+  [SkillName.MACHINE_GUN]: "S",
+  [SkillName.SHIELD]: "D",
+  [SkillName.FREEZE]: "F",
+  [SkillName.REJUVENATION]: "Q",
+  [SkillName.INFERNAL_RAGE]: "W",
+  [SkillName.QUANTUM_ACCELERATION]: "E",
+  [SkillName.ATOMIC_BOMB]: "R",
+  [SkillName.BARRIER]: "B",
+};
+
+const skillHandlers = {
+  [SkillName.STAR_BLAST]: activateStarBlastSkill,
+  [SkillName.MACHINE_GUN]: activateMachineGunSkill,
+  [SkillName.SHIELD]: activateShieldSkill,
+  [SkillName.FREEZE]: activateFreezeSkill,
+  [SkillName.REJUVENATION]: activateRejuvenationSkill,
+  [SkillName.INFERNAL_RAGE]: activateInfernalRageSkill,
+  [SkillName.QUANTUM_ACCELERATION]: activateQuantumAccelerationSkill,
+  [SkillName.ATOMIC_BOMB]: activateAtomicBombSkill,
+  [SkillName.BARRIER]: activateBarrierSkill,
 };
 
 /**
@@ -52,6 +76,19 @@ const skillDisplayNames = {
  */
 function getSkillName(skillName) {
   return skillDisplayNames[skillName] || "";
+}
+
+function getSkillKey(skillName) {
+  return skillKeys[skillName] || "";
+}
+
+function getSkillHandler(skillName) {
+  return (
+    skillHandlers[skillName] ||
+    function () {
+      console.log(`No handler for skillName: ${skillName}`);
+    }
+  );
 }
 
 // Mapping of skill names for UI organization
@@ -64,7 +101,7 @@ const skillUIOrder = [
   SkillName.INFERNAL_RAGE,
   SkillName.QUANTUM_ACCELERATION,
   SkillName.ATOMIC_BOMB,
-  SkillName.DEFENSE_WALL,
+  SkillName.BARRIER,
   "G",
   "T",
   "Y",
@@ -130,15 +167,15 @@ let sounds = {
 
   // Skill sounds - using skill names for better readability
   skills: {
-    [SkillName.STAR_BLAST]: null,       // Rapid Fire
-    [SkillName.MACHINE_GUN]: null,      // Scatter Shot
-    [SkillName.SHIELD]: null,           // Orbital Strike
-    [SkillName.FREEZE]: null,           // Cryo Freeze
-    [SkillName.REJUVENATION]: null,     // Rejuvenation Field
-    [SkillName.INFERNAL_RAGE]: null,    // Infernal Rage
+    [SkillName.STAR_BLAST]: null, // Rapid Fire
+    [SkillName.MACHINE_GUN]: null, // Scatter Shot
+    [SkillName.SHIELD]: null, // Orbital Strike
+    [SkillName.FREEZE]: null, // Cryo Freeze
+    [SkillName.REJUVENATION]: null, // Rejuvenation Field
+    [SkillName.INFERNAL_RAGE]: null, // Infernal Rage
     [SkillName.QUANTUM_ACCELERATION]: null, // Quantum Acceleration
     [SkillName.ATOMIC_BOMB]: null, // Apocalyptic Devastation
-    [SkillName.DEFENSE_WALL]: null,          // Barrier
+    [SkillName.BARRIER]: null, // Barrier
   },
 
   // Environment sounds
@@ -159,7 +196,7 @@ let soundSettings = {
   musicVolume: 0.05, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
-  
+
   // Combat sound volumes
   combatVolume: {
     shoot: 0.1, // Reduced shoot sound to 1/3 of original volume
@@ -168,47 +205,47 @@ let soundSettings = {
     death: 1.0,
     criticalHit: 0.5,
   },
-  
+
   // Skill sound volumes - using skill names for better readability
   skillVolume: {
-    [SkillName.STAR_BLAST]: 0.4,        // Auto-fire skill - lower volume
-    [SkillName.MACHINE_GUN]: 0.8,       // Scatter shot - normal volume
-    [SkillName.SHIELD]: 0.8,            // Orbital strike - normal volume
-    [SkillName.FREEZE]: 2.4,            // Freeze - much higher volume (3x)
-    [SkillName.REJUVENATION]: 0.8,      // Normal volume
-    [SkillName.INFERNAL_RAGE]: 0.8,     // Normal volume
+    [SkillName.STAR_BLAST]: 0.4, // Auto-fire skill - lower volume
+    [SkillName.MACHINE_GUN]: 0.8, // Scatter shot - normal volume
+    [SkillName.SHIELD]: 0.8, // Orbital strike - normal volume
+    [SkillName.FREEZE]: 2.4, // Freeze - much higher volume (3x)
+    [SkillName.REJUVENATION]: 0.8, // Normal volume
+    [SkillName.INFERNAL_RAGE]: 0.8, // Normal volume
     [SkillName.QUANTUM_ACCELERATION]: 0.8, // Normal volume
     [SkillName.ATOMIC_BOMB]: 0.8, // Normal volume
-    [SkillName.DEFENSE_WALL]: 0.8,           // Normal volume
+    [SkillName.BARRIER]: 0.8, // Normal volume
   },
-  
+
   muted: false, // Sound off by default
   currentMusic: null,
 
   // Sound optimization settings
   maxConcurrentSounds: 8, // Maximum number of sounds that can play simultaneously
-  
+
   // Priority levels for different sound types (higher = more important)
   soundPriority: {
-    ui: 10,         // UI sounds are highest priority
-    skills: 8,      // Skill sounds are high priority
-    death: 7,       // Death sounds are important
+    ui: 10, // UI sounds are highest priority
+    skills: 8, // Skill sounds are high priority
+    death: 7, // Death sounds are important
     criticalHit: 6, // Critical hits are somewhat important
-    explosion: 5,   // Explosions are medium priority
-    hit: 3,         // Regular hits are lower priority
-    shoot: 2,       // Shoot sounds are low priority
+    explosion: 5, // Explosions are medium priority
+    hit: 3, // Regular hits are lower priority
+    shoot: 2, // Shoot sounds are low priority
     environment: 1, // Environment sounds are lowest priority
   },
-  
+
   // Minimum time (ms) between playing the same sound type
   soundCooldowns: {
-    shoot: 50,      // Don't play shoot sounds more than once per 50ms
-    hit: 80,        // Don't play hit sounds more than once per 80ms
+    shoot: 50, // Don't play shoot sounds more than once per 50ms
+    hit: 80, // Don't play hit sounds more than once per 80ms
     criticalHit: 150, // Don't play critical hit sounds more than once per 150ms
   },
-  
-  batchSounds: true,     // Whether to batch similar sounds together
-  dynamicCulling: true,  // Whether to dynamically reduce sounds based on game performance
+
+  batchSounds: true, // Whether to batch similar sounds together
+  dynamicCulling: true, // Whether to dynamically reduce sounds based on game performance
 };
 
 // ===== SOUND LOADING FUNCTIONS =====
@@ -262,17 +299,33 @@ function preloadSounds() {
     sounds.combat.criticalHit = safeLoadSound("sounds/combat/critical_hit.mp3");
 
     // Skill sounds - using skill names for better readability
-    sounds.skills[SkillName.STAR_BLAST] = safeLoadSound("sounds/skills/rapid_fire.mp3");
-    sounds.skills[SkillName.MACHINE_GUN] = safeLoadSound("sounds/skills/scatter_shot.mp3");
-    sounds.skills[SkillName.SHIELD] = safeLoadSound("sounds/skills/heavy_strike.mp3");
-    sounds.skills[SkillName.FREEZE] = safeLoadSound("sounds/skills/cryo_freeze.mp3");
-    sounds.skills[SkillName.REJUVENATION] = safeLoadSound("sounds/skills/rejuvenation.mp3");
-    sounds.skills[SkillName.INFERNAL_RAGE] = safeLoadSound("sounds/skills/infernal_rage.mp3");
+    sounds.skills[SkillName.STAR_BLAST] = safeLoadSound(
+      "sounds/skills/rapid_fire.mp3"
+    );
+    sounds.skills[SkillName.MACHINE_GUN] = safeLoadSound(
+      "sounds/skills/scatter_shot.mp3"
+    );
+    sounds.skills[SkillName.SHIELD] = safeLoadSound(
+      "sounds/skills/heavy_strike.mp3"
+    );
+    sounds.skills[SkillName.FREEZE] = safeLoadSound(
+      "sounds/skills/cryo_freeze.mp3"
+    );
+    sounds.skills[SkillName.REJUVENATION] = safeLoadSound(
+      "sounds/skills/rejuvenation.mp3"
+    );
+    sounds.skills[SkillName.INFERNAL_RAGE] = safeLoadSound(
+      "sounds/skills/infernal_rage.mp3"
+    );
     sounds.skills[SkillName.QUANTUM_ACCELERATION] = safeLoadSound(
       "sounds/skills/quantum_acceleration.mp3"
     );
-    sounds.skills[SkillName.ATOMIC_BOMB] = safeLoadSound("sounds/skills/apocalypse.mp3");
-    sounds.skills[SkillName.DEFENSE_WALL] = safeLoadSound("sounds/skills/barrier.mp3");
+    sounds.skills[SkillName.ATOMIC_BOMB] = safeLoadSound(
+      "sounds/skills/apocalypse.mp3"
+    );
+    sounds.skills[SkillName.BARRIER] = safeLoadSound(
+      "sounds/skills/barrier.mp3"
+    );
 
     // Environment sounds
     sounds.environment.wind = safeLoadSound("sounds/environment/wind.mp3");
@@ -327,11 +380,11 @@ function handleSoundLoadError() {
 // Sound manager for tracking and optimizing sound playback
 const soundManager = {
   // Properties
-  activeSounds: [],      // Currently playing sounds
-  lastPlayedTime: {},    // Last time each sound type was played
-  soundsThisFrame: {},   // Sounds requested this frame (for batching)
-  frameStartTime: 0,     // Start time of current frame
-  frameRates: [],        // Track recent frame rates
+  activeSounds: [], // Currently playing sounds
+  lastPlayedTime: {}, // Last time each sound type was played
+  soundsThisFrame: {}, // Sounds requested this frame (for batching)
+  frameStartTime: 0, // Start time of current frame
+  frameRates: [], // Track recent frame rates
   performanceIssue: false, // Flag for performance issues
 
   // Initialize the sound manager
@@ -350,7 +403,7 @@ const soundManager = {
   startFrame() {
     // Get current frame rate using p5.js built-in function
     const currentTime = millis();
-    
+
     // Track frame rates for the last 10 frames using p5's frameRate()
     const fps = frameRate();
     this.frameRates.push(fps);
@@ -1256,7 +1309,7 @@ let skills = {
     activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  [SkillName.DEFENSE_WALL]: {
+  [SkillName.BARRIER]: {
     cooldown: 480,
     lastUsed: -10_000,
     active: false,
@@ -1688,7 +1741,7 @@ function isGPUAccelerationEnabled() {
 
 function setup() {
   try {
-    pixelDensity(1)
+    pixelDensity(1);
     // Create WebGL canvas with error handling
     try {
       createCanvas(windowWidth, windowHeight, WEBGL);
@@ -7232,7 +7285,7 @@ function isBeyondWall(y) {
 }
 
 // Function to create an explosion effect at the specified position
-function createExplosionEffect(x, y, z, color, size = 30) {
+function createCombatHitEffect(x, y, z, color, size = 30) {
   // Create the main explosion
   effects.push({
     x: x,
@@ -7503,7 +7556,10 @@ function updateSquad() {
   }
 
   // Check if machine gun skill duration has ended
-  if (skills[SkillName.MACHINE_GUN].active && frameCount >= skills[SkillName.MACHINE_GUN].endTime) {
+  if (
+    skills[SkillName.MACHINE_GUN].active &&
+    frameCount >= skills[SkillName.MACHINE_GUN].endTime
+  ) {
     // Reset to normal fire rate
     squadFireRate = 30; // Normal fire rate
     skills[SkillName.MACHINE_GUN].active = false;
@@ -7808,7 +7864,7 @@ function updateEnemies() {
     // Check if enemy is beyond the wall and remove it
     if (isBeyondWall(enemy.y)) {
       // Create an effect to show the enemy being destroyed by the wall
-      createExplosionEffect(
+      createCombatHitEffect(
         enemy.x,
         220 - WALL_THICKNESS / 2, // Position at the wall
         enemy.z,
@@ -8398,7 +8454,7 @@ function checkCollisions() {
         enemy.health -= 30;
         if (enemy.health <= 0) {
           // Create explosion effect
-          createExplosionEffect(
+          createCombatHitEffect(
             enemy.x,
             enemy.y,
             enemy.z,
@@ -8438,35 +8494,13 @@ const ATOMIC_BOMB_FALL_DURATION = 150; // 2.5 seconds at 60fps
 const ATOMIC_BOMB_FALL_DURATION_MS = ATOMIC_BOMB_FALL_DURATION * (1000 / 60); // in milliseconds
 
 // Skill system
-function activateSkill(skillNameOrNumber) {
-  // Convert number to skill name if needed
-  let skillName = skillNameOrNumber;
-  let skillNumber;
-
-  if (typeof skillNameOrNumber === "number") {
-    skillName = skillNumberToName[skillNameOrNumber];
-    skillNumber = skillNameOrNumber;
-  } else if (
-    typeof skillNameOrNumber === "string" &&
-    skillNameOrNumber.startsWith("skill")
-  ) {
-    // Handle legacy string format "skill1", "skill2", etc.
-    skillNumber = parseInt(skillNameOrNumber.replace("skill", ""));
-    skillName = skillNumberToName[skillNumber];
-  } else {
-    // It's already a skill name, find the corresponding number for legacy code
-    skillNumber = Object.keys(skillNumberToName).find(
-      (key) => skillNumberToName[key] === skillName
-    );
-  }
-
-  const skillKey = skillName;
+function activateSkill(skillName) {
   const skill = skills[skillName];
 
   if (!skill) {
+    console.log(`No skill defined for skillName: ${skillName}`);
     return;
   }
-
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
   if (frameCount - skill.lastUsed < skill.cooldown) {
@@ -8477,46 +8511,8 @@ function activateSkill(skillNameOrNumber) {
 
   // Play skill activation sound
   playSkillSound(skillName);
-
-
-  // Apply skill effect with accumulative power-ups
-  switch (skillName) {
-    case SkillName.STAR_BLAST: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
-      activateStarBlastSkill(skill);
-      break;
-
-    case SkillName.MACHINE_GUN: // Machine Gun - fire much faster for 5 seconds for each squad member
-      activateMachineGunSkill(skill);
-      break;
-
-    case SkillName.SHIELD: // Shield - protective barrier that follows the squad
-      activateShieldSkill(skill);
-      break;
-
-    case SkillName.FREEZE: // Freeze - ice effect that freezes enemies
-      activateFreezeSkill(skill);
-      break;
-
-    case SkillName.REJUVENATION: // Rejuvenation Field - Advanced healing with regeneration over time
-      activateRejuvenationSkill(skill);
-      break;
-
-    case SkillName.INFERNAL_RAGE: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
-      activateInfernalRageSkill(skill);
-      break;
-
-    case SkillName.QUANTUM_ACCELERATION: // Quantum Acceleration - Advanced speed boost with time dilation effects
-      activateQuantumAccelerationSkill(skill);
-      break;
-
-    case SkillName.ATOMIC_BOMB: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
-      activateApocalypticDevastation(skill);
-      break;
-
-    case SkillName.DEFENSE_WALL: // Barrier - Places a wall that enemies target first
-      activateBarrierSkill(skill);
-      break;
-  }
+  const skillHandler = getSkillHandler(skillName);
+  skillHandler(skill);
 }
 
 function updateSkillActivation(skill) {
@@ -8533,7 +8529,7 @@ function updateSkillActivation(skill) {
  * This is a radically optimized ultimate weapon that drops a powerful atomic bomb
  * causing massive damage to enemies in a large area
  */
-function activateApocalypticDevastation(skill) {
+function activateAtomicBombSkill(skill) {
   updateSkillActivation(skill);
 
   // Get bomb drop point - farther ahead of the player for better visibility
@@ -9668,10 +9664,10 @@ function createSkillBarElement() {
   skillUIOrder.forEach((skillName, index) => {
     // Skip if skill name is not defined or is a placeholder
     if (!skillName || skillName === "-") return;
-    
+
     // Get the skill number for backward compatibility with UI
     const skillNumber = skillNameToNumber[skillName];
-    
+
     const skillDiv = createDiv("");
     skillDiv.id(`skill-${skillName}`); // Use skill name in ID for better semantics
     skillDiv.addClass(`skill-number-${skillNumber}`); // Add class with number for backward compatibility
@@ -9693,10 +9689,10 @@ function createSkillBarElement() {
 
     skillDiv.html(`
       <div id="skillName-${skillName}" style="width: ${skillButtonSize}px; overflow: hidden; text-overflow: ellipsis; font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
-      skillNumber
+      skillName
     )}</div>
       <div id="skillKey-${skillName}" style="font-size: ${skillFontSize}; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
-      skillNumber
+      skillName
     )}</div>
       <div id="needle-${skillName}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: ${skillButtonSize}px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
       <div id="overlay-${skillName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0; border-radius: 10px;"></div>
@@ -9746,16 +9742,20 @@ function createSkillBarElement() {
 
     // Add to the appropriate row based on skill type
     // Organize skills into rows based on their function
-    if (skillName === SkillName.STAR_BLAST || 
-        skillName === SkillName.MACHINE_GUN || 
-        skillName === SkillName.SHIELD || 
-        skillName === SkillName.FREEZE) {
+    if (
+      skillName === SkillName.STAR_BLAST ||
+      skillName === SkillName.MACHINE_GUN ||
+      skillName === SkillName.SHIELD ||
+      skillName === SkillName.FREEZE
+    ) {
       // First row: Basic combat skills
       firstRow.child(skillDiv);
-    } else if (skillName === SkillName.REJUVENATION || 
-               skillName === SkillName.INFERNAL_RAGE || 
-               skillName === SkillName.QUANTUM_ACCELERATION || 
-               skillName === SkillName.ATOMIC_BOMB) {
+    } else if (
+      skillName === SkillName.REJUVENATION ||
+      skillName === SkillName.INFERNAL_RAGE ||
+      skillName === SkillName.QUANTUM_ACCELERATION ||
+      skillName === SkillName.ATOMIC_BOMB
+    ) {
       // Second row: Advanced combat skills
       secondRow.child(skillDiv);
     } else {
@@ -9772,12 +9772,12 @@ function updateSkillBar() {
   }
 
   skillBar.style("visibility", "visible");
-  
+
   // Iterate through all skill names in the UI order
-  skillUIOrder.forEach(skillName => {
+  skillUIOrder.forEach((skillName) => {
     // Skip if skill name is not defined or is a placeholder
     if (!skillName || skillName === "-") return;
-    
+
     const skill = skills[skillName];
     if (!skill) {
       // console.log(`Skill ${skillName} not defined`);
@@ -9798,8 +9798,9 @@ function updateSkillBar() {
     const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
     const isApocalypticDevastationSkill = skillName === SkillName.ATOMIC_BOMB;
     const isSkillActive = !isApocalypticDevastationSkill && skill.active;
-    const isAtomicBombActive = 
-      isApocalypticDevastationSkill && frameCount - skill.lastUsed < skill.activeDuration;
+    const isAtomicBombActive =
+      isApocalypticDevastationSkill &&
+      frameCount - skill.lastUsed < skill.activeDuration;
 
     if (cooldownPercent <= 0) {
       skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
@@ -9807,10 +9808,12 @@ function updateSkillBar() {
 
     if (cooldownPercent > 0) {
       skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-      select(`#skillName-${skillName}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
+      select(`#skillName-${skillName}`).html(
+        `(${Math.ceil(cooldownRemaining / 60)}s)`
+      );
     } else {
       // Reset the skill name to normal
-      select(`#skillName-${skillName}`).html(getSkillName(skillNumber));
+      select(`#skillName-${skillName}`).html(getSkillName(skillName));
 
       // Reset key display for Apocalyptic Devastation
       if (isApocalypticDevastationSkill) {
@@ -10178,31 +10181,6 @@ function updateHUD() {
   }
 }
 
-function getSkillKey(skillNumber) {
-  switch (skillNumber) {
-    case 1:
-      return "A";
-    case 2:
-      return "S";
-    case 3:
-      return "D";
-    case 4:
-      return "F";
-    case 5:
-      return "Q";
-    case 6:
-      return "W";
-    case 7:
-      return "E";
-    case 8:
-      return "R";
-    case 9:
-      return "B";
-    default:
-      return "";
-  }
-}
-
 // Input handlers
 function keyPressed() {
   if (keyCode === ENTER) {
@@ -10244,7 +10222,7 @@ function keyPressed() {
     } else if (key === "r" || key === "R") {
       activateSkill(SkillName.ATOMIC_BOMB);
     } else if (key === "b" || key === "B") {
-      activateSkill(SkillName.DEFENSE_WALL);
+      activateSkill(SkillName.BARRIER);
     }
   }
 }
@@ -10315,7 +10293,7 @@ function resetGame() {
 
   // Reset skills
   // Use the skill name constants instead of numeric references
-  Object.values(SkillName).forEach(skillName => {
+  Object.values(SkillName).forEach((skillName) => {
     if (skills[skillName]) {
       skills[skillName].lastUsed = 0;
     }
@@ -11056,7 +11034,7 @@ function activateStarBlastSkill(skill) {
   fireStarBlast(squadCenter, directions, areaDamageRadius, areaDamageAmount);
 
   // Create initial explosion effect
-  createExplosionEffect(squadCenter, 50, 30, [255, 100, 0]);
+  createCombatHitEffect(squadCenter, 50, 30, [255, 100, 0]);
 
   // Calculate periodic blast parameters based on performance
   const blastInterval = isLowPerformance ? 90 : isMediumPerformance ? 60 : 45;
@@ -11096,7 +11074,7 @@ function activateStarBlastSkill(skill) {
         );
 
         // Create a smaller explosion effect
-        createExplosionEffect(currentCenter, 30, 20, [255, 100, 0]);
+        createCombatHitEffect(currentCenter, 30, 20, [255, 100, 0]);
       }
     }, i * blastInterval * (1000 / 60)); // Convert frames to ms
   }
@@ -11115,7 +11093,7 @@ function activateStarBlastSkill(skill) {
       );
 
       // Create final explosion effect
-      createExplosionEffect(lastCenter, 70, 45, [255, 150, 0]);
+      createCombatHitEffect(lastCenter, 70, 45, [255, 150, 0]);
     }
   }, starBlastDuration * (1000 / 60)); // Convert frames to ms
 }
@@ -11320,7 +11298,6 @@ function activateMachineGunSkill(skill) {
     // Only restore fire rate if machine gun mode is still active
     // (prevents conflicts with other skills that might have changed fire rate)
     squadFireRate = normalFireRate;
-
   }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
 }
 
@@ -12277,7 +12254,10 @@ function createAccelerationVisualEffects(
 
     for (let i = 1; i <= burstCount; i++) {
       setTimeout(() => {
-        if (frameCount < skills[SkillName.QUANTUM_ACCELERATION].lastUsed + duration) {
+        if (
+          frameCount <
+          skills[SkillName.QUANTUM_ACCELERATION].lastUsed + duration
+        ) {
           // Create just one burst at squad center instead of for each member
           effects.push({
             x: center.x,
