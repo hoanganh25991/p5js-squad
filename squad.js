@@ -32,6 +32,28 @@ const SkillName = {
   DEFENSE_WALL: "DEFENSE_WALL",
 };
 
+// Mapping of skill enum values to their display names
+const skillDisplayNames = {
+  [SkillName.STAR_BLAST]: "Star Blast",
+  [SkillName.MACHINE_GUN]: "Machine Gun",
+  [SkillName.SHIELD]: "Shield",
+  [SkillName.FREEZE]: "Freeze",
+  [SkillName.REJUVENATION]: "Rejuvenation",
+  [SkillName.INFERNAL_RAGE]: "Infernal Rage",
+  [SkillName.QUANTUM_ACCELERATION]: "Quantum Accel",
+  [SkillName.ATOMIC_BOMB]: "Atomic Bomb",
+  [SkillName.DEFENSE_WALL]: "Defense Wall"
+};
+
+/**
+ * Get the human-readable display name for a skill
+ * @param {string} skillName - The skill name enum value (from SkillName object)
+ * @returns {string} The display name of the skill
+ */
+function getSkillName(skillName) {
+  return skillDisplayNames[skillName] || "";
+}
+
 // Mapping of skill names for UI organization
 const skillUIOrder = [
   SkillName.STAR_BLAST,
