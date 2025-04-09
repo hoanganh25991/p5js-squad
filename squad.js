@@ -2320,7 +2320,7 @@ function createPerformanceSettingsUI() {
 
 // Update FPS display and track history
 function updatePerformanceMetrics() {
-  // Calculate current FPS
+  // Get current FPS using p5.js built-in function
   const currentFPS = frameRate();
 
   // Update FPS history
@@ -9023,7 +9023,7 @@ function updateTechnicalBoard() {
 
   lastTechUpdateTime = frameCount;
 
-  // Record current FPS for averaging
+  // Get current FPS using p5.js built-in function for averaging
   fpsHistory.push(frameRate());
   if (fpsHistory.length > FPS_HISTORY_LENGTH) {
     fpsHistory.shift(); // Remove oldest value
