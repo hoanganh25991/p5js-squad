@@ -9722,7 +9722,7 @@ function createSkillBarElement() {
     skillDiv.style("max-width", skillButtonSize * 1.2 + "px"); // Set maximum width
 
     skillDiv.html(`
-      <div id="skillName-${skillName}" style="font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
+      <div id="skillName-${skillName}" style="width: ${skillButtonSize}px; overflow: hidden; text-overflow: ellipsis; font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
       skillNumber
     )}</div>
       <div id="skillKey-${skillName}" style="font-size: ${skillFontSize}; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
@@ -10252,7 +10252,7 @@ function getSkillName(skillNumber) {
     case 8:
       return "Atomic Bomb";
     case 9:
-      return "Defense Wall";
+      return "Wall";
     default:
       return "";
   }
