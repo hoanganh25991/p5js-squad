@@ -28,8 +28,8 @@ const SkillName = {
   REJUVENATION: "REJUVENATION",
   INFERNAL_RAGE: "INFERNAL_RAGE",
   QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
-  APOCALYPTIC_DEVASTATION: "APOCALYPTIC_DEVASTATION",
-  BARRIER: "BARRIER",
+  ATOMIC_BOMB: "ATOMIC_BOMB",
+  DEFENSE_WALL: "DEFENSE_WALL",
 };
 
 // Mapping of skill names for UI organization
@@ -41,8 +41,8 @@ const skillUIOrder = [
   SkillName.REJUVENATION,
   SkillName.INFERNAL_RAGE,
   SkillName.QUANTUM_ACCELERATION,
-  SkillName.APOCALYPTIC_DEVASTATION,
-  SkillName.BARRIER,
+  SkillName.ATOMIC_BOMB,
+  SkillName.DEFENSE_WALL,
   "G",
   "T",
   "Y",
@@ -115,8 +115,8 @@ let sounds = {
     [SkillName.REJUVENATION]: null,     // Rejuvenation Field
     [SkillName.INFERNAL_RAGE]: null,    // Infernal Rage
     [SkillName.QUANTUM_ACCELERATION]: null, // Quantum Acceleration
-    [SkillName.APOCALYPTIC_DEVASTATION]: null, // Apocalyptic Devastation
-    [SkillName.BARRIER]: null,          // Barrier
+    [SkillName.ATOMIC_BOMB]: null, // Apocalyptic Devastation
+    [SkillName.DEFENSE_WALL]: null,          // Barrier
   },
 
   // Environment sounds
@@ -156,8 +156,8 @@ let soundSettings = {
     [SkillName.REJUVENATION]: 0.8,      // Normal volume
     [SkillName.INFERNAL_RAGE]: 0.8,     // Normal volume
     [SkillName.QUANTUM_ACCELERATION]: 0.8, // Normal volume
-    [SkillName.APOCALYPTIC_DEVASTATION]: 0.8, // Normal volume
-    [SkillName.BARRIER]: 0.8,           // Normal volume
+    [SkillName.ATOMIC_BOMB]: 0.8, // Normal volume
+    [SkillName.DEFENSE_WALL]: 0.8,           // Normal volume
   },
   
   muted: false, // Sound off by default
@@ -249,8 +249,8 @@ function preloadSounds() {
     sounds.skills[SkillName.QUANTUM_ACCELERATION] = safeLoadSound(
       "sounds/skills/quantum_acceleration.mp3"
     );
-    sounds.skills[SkillName.APOCALYPTIC_DEVASTATION] = safeLoadSound("sounds/skills/apocalypse.mp3");
-    sounds.skills[SkillName.BARRIER] = safeLoadSound("sounds/skills/barrier.mp3");
+    sounds.skills[SkillName.ATOMIC_BOMB] = safeLoadSound("sounds/skills/apocalypse.mp3");
+    sounds.skills[SkillName.DEFENSE_WALL] = safeLoadSound("sounds/skills/barrier.mp3");
 
     // Environment sounds
     sounds.environment.wind = safeLoadSound("sounds/environment/wind.mp3");
@@ -1227,14 +1227,14 @@ let skills = {
     activeDuration: 120, // Quantum Acceleration duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  [SkillName.APOCALYPTIC_DEVASTATION]: {
+  [SkillName.ATOMIC_BOMB]: {
     cooldown: 600,
     lastUsed: -10_000,
     active: false,
     activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  [SkillName.BARRIER]: {
+  [SkillName.DEFENSE_WALL]: {
     cooldown: 480,
     lastUsed: -10_000,
     active: false,
@@ -8517,11 +8517,11 @@ function activateSkill(skillNameOrNumber) {
       activateQuantumAccelerationSkill(skill);
       break;
 
-    case SkillName.APOCALYPTIC_DEVASTATION: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
+    case SkillName.ATOMIC_BOMB: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
       activateApocalypticDevastation(skill);
       break;
 
-    case SkillName.BARRIER: // Barrier - Places a wall that enemies target first
+    case SkillName.DEFENSE_WALL: // Barrier - Places a wall that enemies target first
       activateBarrierSkill(skill);
       break;
   }
@@ -9763,7 +9763,7 @@ function createSkillBarElement() {
     } else if (skillName === SkillName.REJUVENATION || 
                skillName === SkillName.INFERNAL_RAGE || 
                skillName === SkillName.QUANTUM_ACCELERATION || 
-               skillName === SkillName.APOCALYPTIC_DEVASTATION) {
+               skillName === SkillName.ATOMIC_BOMB) {
       // Second row: Advanced combat skills
       secondRow.child(skillDiv);
     } else {
@@ -9804,7 +9804,7 @@ function updateSkillBar() {
     // Check if skills are active
     const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
     const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
-    const isApocalypticDevastationSkill = skillName === SkillName.APOCALYPTIC_DEVASTATION;
+    const isApocalypticDevastationSkill = skillName === SkillName.ATOMIC_BOMB;
     const isSkillActive = !isApocalypticDevastationSkill && skill.active;
     const isAtomicBombActive = 
       isApocalypticDevastationSkill && frameCount - skill.lastUsed < skill.activeDuration;
@@ -10228,9 +10228,9 @@ function getSkillName(skillNumber) {
     case 7:
       return "Quantum Accel";
     case 8:
-      return "Apocalypse";
+      return "Atomic Bomb";
     case 9:
-      return "Barrier";
+      return "Defense Wall";
     default:
       return "";
   }
@@ -10275,9 +10275,9 @@ function keyPressed() {
     } else if (key === "e" || key === "E") {
       activateSkill(SkillName.QUANTUM_ACCELERATION);
     } else if (key === "r" || key === "R") {
-      activateSkill(SkillName.APOCALYPTIC_DEVASTATION);
+      activateSkill(SkillName.ATOMIC_BOMB);
     } else if (key === "b" || key === "B") {
-      activateSkill(SkillName.BARRIER);
+      activateSkill(SkillName.DEFENSE_WALL);
     }
   }
 }
