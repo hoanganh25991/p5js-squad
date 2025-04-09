@@ -3,7 +3,7 @@
     "short_name": "Squad",
     "description": "A simple squad game made in p5.js",
     "start_url": "index.html",
-    "display": "standalone",
+    "display": "fullscreen",
     "background_color": "#ffffff",
     "theme_color": "#000000",
     "icons": [

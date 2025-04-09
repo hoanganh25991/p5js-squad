@@ -1,9 +1,25 @@
 // Squad Survival Game
 // A 3D p5.js game with squad-based combat
-// Sound Manager for Squad Survival
-// Handles loading, playing, and managing all game sounds
 
-// Skill name constants (duplicated from squad.js for sound system)
+// ===== CONSTANTS =====
+
+// Game states
+const GameState = {
+  MENU: "menu",
+  PLAYING: "playing",
+  PAUSED: "paused",
+  GAME_OVER: "gameOver",
+};
+
+// Performance levels
+const PerformanceLevel = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  AUTO: "auto",
+};
+
+// Skill name constants
 const SkillName = {
   STAR_BLAST: "STAR_BLAST",
   MACHINE_GUN: "MACHINE_GUN",
@@ -28,6 +44,20 @@ const skillNumberToName = {
   8: SkillName.APOCALYPTIC_DEVASTATION,
   9: SkillName.BARRIER,
 };
+
+// ===== GLOBAL VARIABLES =====
+
+// Game state variables
+let gameState = GameState.MENU;
+let currentWave = 1;
+let score = 0;
+let gameStartTime = 0;
+let startTime = 0;
+let totalEnemiesKilled = 0; // Total enemies killed across all waves
+let waveEnemiesKilled = 0; // Enemies killed in the current wave
+
+// Sound system variables
+let soundSystemInitialized = false;
 
 // Sound storage
 let sounds = {
@@ -57,16 +87,17 @@ let sounds = {
     criticalHit: null,
   },
 
-  // Skill sounds
+  // Skill sounds - using skill names for better readability
   skills: {
-    skill1: null, // Rapid Fire
-    skill2: null, // Scatter Shot
-    skill3: null, // Orbital Strike
-    skill4: null, // Cryo Freeze
-    skill5: null, // Rejuvenation Field
-    skill6: null, // Infernal Rage
-    skill7: null, // Quantum Acceleration
-    skill8: null, // Apocalyptic Devastation
+    [SkillName.STAR_BLAST]: null,       // Rapid Fire
+    [SkillName.MACHINE_GUN]: null,      // Scatter Shot
+    [SkillName.SHIELD]: null,           // Orbital Strike
+    [SkillName.FREEZE]: null,           // Cryo Freeze
+    [SkillName.REJUVENATION]: null,     // Rejuvenation Field
+    [SkillName.INFERNAL_RAGE]: null,    // Infernal Rage
+    [SkillName.QUANTUM_ACCELERATION]: null, // Quantum Acceleration
+    [SkillName.APOCALYPTIC_DEVASTATION]: null, // Apocalyptic Devastation
+    [SkillName.BARRIER]: null,          // Barrier
   },
 
   // Environment sounds
@@ -87,6 +118,8 @@ let soundSettings = {
   musicVolume: 0.05, // Reduced background music volume
   sfxVolume: 0.8,
   uiVolume: 0.6,
+  
+  // Combat sound volumes
   combatVolume: {
     shoot: 0.1, // Reduced shoot sound to 1/3 of original volume
     hit: 0.5,
@@ -94,42 +127,50 @@ let soundSettings = {
     death: 1.0,
     criticalHit: 0.5,
   },
+  
+  // Skill sound volumes - using skill names for better readability
   skillVolume: {
-    skill1: 0.4, // Auto-fire skill - lower volume
-    skill2: 0.8, // Scatter shot - normal volume
-    skill3: 0.8, // Orbital strike - normal volume
-    skill4: 2.4, // Freeze - much higher volume (3x)
-    skill5: 0.8, // Normal volume for other skills
-    skill6: 0.8,
-    skill7: 0.8,
-    skill8: 0.8,
-    skill9: 0.8, // Barrier - normal volume
+    [SkillName.STAR_BLAST]: 0.4,        // Auto-fire skill - lower volume
+    [SkillName.MACHINE_GUN]: 0.8,       // Scatter shot - normal volume
+    [SkillName.SHIELD]: 0.8,            // Orbital strike - normal volume
+    [SkillName.FREEZE]: 2.4,            // Freeze - much higher volume (3x)
+    [SkillName.REJUVENATION]: 0.8,      // Normal volume
+    [SkillName.INFERNAL_RAGE]: 0.8,     // Normal volume
+    [SkillName.QUANTUM_ACCELERATION]: 0.8, // Normal volume
+    [SkillName.APOCALYPTIC_DEVASTATION]: 0.8, // Normal volume
+    [SkillName.BARRIER]: 0.8,           // Normal volume
   },
+  
   muted: false, // Sound off by default
   currentMusic: null,
 
   // Sound optimization settings
   maxConcurrentSounds: 8, // Maximum number of sounds that can play simultaneously
+  
+  // Priority levels for different sound types (higher = more important)
   soundPriority: {
-    // Priority levels for different sound types (higher = more important)
-    ui: 10, // UI sounds are highest priority
-    skills: 8, // Skill sounds are high priority
-    death: 7, // Death sounds are important
+    ui: 10,         // UI sounds are highest priority
+    skills: 8,      // Skill sounds are high priority
+    death: 7,       // Death sounds are important
     criticalHit: 6, // Critical hits are somewhat important
-    explosion: 5, // Explosions are medium priority
-    hit: 3, // Regular hits are lower priority
-    shoot: 2, // Shoot sounds are low priority
+    explosion: 5,   // Explosions are medium priority
+    hit: 3,         // Regular hits are lower priority
+    shoot: 2,       // Shoot sounds are low priority
     environment: 1, // Environment sounds are lowest priority
   },
+  
+  // Minimum time (ms) between playing the same sound type
   soundCooldowns: {
-    // Minimum time (ms) between playing the same sound type
-    shoot: 50, // Don't play shoot sounds more than once per 50ms
-    hit: 80, // Don't play hit sounds more than once per 80ms
+    shoot: 50,      // Don't play shoot sounds more than once per 50ms
+    hit: 80,        // Don't play hit sounds more than once per 80ms
     criticalHit: 150, // Don't play critical hit sounds more than once per 150ms
   },
-  batchSounds: true, // Whether to batch similar sounds together
-  dynamicCulling: true, // Whether to dynamically reduce sounds based on game performance
+  
+  batchSounds: true,     // Whether to batch similar sounds together
+  dynamicCulling: true,  // Whether to dynamically reduce sounds based on game performance
 };
+
+// ===== SOUND LOADING FUNCTIONS =====
 
 // Preload all sounds
 function preloadSounds() {
@@ -179,18 +220,18 @@ function preloadSounds() {
     sounds.combat.death = safeLoadSound("sounds/combat/death.mp3");
     sounds.combat.criticalHit = safeLoadSound("sounds/combat/critical_hit.mp3");
 
-    // Skill sounds
-    sounds.skills.skill1 = safeLoadSound("sounds/skills/rapid_fire.mp3");
-    sounds.skills.skill2 = safeLoadSound("sounds/skills/scatter_shot.mp3");
-    sounds.skills.skill3 = safeLoadSound("sounds/skills/heavy_strike.mp3");
-    sounds.skills.skill4 = safeLoadSound("sounds/skills/cryo_freeze.mp3");
-    sounds.skills.skill5 = safeLoadSound("sounds/skills/rejuvenation.mp3");
-    sounds.skills.skill6 = safeLoadSound("sounds/skills/infernal_rage.mp3");
-    sounds.skills.skill7 = safeLoadSound(
+    // Skill sounds - using skill names for better readability
+    sounds.skills[SkillName.STAR_BLAST] = safeLoadSound("sounds/skills/rapid_fire.mp3");
+    sounds.skills[SkillName.MACHINE_GUN] = safeLoadSound("sounds/skills/scatter_shot.mp3");
+    sounds.skills[SkillName.SHIELD] = safeLoadSound("sounds/skills/heavy_strike.mp3");
+    sounds.skills[SkillName.FREEZE] = safeLoadSound("sounds/skills/cryo_freeze.mp3");
+    sounds.skills[SkillName.REJUVENATION] = safeLoadSound("sounds/skills/rejuvenation.mp3");
+    sounds.skills[SkillName.INFERNAL_RAGE] = safeLoadSound("sounds/skills/infernal_rage.mp3");
+    sounds.skills[SkillName.QUANTUM_ACCELERATION] = safeLoadSound(
       "sounds/skills/quantum_acceleration.mp3"
     );
-    sounds.skills.skill8 = safeLoadSound("sounds/skills/apocalypse.mp3");
-    sounds.skills.skill9 = safeLoadSound("sounds/skills/barrier.mp3");
+    sounds.skills[SkillName.APOCALYPTIC_DEVASTATION] = safeLoadSound("sounds/skills/apocalypse.mp3");
+    sounds.skills[SkillName.BARRIER] = safeLoadSound("sounds/skills/barrier.mp3");
 
     // Environment sounds
     sounds.environment.wind = safeLoadSound("sounds/environment/wind.mp3");
@@ -205,15 +246,53 @@ function preloadSounds() {
   }
 }
 
-// Flag to track if sound system has been initialized
-let soundSystemInitialized = false;
+// Handle sound fallbacks if files don't load
+function handleSoundLoadError() {
+  try {
+    // Create a dummy sound object with all required methods
+    const createDummySound = () => {
+      // Return a simple object with dummy methods
+      return {
+        play: () => {},
+        stop: () => {},
+        loop: () => {},
+        isPlaying: () => false,
+        setVolume: () => {},
+        rate: () => {},
+        pan: () => {},
+        fade: () => {},
+        // Flag to identify dummy sounds
+        isDummy: true,
+      };
+    };
 
+    // Create placeholder sounds for any that failed to load
+    Object.keys(sounds).forEach((category) => {
+      Object.keys(sounds[category]).forEach((soundName) => {
+        if (!sounds[category][soundName]) {
+          console.log(`Creating fallback for sound: ${category}.${soundName}`);
+          sounds[category][soundName] = createDummySound();
+        }
+      });
+    });
+
+    console.log("Sound fallbacks created successfully");
+  } catch (e) {
+    console.error("Error creating sound fallbacks:", e);
+  }
+}
+
+// ===== SOUND MANAGER =====
 // Sound manager for tracking and optimizing sound playback
 const soundManager = {
-  activeSounds: [], // Currently playing sounds
-  lastPlayedTime: {}, // Last time each sound type was played
-  soundsThisFrame: {}, // Sounds requested this frame (for batching)
-  frameStartTime: 0, // Start time of current frame
+  // Properties
+  activeSounds: [],      // Currently playing sounds
+  lastPlayedTime: {},    // Last time each sound type was played
+  soundsThisFrame: {},   // Sounds requested this frame (for batching)
+  frameStartTime: 0,     // Start time of current frame
+  frameRates: [],        // Track recent frame rates
+  lastFrameTime: 0,      // Time of last frame
+  performanceIssue: false, // Flag for performance issues
 
   // Initialize the sound manager
   init() {
@@ -424,6 +503,8 @@ const soundManager = {
   },
 };
 
+// ===== SOUND SYSTEM CORE FUNCTIONS =====
+
 // Initialize sound system - only call this after user interaction
 function initSounds() {
   // If already initialized, don't do it again
@@ -492,6 +573,24 @@ function initSounds() {
   }
 }
 
+// Update sound system - call this once per frame from the main game loop
+function updateSoundSystem() {
+  // Skip if sound system isn't initialized
+  if (!soundSystemInitialized) return;
+
+  // Start a new sound frame
+  soundManager.startFrame();
+
+  // Update ambient sounds
+  updateAmbientSounds();
+
+  // Clean up finished sounds
+  soundManager.cleanupFinishedSounds();
+
+  // Process any batched sounds
+  soundManager.endFrame();
+}
+
 // Play a sound with specified volume and optional rate/pan
 function playSound(
   sound,
@@ -530,6 +629,119 @@ function playSound(
   }
 }
 
+// Stop all sounds
+function stopAllSounds() {
+  // Stop all music
+  Object.values(sounds.music).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all environment sounds
+  Object.values(sounds.environment).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all combat sounds
+  Object.values(sounds.combat).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all skill sounds
+  Object.values(sounds.skills).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all UI sounds
+  Object.values(sounds.ui).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  // Stop all powerup sounds
+  Object.values(sounds.powerups).forEach((sound) => {
+    if (sound && sound.isPlaying && sound.isPlaying()) sound.stop();
+  });
+
+  soundSettings.currentMusic = null;
+}
+
+// ===== VOLUME CONTROL FUNCTIONS =====
+
+// Toggle mute all sounds
+function toggleMute() {
+  soundSettings.muted = !soundSettings.muted;
+
+  try {
+    // Check if p5.sound is available
+    if (
+      typeof p5 !== "undefined" &&
+      p5.prototype.hasOwnProperty("masterVolume")
+    ) {
+      if (soundSettings.muted) {
+        stopAllSounds();
+      } else {
+        // Restore master volume
+        masterVolume(soundSettings.masterVolume);
+
+        // Resume background music if it was playing
+        if (soundSettings.currentMusic) {
+          playMusic(soundSettings.currentMusic, 0.5);
+        } else {
+          // If no music was playing, start the main theme
+          playMusic("main", 0.5);
+        }
+      }
+    } else {
+      console.warn(
+        "p5.sound library not fully loaded. Mute state changed but volume control unavailable."
+      );
+    }
+  } catch (e) {
+    console.error("Error toggling mute:", e);
+  }
+
+  return soundSettings.muted;
+}
+
+// Set master volume
+function setMasterVolume(volume) {
+  soundSettings.masterVolume = constrain(volume, 0, 1);
+
+  try {
+    // Check if p5.sound is available
+    if (
+      typeof p5 !== "undefined" &&
+      p5.prototype.hasOwnProperty("masterVolume")
+    ) {
+      masterVolume(soundSettings.masterVolume);
+    } else {
+      console.warn(
+        "p5.sound library not fully loaded. Volume change requested but unavailable."
+      );
+    }
+  } catch (e) {
+    console.error("Error setting master volume:", e);
+  }
+}
+
+// Set music volume
+function setMusicVolume(volume) {
+  soundSettings.musicVolume = constrain(volume, 0, 1);
+
+  // Update volume of currently playing music
+  if (soundSettings.currentMusic && sounds.music[soundSettings.currentMusic]) {
+    sounds.music[soundSettings.currentMusic].setVolume(
+      soundSettings.musicVolume
+    );
+  }
+}
+
+// Set SFX volume
+function setSFXVolume(volume) {
+  soundSettings.sfxVolume = constrain(volume, 0, 1);
+}
+
+// ===== SOUND PLAYBACK FUNCTIONS =====
+
 // Play UI sound
 function playUISound(soundName) {
   if (sounds.ui[soundName]) {
@@ -543,78 +755,6 @@ function playUISound(soundName) {
       "ui",
       priority
     );
-  }
-}
-
-// Play combat sound with optional position-based panning
-function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
-  if (sounds.combat[soundName]) {
-    // Calculate pan based on x position relative to screen center
-    const screenCenterX = width / 2;
-    const pan = constrain((x - screenCenterX) / screenCenterX, -1, 1) * 0.7;
-
-    // Calculate volume falloff based on distance from camera
-    const distanceFromCamera = abs(y - cameraOffsetY) / height;
-    const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
-
-    // Use specific combat volume if available, otherwise use default sfx volume
-    const combatVolumeMultiplier =
-      soundSettings.combatVolume && soundSettings.combatVolume[soundName]
-        ? soundSettings.combatVolume[soundName]
-        : 1.0;
-
-    // Get priority for this sound type
-    const priority =
-      soundSettings.soundPriority[soundName] ||
-      (soundName === "criticalHit"
-        ? 6
-        : soundName === "explosion"
-        ? 5
-        : soundName === "hit"
-        ? 3
-        : soundName === "shoot"
-        ? 2
-        : 4);
-
-    // For sounds that can be batched, create a batch key
-    const batchKey =
-      soundName === "hit" || soundName === "shoot"
-        ? `${soundName}_${Math.floor(x / 100)}_${Math.floor(y / 100)}`
-        : null;
-
-    // Calculate final volume
-    const finalVolume =
-      soundSettings.sfxVolume *
-      combatVolumeMultiplier *
-      volume *
-      distanceVolume;
-
-    // Request the sound through the sound manager
-    soundManager.requestSound(
-      sounds.combat[soundName],
-      finalVolume,
-      1.0,
-      pan,
-      soundName,
-      priority,
-      batchKey
-    );
-  }
-}
-
-// Play skill sound
-function playSkillSound(skillKey) {
-  if (sounds.skills[skillKey]) {
-    // Use specific skill volume if available, otherwise use default sfx volume
-    const volume =
-      soundSettings.skillVolume && soundSettings.skillVolume[skillKey]
-        ? soundSettings.skillVolume[skillKey]
-        : soundSettings.sfxVolume;
-
-    // Skills have high priority
-    const priority = soundSettings.soundPriority.skills || 8;
-
-    playSound(sounds.skills[skillKey], volume, 1.0, 0, "skill", priority);
   }
 }
 
@@ -706,115 +846,6 @@ function playMusic(musicName, fadeTime = 2.0) {
   }
 }
 
-// Stop all sounds
-function stopAllSounds() {
-  // Stop all music
-  Object.values(sounds.music).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  // Stop all environment sounds
-  Object.values(sounds.environment).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  // Stop all combat sounds
-  Object.values(sounds.combat).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  // Stop all skill sounds
-  Object.values(sounds.skills).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  // Stop all UI sounds
-  Object.values(sounds.ui).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  // Stop all powerup sounds
-  Object.values(sounds.powerups).forEach((sound) => {
-    if (sound && sound.isPlaying()) sound.stop();
-  });
-
-  soundSettings.currentMusic = null;
-}
-
-// Toggle mute all sounds
-function toggleMute() {
-  soundSettings.muted = !soundSettings.muted;
-
-  try {
-    // Check if p5.sound is available
-    if (
-      typeof p5 !== "undefined" &&
-      p5.prototype.hasOwnProperty("masterVolume")
-    ) {
-      if (soundSettings.muted) {
-        stopAllSounds();
-      } else {
-        // Restore master volume
-        masterVolume(soundSettings.masterVolume);
-
-        // Resume background music if it was playing
-        if (soundSettings.currentMusic) {
-          playMusic(soundSettings.currentMusic, 0.5);
-        } else {
-          // If no music was playing, start the main theme
-          playMusic("main", 0.5);
-        }
-      }
-    } else {
-      console.warn(
-        "p5.sound library not fully loaded. Mute state changed but volume control unavailable."
-      );
-    }
-  } catch (e) {
-    console.error("Error toggling mute:", e);
-  }
-
-  return soundSettings.muted;
-}
-
-// Set master volume
-function setMasterVolume(volume) {
-  soundSettings.masterVolume = constrain(volume, 0, 1);
-
-  try {
-    // Check if p5.sound is available
-    if (
-      typeof p5 !== "undefined" &&
-      p5.prototype.hasOwnProperty("masterVolume")
-    ) {
-      masterVolume(soundSettings.masterVolume);
-    } else {
-      console.warn(
-        "p5.sound library not fully loaded. Volume change requested but unavailable."
-      );
-    }
-  } catch (e) {
-    console.error("Error setting master volume:", e);
-  }
-}
-
-// Set music volume
-function setMusicVolume(volume) {
-  soundSettings.musicVolume = constrain(volume, 0, 1);
-
-  // Update volume of currently playing music
-  if (soundSettings.currentMusic && sounds.music[soundSettings.currentMusic]) {
-    sounds.music[soundSettings.currentMusic].setVolume(
-      soundSettings.musicVolume
-    );
-  }
-}
-
-// Set SFX volume
-function setSFXVolume(volume) {
-  soundSettings.sfxVolume = constrain(volume, 0, 1);
-}
-
 // Play ambient sounds based on game state
 function updateAmbientSounds() {
   // Only play ambient sounds if not muted
@@ -841,6 +872,78 @@ function updateAmbientSounds() {
   }
 }
 
+// Play skill sound - using skill names for better readability
+function playSkillSound(skillName) {
+  if (sounds.skills[skillName]) {
+    // Use specific skill volume if available, otherwise use default sfx volume
+    const volume =
+      soundSettings.skillVolume && soundSettings.skillVolume[skillName]
+        ? soundSettings.skillVolume[skillName]
+        : soundSettings.sfxVolume;
+
+    // Skills have high priority
+    const priority = soundSettings.soundPriority.skills || 8;
+
+    playSound(sounds.skills[skillName], volume, 1.0, 0, "skill", priority);
+  }
+}
+
+// Play combat sound with optional position-based panning
+function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
+  if (sounds.combat[soundName]) {
+    // Calculate pan based on x position relative to screen center
+    const screenCenterX = width / 2;
+    const pan = constrain((x - screenCenterX) / screenCenterX, -1, 1) * 0.7;
+
+    // Calculate volume falloff based on distance from camera
+    const distanceFromCamera = abs(y - cameraOffsetY) / height;
+    const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
+
+    // Use specific combat volume if available, otherwise use default sfx volume
+    const combatVolumeMultiplier =
+      soundSettings.combatVolume && soundSettings.combatVolume[soundName]
+        ? soundSettings.combatVolume[soundName]
+        : 1.0;
+
+    // Get priority for this sound type
+    const priority =
+      soundSettings.soundPriority[soundName] ||
+      (soundName === "criticalHit"
+        ? 6
+        : soundName === "explosion"
+        ? 5
+        : soundName === "hit"
+        ? 3
+        : soundName === "shoot"
+        ? 2
+        : 4);
+
+    // For sounds that can be batched, create a batch key
+    const batchKey =
+      soundName === "hit" || soundName === "shoot"
+        ? `${soundName}_${Math.floor(x / 100)}_${Math.floor(y / 100)}`
+        : null;
+
+    // Calculate final volume
+    const finalVolume =
+      soundSettings.sfxVolume *
+      combatVolumeMultiplier *
+      volume *
+      distanceVolume;
+
+    // Request the sound through the sound manager
+    soundManager.requestSound(
+      sounds.combat[soundName],
+      finalVolume,
+      1.0,
+      pan,
+      soundName,
+      priority,
+      batchKey
+    );
+  }
+}
+
 // Play random hit sound with variation
 function playRandomHitSound(x, y, isCritical = false) {
   // Start a new sound frame to track batched sounds
@@ -853,10 +956,7 @@ function playRandomHitSound(x, y, isCritical = false) {
     const hitVolume = random(0.8, 1.0);
 
     // For regular hits, we'll use the sound manager's batching system
-    // The rate will be set in the playCombatSound function
     playCombatSound("hit", x, y, hitVolume);
-
-    // We don't need to set the rate directly anymore as the sound manager handles it
   }
 
   // Process any batched sounds at the end of the frame
@@ -909,59 +1009,7 @@ function playExplosionSound(x, y, size = 1.0) {
   soundManager.endFrame();
 }
 
-// Handle sound fallbacks if files don't load
-function handleSoundLoadError() {
-  try {
-    // Create a dummy sound object with all required methods
-    const createDummySound = () => {
-      // Return a simple object with dummy methods
-      return {
-        play: () => {},
-        stop: () => {},
-        loop: () => {},
-        isPlaying: () => false,
-        setVolume: () => {},
-        rate: () => {},
-        pan: () => {},
-        fade: () => {},
-        // Flag to identify dummy sounds
-        isDummy: true,
-      };
-    };
-
-    // Create placeholder sounds for any that failed to load
-    Object.keys(sounds).forEach((category) => {
-      Object.keys(sounds[category]).forEach((soundName) => {
-        if (!sounds[category][soundName]) {
-          console.log(`Creating fallback for sound: ${category}.${soundName}`);
-          sounds[category][soundName] = createDummySound();
-        }
-      });
-    });
-
-    console.log("Sound fallbacks created successfully");
-  } catch (e) {
-    console.error("Error creating sound fallbacks:", e);
-  }
-}
-
-// Update sound system - call this once per frame from the main game loop
-function updateSoundSystem() {
-  // Skip if sound system isn't initialized
-  if (!soundSystemInitialized) return;
-
-  // Start a new sound frame
-  soundManager.startFrame();
-
-  // Update ambient sounds
-  updateAmbientSounds();
-
-  // Clean up finished sounds
-  soundManager.cleanupFinishedSounds();
-
-  // Process any batched sounds
-  soundManager.endFrame();
-}
+// ===== DEBUGGING AND STATISTICS =====
 
 // Debug function to show sound statistics (can be called from the debug overlay)
 function getSoundStats() {
@@ -973,30 +1021,6 @@ function getSoundStats() {
     currentMusic: soundSettings.currentMusic,
   };
 }
-
-// ===== GAME STATE =====
-const GameState = {
-  MENU: "menu",
-  PLAYING: "playing",
-  PAUSED: "paused",
-  GAME_OVER: "gameOver",
-};
-
-let gameState = GameState.MENU;
-let currentWave = 1;
-let score = 0;
-let gameStartTime = 0;
-let startTime = 0;
-let totalEnemiesKilled = 0; // Total enemies killed across all waves
-let waveEnemiesKilled = 0; // Enemies killed in the current wave
-
-// ===== PERFORMANCE SETTINGS =====
-const PerformanceLevel = {
-  LOW: "low",
-  MEDIUM: "medium",
-  HIGH: "high",
-  AUTO: "auto",
-};
 
 let isMobileDevice = false;
 let performanceMode = PerformanceLevel.AUTO;
