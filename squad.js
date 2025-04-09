@@ -291,7 +291,6 @@ const soundManager = {
   soundsThisFrame: {},   // Sounds requested this frame (for batching)
   frameStartTime: 0,     // Start time of current frame
   frameRates: [],        // Track recent frame rates
-  lastFrameTime: 0,      // Time of last frame
   performanceIssue: false, // Flag for performance issues
 
   // Initialize the sound manager
@@ -303,32 +302,27 @@ const soundManager = {
 
     // Set up performance monitoring
     this.frameRates = [];
-    this.lastFrameTime = millis();
     this.performanceIssue = false;
   },
 
   // Start a new frame
   startFrame() {
-    // Calculate frame rate and detect performance issues
+    // Get current frame rate using p5.js built-in function
     const currentTime = millis();
-    const frameDelta = currentTime - this.lastFrameTime;
-    this.lastFrameTime = currentTime;
+    
+    // Track frame rates for the last 10 frames using p5's frameRate()
+    const fps = frameRate();
+    this.frameRates.push(fps);
+    if (this.frameRates.length > 10) {
+      this.frameRates.shift();
+    }
 
-    // Track frame rates for the last 10 frames
-    if (frameDelta > 0) {
-      const fps = 1000 / frameDelta;
-      this.frameRates.push(fps);
-      if (this.frameRates.length > 10) {
-        this.frameRates.shift();
-      }
-
-      // Check if we're experiencing performance issues
-      if (this.frameRates.length >= 5) {
-        const avgFps =
-          this.frameRates.reduce((sum, fps) => sum + fps, 0) /
-          this.frameRates.length;
-        this.performanceIssue = avgFps < 30; // Consider it a performance issue if below 30 FPS
-      }
+    // Check if we're experiencing performance issues
+    if (this.frameRates.length >= 5) {
+      const avgFps =
+        this.frameRates.reduce((sum, fps) => sum + fps, 0) /
+        this.frameRates.length;
+      this.performanceIssue = avgFps < 30; // Consider it a performance issue if below 30 FPS
     }
 
     this.frameStartTime = currentTime;
@@ -9162,7 +9156,6 @@ function updateTechnicalBoard() {
     ${gpuStatusText}
     ${gpuInfoText}
     <div>FPS: ${Math.floor(avgFPS)}</div>
-    <div>Frame Rate: ${frameRate()}</div>
     <div>Objects: ${objectCount}</div>
     <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(
     1
