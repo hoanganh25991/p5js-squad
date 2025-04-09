@@ -4138,7 +4138,7 @@ function drawProjectiles() {
 
     // Check if this is a machine gun projectile
     const isMachineGunProjectile =
-      skills.skill2.active &&
+      skills[SkillName.MACHINE_GUN].active &&
       proj.color &&
       proj.color[0] === 255 &&
       proj.color[1] === 215 &&
@@ -7506,7 +7506,7 @@ function updateSquad() {
 
 function fireWeapon(squadMember, playSound = true) {
   // Check if machine gun skill is active
-  const isMachineGunActive = skills.skill2.active;
+  const isMachineGunActive = skills[SkillName.MACHINE_GUN].active;
 
   // Play shooting sound with variation based on weapon and machine gun status
   // Only if playSound is true (we'll use false when we play a single sound for the whole squad)
@@ -8455,8 +8455,8 @@ function activateSkill(skillNameOrNumber) {
     );
   }
 
-  const skillKey = `skill${skillNumber}`;
-  const skill = skills[skillKey];
+  const skillKey = skillName;
+  const skill = skills[skillName];
 
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
@@ -8467,7 +8467,7 @@ function activateSkill(skillNameOrNumber) {
   }
 
   // Play skill activation sound
-  playSkillSound(skillKey);
+  playSkillSound(skillName);
 
 
   // Apply skill effect with accumulative power-ups
@@ -9162,6 +9162,7 @@ function updateTechnicalBoard() {
     ${gpuStatusText}
     ${gpuInfoText}
     <div>FPS: ${Math.floor(avgFPS)}</div>
+    <div>Frame Rate: ${frameRate()}</div>
     <div>Objects: ${objectCount}</div>
     <div style="color: ${memoryColor};">Memory: ~${avgMemory.toFixed(
     1
@@ -12319,7 +12320,7 @@ function createAccelerationVisualEffects(
 
     for (let i = 1; i <= burstCount; i++) {
       setTimeout(() => {
-        if (frameCount < skills.skill7.lastUsed + duration) {
+        if (frameCount < skills[SkillName.QUANTUM_ACCELERATION].lastUsed + duration) {
           // Create just one burst at squad center instead of for each member
           effects.push({
             x: center.x,
