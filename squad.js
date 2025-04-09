@@ -32,21 +32,37 @@ const SkillName = {
   BARRIER: "BARRIER",
 };
 
-// Mapping of skill numbers to names for backward compatibility
-const skillNumberToName = {
-  1: SkillName.STAR_BLAST,
-  2: SkillName.MACHINE_GUN,
-  3: SkillName.SHIELD,
-  4: SkillName.FREEZE,
-  5: SkillName.REJUVENATION,
-  6: SkillName.INFERNAL_RAGE,
-  7: SkillName.QUANTUM_ACCELERATION,
-  8: SkillName.APOCALYPTIC_DEVASTATION,
-  9: SkillName.BARRIER,
-  10: "-",
-  11: "-",
-  12: "-",
-};
+// Mapping of skill names for UI organization
+const skillUIOrder = [
+  SkillName.STAR_BLAST,
+  SkillName.MACHINE_GUN,
+  SkillName.SHIELD,
+  SkillName.FREEZE,
+  SkillName.REJUVENATION,
+  SkillName.INFERNAL_RAGE,
+  SkillName.QUANTUM_ACCELERATION,
+  SkillName.APOCALYPTIC_DEVASTATION,
+  SkillName.BARRIER,
+  "G",
+  "T",
+  "Y",
+];
+
+// For backward compatibility with UI elements that use numeric indices
+const skillNameToNumber = {};
+const skillNumberToName = {};
+
+// Initialize the mappings
+skillUIOrder.forEach((skillName, index) => {
+  const skillNumber = index + 1;
+  skillNameToNumber[skillName] = skillNumber;
+  skillNumberToName[skillNumber] = skillName;
+});
+
+// Add placeholder entries for unused skill slots
+for (let i = skillUIOrder.length + 1; i <= 12; i++) {
+  skillNumberToName[i] = "-";
+}
 
 // ===== GLOBAL VARIABLES =====
 
@@ -9656,17 +9672,17 @@ function createSkillBarElement() {
   skillBar.child(thirdRow);
 
   // Create individual skill elements
-  // Use the skillNumberToName mapping to iterate through available skills
-  const maxSkills = Object.keys(skillNumberToName).length;
-  for (let i = 1; i <= maxSkills; i++) {
-    // Get the skill name from the mapping
-    const skillName = skillNumberToName[i];
+  // Iterate through the skillUIOrder array to create skill buttons
+  skillUIOrder.forEach((skillName, index) => {
+    // Skip if skill name is not defined or is a placeholder
+    if (!skillName || skillName === "-") return;
     
-    // Skip if skill name is not defined
-    if (!skillName) continue;
+    // Get the skill number for backward compatibility with UI
+    const skillNumber = skillNameToNumber[skillName];
     
     const skillDiv = createDiv("");
-    skillDiv.id(`skill${i}`); // Keep the numeric ID for backward compatibility with UI
+    skillDiv.id(`skill-${skillName}`); // Use skill name in ID for better semantics
+    skillDiv.addClass(`skill-number-${skillNumber}`); // Add class with number for backward compatibility
     skillDiv.style("text-align", "center");
     skillDiv.style("margin", skillMargin);
     skillDiv.style("position", "relative");
@@ -9684,18 +9700,18 @@ function createSkillBarElement() {
     skillDiv.style("max-width", skillButtonSize * 1.2 + "px"); // Set maximum width
 
     skillDiv.html(`
-      <div id="skillName${i}" style="font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
-      i
+      <div id="skillName-${skillName}" style="font-size: ${skillNameFontSize}; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;">${getSkillName(
+      skillNumber
     )}</div>
-      <div id="skillKey${i}" style="font-size: ${skillFontSize}; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
-      i
+      <div id="skillKey-${skillName}" style="font-size: ${skillFontSize}; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">${getSkillKey(
+      skillNumber
     )}</div>
-      <div id="needle${i}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: ${skillButtonSize}px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
-      <div id="overlay${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0; border-radius: 10px;"></div>
+      <div id="needle-${skillName}" style="position: absolute; top: 50%; left: 50%; width: 2px; height: ${skillButtonSize}px; background-color: transparent; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); z-index: 2;"></div>
+      <div id="overlay-${skillName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: conic-gradient(rgba(0, 0, 0, 0.5) 0deg, rgba(0, 0, 0, 0.5) 0deg, transparent 0deg, transparent 360deg); z-index: 0; border-radius: 10px;"></div>
     `);
 
     // Add click/touch event handler to activate the skill
-    // Use the skill name directly from the mapping
+    // Use the skill name directly
     const skillNameForButton = skillName;
 
     // Visual feedback on mouse/touch down
@@ -9736,21 +9752,25 @@ function createSkillBarElement() {
       }
     });
 
-    // Add to the appropriate row based on index
-    // Q, W, E, R (skills 5-8) go in top row
-    // A, S, D, F (skills 1-4) go in bottom row
-    // Barrier (skill 9) goes in the center of the top row
-    if (i >= 0 && i <= 4) {
-      // Q, W, E, R (skills 5-8)
+    // Add to the appropriate row based on skill type
+    // Organize skills into rows based on their function
+    if (skillName === SkillName.STAR_BLAST || 
+        skillName === SkillName.MACHINE_GUN || 
+        skillName === SkillName.SHIELD || 
+        skillName === SkillName.FREEZE) {
+      // First row: Basic combat skills
       firstRow.child(skillDiv);
-    } else if (i >= 5 && i <= 8) {
-      // Q, W, E, R (skills 5-8)
+    } else if (skillName === SkillName.REJUVENATION || 
+               skillName === SkillName.INFERNAL_RAGE || 
+               skillName === SkillName.QUANTUM_ACCELERATION || 
+               skillName === SkillName.APOCALYPTIC_DEVASTATION) {
+      // Second row: Advanced combat skills
       secondRow.child(skillDiv);
-    } else if (i >= 9) {
-      // Barrier (skill 9) - add to top row
+    } else {
+      // Third row: Utility skills (like Barrier)
       thirdRow.child(skillDiv);
     }
-  }
+  });
   skillBar.style("visibility", "hidden");
 }
 
@@ -9760,31 +9780,34 @@ function updateSkillBar() {
   }
 
   skillBar.style("visibility", "visible");
-  for (let i = 1; i <= Object.keys(skillNumberToName).length; i++) {
-    const skillName = skillNumberToName[i];
-    if (!skillName) {
-      // Skip if skill name is not defined
-      continue;
-    }
+  
+  // Iterate through all skill names in the UI order
+  skillUIOrder.forEach(skillName => {
+    // Skip if skill name is not defined or is a placeholder
+    if (!skillName || skillName === "-") return;
     
     const skill = skills[skillName];
     if (!skill) {
       // console.log(`Skill ${skillName} not defined`);
-      continue;
+      return;
     }
 
-    const skillDiv = select(`#skill${i}`);
+    const skillDiv = select(`#skill-${skillName}`);
     if (!skillDiv) {
-      console.log(`skillDiv ${i} not exists`);
-      continue;
+      console.log(`skillDiv for ${skillName} not found`);
+      return;
     }
+
+    // Get the skill number for backward compatibility with UI logic
+    const skillNumber = skillNameToNumber[skillName];
 
     // Check if skills are active
     const cooldownRemaining = skill.cooldown - (frameCount - skill.lastUsed);
     const cooldownPercent = max(0, cooldownRemaining) / skill.cooldown;
-    const isSkillActive = i != 8 && skill.active;
-    const isAtomicBombActive =
-      i == 8 && frameCount - skill.lastUsed < skill.activeDuration;
+    const isApocalypticDevastationSkill = skillName === SkillName.APOCALYPTIC_DEVASTATION;
+    const isSkillActive = !isApocalypticDevastationSkill && skill.active;
+    const isAtomicBombActive = 
+      isApocalypticDevastationSkill && frameCount - skill.lastUsed < skill.activeDuration;
 
     if (cooldownPercent <= 0) {
       skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
@@ -9792,20 +9815,20 @@ function updateSkillBar() {
 
     if (cooldownPercent > 0) {
       skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-      select(`#skillName${i}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
+      select(`#skillName-${skillName}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
     } else {
       // Reset the skill name to normal
-      select(`#skillName${i}`).html(getSkillName(i));
+      select(`#skillName-${skillName}`).html(getSkillName(skillNumber));
 
-      // Reset key display
-      if (i === 8) {
-        select(`#skillKey${i}`).html("R");
+      // Reset key display for Apocalyptic Devastation
+      if (isApocalypticDevastationSkill) {
+        select(`#skillKey-${skillName}`).html("R");
       }
     }
 
     if (isSkillActive) {
       // Get colors for current skill
-      const colors = generateSkillColors(i);
+      const colors = generateSkillColors(skillNumber);
 
       // Pulsing background effect
       const pulseIntensity = frameCount % 20 < 10 ? 1.0 : 0.7;
@@ -9817,7 +9840,7 @@ function updateSkillBar() {
         `rgba(${r}, ${g}, ${b}, ${pulseIntensity})`
       );
       skillDiv.style("box-shadow", `0 0 10px rgba(${r}, ${g}, ${b}, 0.8)`);
-      select(`#skillKey${i}`).style("color", colors.keyColor);
+      select(`#skillKey-${skillName}`).style("color", colors.keyColor);
     } else if (isAtomicBombActive) {
       // Atomic bomb explosion effect in skill bar
       // Rapidly flashing red/orange/yellow background
@@ -9842,31 +9865,31 @@ function updateSkillBar() {
       skillDiv.style("transform", `scale(${pulseScale})`);
 
       // Mushroom cloud icon on the skill
-      select(`#skillKey${i}`).html("☢");
-      select(`#skillKey${i}`).style("color", "rgba(255, 50, 0, 1.0)");
-      select(`#skillKey${i}`).style("text-shadow", "0 0 10px white");
+      select(`#skillKey-${skillName}`).html("☢");
+      select(`#skillKey-${skillName}`).style("color", "rgba(255, 50, 0, 1.0)");
+      select(`#skillKey-${skillName}`).style("text-shadow", "0 0 10px white");
 
       // Add explosion text effect
-      select(`#skillName${i}`).html("☢ BOOM! ☢");
-      select(`#skillName${i}`).style("color", "rgba(255, 50, 0, 1.0)");
+      select(`#skillName-${skillName}`).html("☢ BOOM! ☢");
+      select(`#skillName-${skillName}`).style("color", "rgba(255, 50, 0, 1.0)");
     } else {
       // Reset to normal appearance
       skillDiv.style("background-color", "rgba(50, 50, 50, 0.27)");
       skillDiv.style("box-shadow", "none");
       skillDiv.style("transform", "scale(1.0)");
 
-      select(`#skillName${i}`).style("color", "white");
+      select(`#skillName-${skillName}`).style("color", "white");
 
       // Reset key color
-      select(`#skillKey${i}`).style("color", "white");
-      select(`#skillKey${i}`).style("text-shadow", "none");
+      select(`#skillKey-${skillName}`).style("color", "white");
+      select(`#skillKey-${skillName}`).style("text-shadow", "none");
     }
 
     // Update needle rotation
-    const needleDiv = select(`#needle${i}`);
-    const overlayDiv = select(`#overlay${i}`);
+    const needleDiv = select(`#needle-${skillName}`);
+    const overlayDiv = select(`#overlay-${skillName}`);
     if (!needleDiv || !overlayDiv) {
-      console.log(`needleDiv/overlayDiv ${i} not exists`);
+      console.log(`needleDiv/overlayDiv for ${skillName} not found`);
       return;
     }
 
@@ -9880,7 +9903,7 @@ function updateSkillBar() {
     // Update overlay gradient - special color for active skills
     if (isSkillActive) {
       // Get colors for current skill
-      const colors = generateSkillColors(i);
+      const colors = generateSkillColors(skillNumber);
       const [r, g, b] = colors.primary;
 
       // Apply overlay with the appropriate color
@@ -9915,7 +9938,7 @@ function updateSkillBar() {
       );
       overlayDiv.style("border-radius", "10px"); // Maintain border radius
     }
-  }
+  });
 }
 
 // Create directional pad for touch/click movement
