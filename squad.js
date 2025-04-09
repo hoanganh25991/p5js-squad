@@ -13,7 +13,7 @@ const SkillName = {
   INFERNAL_RAGE: "INFERNAL_RAGE",
   QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
   APOCALYPTIC_DEVASTATION: "APOCALYPTIC_DEVASTATION",
-  BARRIER: "BARRIER"
+  BARRIER: "BARRIER",
 };
 
 // Mapping of skill numbers to names for backward compatibility
@@ -26,7 +26,7 @@ const skillNumberToName = {
   6: SkillName.INFERNAL_RAGE,
   7: SkillName.QUANTUM_ACCELERATION,
   8: SkillName.APOCALYPTIC_DEVASTATION,
-  9: SkillName.BARRIER
+  9: SkillName.BARRIER,
 };
 
 // Sound storage
@@ -38,7 +38,7 @@ let sounds = {
     boss: null,
     victory: null,
   },
-  
+
   // UI sounds
   ui: {
     click: null,
@@ -47,7 +47,7 @@ let sounds = {
     error: null,
     levelUp: null,
   },
-  
+
   // Combat sounds
   combat: {
     shoot: null,
@@ -56,7 +56,7 @@ let sounds = {
     death: null,
     criticalHit: null,
   },
-  
+
   // Skill sounds
   skills: {
     skill1: null, // Rapid Fire
@@ -68,17 +68,17 @@ let sounds = {
     skill7: null, // Quantum Acceleration
     skill8: null, // Apocalyptic Devastation
   },
-  
+
   // Environment sounds
   environment: {
     wind: true,
   },
-  
+
   // Power-up sounds
   powerups: {
     collect: null,
     spawn: null,
-  }
+  },
 };
 
 // Sound settings
@@ -92,7 +92,7 @@ let soundSettings = {
     hit: 0.5,
     explosion: 1.0,
     death: 1.0,
-    criticalHit: 0.5
+    criticalHit: 0.5,
   },
   skillVolume: {
     skill1: 0.4, // Auto-fire skill - lower volume
@@ -103,37 +103,42 @@ let soundSettings = {
     skill6: 0.8,
     skill7: 0.8,
     skill8: 0.8,
-    skill9: 0.8  // Barrier - normal volume
+    skill9: 0.8, // Barrier - normal volume
   },
   muted: false, // Sound off by default
   currentMusic: null,
-  
+
   // Sound optimization settings
-  maxConcurrentSounds: 8,       // Maximum number of sounds that can play simultaneously
-  soundPriority: {              // Priority levels for different sound types (higher = more important)
-    ui: 10,                     // UI sounds are highest priority
-    skills: 8,                  // Skill sounds are high priority
-    death: 7,                   // Death sounds are important
-    criticalHit: 6,             // Critical hits are somewhat important
-    explosion: 5,               // Explosions are medium priority
-    hit: 3,                     // Regular hits are lower priority
-    shoot: 2,                   // Shoot sounds are low priority
-    environment: 1              // Environment sounds are lowest priority
+  maxConcurrentSounds: 8, // Maximum number of sounds that can play simultaneously
+  soundPriority: {
+    // Priority levels for different sound types (higher = more important)
+    ui: 10, // UI sounds are highest priority
+    skills: 8, // Skill sounds are high priority
+    death: 7, // Death sounds are important
+    criticalHit: 6, // Critical hits are somewhat important
+    explosion: 5, // Explosions are medium priority
+    hit: 3, // Regular hits are lower priority
+    shoot: 2, // Shoot sounds are low priority
+    environment: 1, // Environment sounds are lowest priority
   },
-  soundCooldowns: {             // Minimum time (ms) between playing the same sound type
-    shoot: 50,                  // Don't play shoot sounds more than once per 50ms
-    hit: 80,                    // Don't play hit sounds more than once per 80ms
-    criticalHit: 150            // Don't play critical hit sounds more than once per 150ms
+  soundCooldowns: {
+    // Minimum time (ms) between playing the same sound type
+    shoot: 50, // Don't play shoot sounds more than once per 50ms
+    hit: 80, // Don't play hit sounds more than once per 80ms
+    criticalHit: 150, // Don't play critical hit sounds more than once per 150ms
   },
-  batchSounds: true,            // Whether to batch similar sounds together
-  dynamicCulling: true          // Whether to dynamically reduce sounds based on game performance
+  batchSounds: true, // Whether to batch similar sounds together
+  dynamicCulling: true, // Whether to dynamically reduce sounds based on game performance
 };
 
 // Preload all sounds
 function preloadSounds() {
   try {
     // Check if p5.sound is available
-    if (typeof p5 === 'undefined' || !p5.prototype.hasOwnProperty('loadSound')) {
+    if (
+      typeof p5 === "undefined" ||
+      !p5.prototype.hasOwnProperty("loadSound")
+    ) {
       console.warn("p5.sound library not available. Sound loading skipped.");
       return;
     }
@@ -141,7 +146,8 @@ function preloadSounds() {
     // Helper function to safely load sounds
     const safeLoadSound = (path) => {
       try {
-        return loadSound(path,
+        return loadSound(
+          path,
           // Success callback
           () => {},
           // Error callback
@@ -157,39 +163,41 @@ function preloadSounds() {
     };
 
     // Background music
-    sounds.music.main = safeLoadSound('sounds/music/main_theme.mp3');
+    sounds.music.main = safeLoadSound("sounds/music/main_theme.mp3");
 
     // UI sounds
-    sounds.ui.click = safeLoadSound('sounds/ui/click.mp3');
-    sounds.ui.hover = safeLoadSound('sounds/ui/hover.mp3');
-    sounds.ui.upgrade = safeLoadSound('sounds/ui/upgrade.mp3');
-    sounds.ui.error = safeLoadSound('sounds/ui/error.mp3');
-    sounds.ui.levelUp = safeLoadSound('sounds/ui/level_up.mp3');
+    sounds.ui.click = safeLoadSound("sounds/ui/click.mp3");
+    sounds.ui.hover = safeLoadSound("sounds/ui/hover.mp3");
+    sounds.ui.upgrade = safeLoadSound("sounds/ui/upgrade.mp3");
+    sounds.ui.error = safeLoadSound("sounds/ui/error.mp3");
+    sounds.ui.levelUp = safeLoadSound("sounds/ui/level_up.mp3");
 
     // Combat sounds
-    sounds.combat.shoot = safeLoadSound('sounds/combat/shoot.mp3');
-    sounds.combat.hit = safeLoadSound('sounds/combat/hit.mp3');
-    sounds.combat.explosion = safeLoadSound('sounds/combat/explosion.mp3');
-    sounds.combat.death = safeLoadSound('sounds/combat/death.mp3');
-    sounds.combat.criticalHit = safeLoadSound('sounds/combat/critical_hit.mp3');
+    sounds.combat.shoot = safeLoadSound("sounds/combat/shoot.mp3");
+    sounds.combat.hit = safeLoadSound("sounds/combat/hit.mp3");
+    sounds.combat.explosion = safeLoadSound("sounds/combat/explosion.mp3");
+    sounds.combat.death = safeLoadSound("sounds/combat/death.mp3");
+    sounds.combat.criticalHit = safeLoadSound("sounds/combat/critical_hit.mp3");
 
     // Skill sounds
-    sounds.skills.skill1 = safeLoadSound('sounds/skills/rapid_fire.mp3');
-    sounds.skills.skill2 = safeLoadSound('sounds/skills/scatter_shot.mp3');
-    sounds.skills.skill3 = safeLoadSound('sounds/skills/heavy_strike.mp3');
-    sounds.skills.skill4 = safeLoadSound('sounds/skills/cryo_freeze.mp3');
-    sounds.skills.skill5 = safeLoadSound('sounds/skills/rejuvenation.mp3');
-    sounds.skills.skill6 = safeLoadSound('sounds/skills/infernal_rage.mp3');
-    sounds.skills.skill7 = safeLoadSound('sounds/skills/quantum_acceleration.mp3');
-    sounds.skills.skill8 = safeLoadSound('sounds/skills/apocalypse.mp3');
-    sounds.skills.skill9 = safeLoadSound('sounds/skills/barrier.mp3');
+    sounds.skills.skill1 = safeLoadSound("sounds/skills/rapid_fire.mp3");
+    sounds.skills.skill2 = safeLoadSound("sounds/skills/scatter_shot.mp3");
+    sounds.skills.skill3 = safeLoadSound("sounds/skills/heavy_strike.mp3");
+    sounds.skills.skill4 = safeLoadSound("sounds/skills/cryo_freeze.mp3");
+    sounds.skills.skill5 = safeLoadSound("sounds/skills/rejuvenation.mp3");
+    sounds.skills.skill6 = safeLoadSound("sounds/skills/infernal_rage.mp3");
+    sounds.skills.skill7 = safeLoadSound(
+      "sounds/skills/quantum_acceleration.mp3"
+    );
+    sounds.skills.skill8 = safeLoadSound("sounds/skills/apocalypse.mp3");
+    sounds.skills.skill9 = safeLoadSound("sounds/skills/barrier.mp3");
 
     // Environment sounds
-    sounds.environment.wind = safeLoadSound('sounds/environment/wind.mp3');
+    sounds.environment.wind = safeLoadSound("sounds/environment/wind.mp3");
 
     // Power-up sounds
-    sounds.powerups.collect = safeLoadSound('sounds/powerups/collect.mp3');
-    sounds.powerups.spawn = safeLoadSound('sounds/powerups/spawn.mp3');
+    sounds.powerups.collect = safeLoadSound("sounds/powerups/collect.mp3");
+    sounds.powerups.spawn = safeLoadSound("sounds/powerups/spawn.mp3");
 
     console.log("Sound preloading completed");
   } catch (e) {
@@ -202,31 +210,31 @@ let soundSystemInitialized = false;
 
 // Sound manager for tracking and optimizing sound playback
 const soundManager = {
-  activeSounds: [],           // Currently playing sounds
-  lastPlayedTime: {},         // Last time each sound type was played
-  soundsThisFrame: {},        // Sounds requested this frame (for batching)
-  frameStartTime: 0,          // Start time of current frame
-  
+  activeSounds: [], // Currently playing sounds
+  lastPlayedTime: {}, // Last time each sound type was played
+  soundsThisFrame: {}, // Sounds requested this frame (for batching)
+  frameStartTime: 0, // Start time of current frame
+
   // Initialize the sound manager
   init() {
     this.activeSounds = [];
     this.lastPlayedTime = {};
     this.frameStartTime = millis();
     this.soundsThisFrame = {};
-    
+
     // Set up performance monitoring
     this.frameRates = [];
     this.lastFrameTime = millis();
     this.performanceIssue = false;
   },
-  
+
   // Start a new frame
   startFrame() {
     // Calculate frame rate and detect performance issues
     const currentTime = millis();
     const frameDelta = currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;
-    
+
     // Track frame rates for the last 10 frames
     if (frameDelta > 0) {
       const fps = 1000 / frameDelta;
@@ -234,28 +242,33 @@ const soundManager = {
       if (this.frameRates.length > 10) {
         this.frameRates.shift();
       }
-      
+
       // Check if we're experiencing performance issues
       if (this.frameRates.length >= 5) {
-        const avgFps = this.frameRates.reduce((sum, fps) => sum + fps, 0) / this.frameRates.length;
+        const avgFps =
+          this.frameRates.reduce((sum, fps) => sum + fps, 0) /
+          this.frameRates.length;
         this.performanceIssue = avgFps < 30; // Consider it a performance issue if below 30 FPS
       }
     }
-    
+
     this.frameStartTime = currentTime;
     this.soundsThisFrame = {};
   },
-  
+
   // End the current frame and process batched sounds
   endFrame() {
     if (!soundSettings.batchSounds) return;
-    
+
     // Process batched sounds
-    Object.keys(this.soundsThisFrame).forEach(soundKey => {
+    Object.keys(this.soundsThisFrame).forEach((soundKey) => {
       const batch = this.soundsThisFrame[soundKey];
       if (batch.count > 0) {
         // For batched sounds, we play one instance with adjusted volume
-        const volumeMultiplier = Math.min(1.5, 1 + Math.log10(batch.count) * 0.3);
+        const volumeMultiplier = Math.min(
+          1.5,
+          1 + Math.log10(batch.count) * 0.3
+        );
         this._playSound(
           batch.sound,
           batch.volume * volumeMultiplier,
@@ -265,11 +278,11 @@ const soundManager = {
       }
     });
   },
-  
+
   // Check if a sound can be played based on priority and cooldowns
   canPlaySound(soundType, priority) {
     const currentTime = millis();
-    
+
     // Check cooldown
     if (soundSettings.soundCooldowns[soundType]) {
       const lastPlayed = this.lastPlayedTime[soundType] || 0;
@@ -277,25 +290,25 @@ const soundManager = {
         return false;
       }
     }
-    
+
     // If we're at the max number of concurrent sounds, check priority
     if (soundSettings.dynamicCulling && this.performanceIssue) {
       // During performance issues, be more aggressive with culling
       if (priority < 5) return false; // Only play high priority sounds
     }
-    
+
     if (this.activeSounds.length >= soundSettings.maxConcurrentSounds) {
       // Find the lowest priority active sound
       let lowestPriority = Infinity;
       let lowestPriorityIndex = -1;
-      
+
       for (let i = 0; i < this.activeSounds.length; i++) {
         if (this.activeSounds[i].priority < lowestPriority) {
           lowestPriority = this.activeSounds[i].priority;
           lowestPriorityIndex = i;
         }
       }
-      
+
       // If this sound has higher priority than the lowest one, stop the lowest one
       if (priority > lowestPriority && lowestPriorityIndex >= 0) {
         const soundToStop = this.activeSounds[lowestPriorityIndex];
@@ -308,35 +321,37 @@ const soundManager = {
         return false;
       }
     }
-    
+
     return true;
   },
-  
+
   // Add a sound to the active sounds list
   addActiveSound(sound, priority, soundType) {
     // Update last played time for this sound type
     this.lastPlayedTime[soundType] = millis();
-    
+
     // Add to active sounds
     this.activeSounds.push({
       sound,
       priority,
       startTime: millis(),
-      soundType
+      soundType,
     });
-    
+
     // Clean up finished sounds
     this.cleanupFinishedSounds();
   },
-  
+
   // Request to play a sound (may be batched)
   requestSound(sound, volume, rate, pan, soundType, priority, batchKey) {
     if (!sound || soundSettings.muted) return;
-    
+
     // If batching is enabled and this sound type can be batched
-    if (soundSettings.batchSounds && batchKey && 
-        (soundType === 'hit' || soundType === 'shoot')) {
-      
+    if (
+      soundSettings.batchSounds &&
+      batchKey &&
+      (soundType === "hit" || soundType === "shoot")
+    ) {
       // Create or update batch
       if (!this.soundsThisFrame[batchKey]) {
         this.soundsThisFrame[batchKey] = {
@@ -345,13 +360,13 @@ const soundManager = {
           rate,
           pan,
           count: 0,
-          priority
+          priority,
         };
       }
-      
+
       // Increment count for this batch
       this.soundsThisFrame[batchKey].count++;
-      
+
       // For the first sound in a batch, or high priority sounds, play immediately
       if (this.soundsThisFrame[batchKey].count === 1 || priority >= 6) {
         if (this.canPlaySound(soundType, priority)) {
@@ -367,7 +382,7 @@ const soundManager = {
       }
     }
   },
-  
+
   // Actually play the sound (internal method)
   _playSound(sound, volume, rate, pan) {
     try {
@@ -375,7 +390,7 @@ const soundManager = {
       if (!sound.play || !sound.setVolume) {
         return;
       }
-      
+
       // Play the sound with specified parameters
       if (sound.rate) sound.rate(rate);
       if (sound.pan) sound.pan(pan);
@@ -385,26 +400,28 @@ const soundManager = {
       console.warn("Error playing sound:", e);
     }
   },
-  
+
   // Clean up finished sounds from the active sounds list
   cleanupFinishedSounds() {
     const currentTime = millis();
-    this.activeSounds = this.activeSounds.filter(activeSound => {
+    this.activeSounds = this.activeSounds.filter((activeSound) => {
       // Remove sounds that have been playing for more than 5 seconds
       if (currentTime - activeSound.startTime > 5000) {
         return false;
       }
-      
+
       // Remove sounds that are no longer playing
-      if (activeSound.sound && 
-          activeSound.sound.isPlaying && 
-          !activeSound.sound.isPlaying()) {
+      if (
+        activeSound.sound &&
+        activeSound.sound.isPlaying &&
+        !activeSound.sound.isPlaying()
+      ) {
         return false;
       }
-      
+
       return true;
     });
-  }
+  },
 };
 
 // Initialize sound system - only call this after user interaction
@@ -416,21 +433,25 @@ function initSounds() {
     console.log("Initializing sound system after user interaction");
 
     // Check if p5.sound is available by testing if a sound object has the necessary methods
-    const soundAvailable = sounds.music.main &&
-                          typeof sounds.music.main.setVolume === 'function' &&
-                          typeof sounds.music.main.play === 'function';
+    const soundAvailable =
+      sounds.music.main &&
+      typeof sounds.music.main.setVolume === "function" &&
+      typeof sounds.music.main.play === "function";
 
     if (soundAvailable) {
       // Resume AudioContext if it exists
-      if (typeof getAudioContext === 'function') {
+      if (typeof getAudioContext === "function") {
         try {
           const audioContext = getAudioContext();
-          if (audioContext && audioContext.state !== 'running') {
-            audioContext.resume().then(() => {
-              console.log("AudioContext resumed successfully");
-            }).catch(err => {
-              console.warn("Error resuming AudioContext:", err);
-            });
+          if (audioContext && audioContext.state !== "running") {
+            audioContext
+              .resume()
+              .then(() => {
+                console.log("AudioContext resumed successfully");
+              })
+              .catch((err) => {
+                console.warn("Error resuming AudioContext:", err);
+              });
           }
         } catch (e) {
           console.warn("Error accessing AudioContext:", e);
@@ -438,12 +459,12 @@ function initSounds() {
       }
 
       // Set master volume if the function exists
-      if (typeof masterVolume === 'function') {
+      if (typeof masterVolume === "function") {
         masterVolume(soundSettings.masterVolume);
       }
 
       // Set individual volumes for music
-      Object.values(sounds.music).forEach(sound => {
+      Object.values(sounds.music).forEach((sound) => {
         if (sound && sound.setVolume) {
           sound.setVolume(soundSettings.musicVolume);
         }
@@ -472,22 +493,38 @@ function initSounds() {
 }
 
 // Play a sound with specified volume and optional rate/pan
-function playSound(sound, volume = 1.0, rate = 1.0, pan = 0, soundType = 'generic', priority = 1) {
+function playSound(
+  sound,
+  volume = 1.0,
+  rate = 1.0,
+  pan = 0,
+  soundType = "generic",
+  priority = 1
+) {
   try {
     // Check if sound is available and not muted
     if (!sound || soundSettings.muted) return;
 
     // Check if the sound object has the necessary methods
     if (!sound.play || !sound.setVolume) {
-      console.warn("Sound object is missing required methods. Skipping playback.");
+      console.warn(
+        "Sound object is missing required methods. Skipping playback."
+      );
       return;
     }
 
     // Calculate final volume based on master volume
     const finalVolume = volume * soundSettings.masterVolume;
-    
+
     // Use the sound manager to handle this sound request
-    soundManager.requestSound(sound, finalVolume, rate, pan, soundType, priority);
+    soundManager.requestSound(
+      sound,
+      finalVolume,
+      rate,
+      pan,
+      soundType,
+      priority
+    );
   } catch (e) {
     console.warn("Error playing sound:", e);
   }
@@ -498,7 +535,14 @@ function playUISound(soundName) {
   if (sounds.ui[soundName]) {
     // UI sounds have high priority
     const priority = soundSettings.soundPriority.ui || 10;
-    playSound(sounds.ui[soundName], soundSettings.uiVolume, 1.0, 0, 'ui', priority);
+    playSound(
+      sounds.ui[soundName],
+      soundSettings.uiVolume,
+      1.0,
+      0,
+      "ui",
+      priority
+    );
   }
 }
 
@@ -507,38 +551,51 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
   if (sounds.combat[soundName]) {
     // Calculate pan based on x position relative to screen center
     const screenCenterX = width / 2;
-    const pan = constrain((x - screenCenterX) / (screenCenterX), -1, 1) * 0.7;
+    const pan = constrain((x - screenCenterX) / screenCenterX, -1, 1) * 0.7;
 
     // Calculate volume falloff based on distance from camera
     const distanceFromCamera = abs(y - cameraOffsetY) / height;
     const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
 
     // Use specific combat volume if available, otherwise use default sfx volume
-    const combatVolumeMultiplier = soundSettings.combatVolume && soundSettings.combatVolume[soundName]
-      ? soundSettings.combatVolume[soundName]
-      : 1.0;
-    
+    const combatVolumeMultiplier =
+      soundSettings.combatVolume && soundSettings.combatVolume[soundName]
+        ? soundSettings.combatVolume[soundName]
+        : 1.0;
+
     // Get priority for this sound type
-    const priority = soundSettings.soundPriority[soundName] || 
-                    (soundName === 'criticalHit' ? 6 : 
-                     soundName === 'explosion' ? 5 : 
-                     soundName === 'hit' ? 3 : 
-                     soundName === 'shoot' ? 2 : 4);
-    
+    const priority =
+      soundSettings.soundPriority[soundName] ||
+      (soundName === "criticalHit"
+        ? 6
+        : soundName === "explosion"
+        ? 5
+        : soundName === "hit"
+        ? 3
+        : soundName === "shoot"
+        ? 2
+        : 4);
+
     // For sounds that can be batched, create a batch key
-    const batchKey = (soundName === 'hit' || soundName === 'shoot') ? 
-                     `${soundName}_${Math.floor(x/100)}_${Math.floor(y/100)}` : null;
-    
+    const batchKey =
+      soundName === "hit" || soundName === "shoot"
+        ? `${soundName}_${Math.floor(x / 100)}_${Math.floor(y / 100)}`
+        : null;
+
     // Calculate final volume
-    const finalVolume = soundSettings.sfxVolume * combatVolumeMultiplier * volume * distanceVolume;
-    
+    const finalVolume =
+      soundSettings.sfxVolume *
+      combatVolumeMultiplier *
+      volume *
+      distanceVolume;
+
     // Request the sound through the sound manager
     soundManager.requestSound(
-      sounds.combat[soundName], 
-      finalVolume, 
-      1.0, 
-      pan, 
-      soundName, 
+      sounds.combat[soundName],
+      finalVolume,
+      1.0,
+      pan,
+      soundName,
       priority,
       batchKey
     );
@@ -549,14 +606,15 @@ function playCombatSound(soundName, x = 0, y = 0, volume = 1.0) {
 function playSkillSound(skillKey) {
   if (sounds.skills[skillKey]) {
     // Use specific skill volume if available, otherwise use default sfx volume
-    const volume = soundSettings.skillVolume && soundSettings.skillVolume[skillKey]
-      ? soundSettings.skillVolume[skillKey]
-      : soundSettings.sfxVolume;
-    
+    const volume =
+      soundSettings.skillVolume && soundSettings.skillVolume[skillKey]
+        ? soundSettings.skillVolume[skillKey]
+        : soundSettings.sfxVolume;
+
     // Skills have high priority
     const priority = soundSettings.soundPriority.skills || 8;
-    
-    playSound(sounds.skills[skillKey], volume, 1.0, 0, 'skill', priority);
+
+    playSound(sounds.skills[skillKey], volume, 1.0, 0, "skill", priority);
   }
 }
 
@@ -567,7 +625,9 @@ function playMusic(musicName, fadeTime = 2.0) {
     if (!soundSystemInitialized) {
       // Just store the music name for later when sound is initialized
       soundSettings.currentMusic = musicName;
-      console.log(`Sound system not initialized yet. Storing music name: ${musicName}`);
+      console.log(
+        `Sound system not initialized yet. Storing music name: ${musicName}`
+      );
       return;
     }
 
@@ -582,23 +642,33 @@ function playMusic(musicName, fadeTime = 2.0) {
     if (soundSettings.muted) return;
 
     // Check if the sound object has the necessary methods
-    if (!sounds.music[musicName].isPlaying || !sounds.music[musicName].setVolume || !sounds.music[musicName].loop) {
-      console.warn(`Music ${musicName} is missing required methods. Skipping playback.`);
+    if (
+      !sounds.music[musicName].isPlaying ||
+      !sounds.music[musicName].setVolume ||
+      !sounds.music[musicName].loop
+    ) {
+      console.warn(
+        `Music ${musicName} is missing required methods. Skipping playback.`
+      );
       return;
     }
 
     // If same music is already playing, do nothing
-    if (sounds.music[musicName].isPlaying && sounds.music[musicName].isPlaying()) {
+    if (
+      sounds.music[musicName].isPlaying &&
+      sounds.music[musicName].isPlaying()
+    ) {
       return;
     }
 
     // Fade out current music if playing
-    if (soundSettings.currentMusic &&
-        sounds.music[soundSettings.currentMusic] &&
-        sounds.music[soundSettings.currentMusic].isPlaying &&
-        sounds.music[soundSettings.currentMusic].isPlaying() &&
-        soundSettings.currentMusic !== musicName) {
-
+    if (
+      soundSettings.currentMusic &&
+      sounds.music[soundSettings.currentMusic] &&
+      sounds.music[soundSettings.currentMusic].isPlaying &&
+      sounds.music[soundSettings.currentMusic].isPlaying() &&
+      soundSettings.currentMusic !== musicName
+    ) {
       if (sounds.music[soundSettings.currentMusic].fade) {
         sounds.music[soundSettings.currentMusic].fade(0, fadeTime);
       } else {
@@ -623,7 +693,9 @@ function playMusic(musicName, fadeTime = 2.0) {
           sounds.music[musicName].setVolume(soundSettings.musicVolume);
           clearInterval(fadeInterval);
         } else {
-          sounds.music[musicName].setVolume(soundSettings.musicVolume * progress);
+          sounds.music[musicName].setVolume(
+            soundSettings.musicVolume * progress
+          );
         }
       }, 50);
     }
@@ -637,32 +709,32 @@ function playMusic(musicName, fadeTime = 2.0) {
 // Stop all sounds
 function stopAllSounds() {
   // Stop all music
-  Object.values(sounds.music).forEach(sound => {
+  Object.values(sounds.music).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
   // Stop all environment sounds
-  Object.values(sounds.environment).forEach(sound => {
+  Object.values(sounds.environment).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
   // Stop all combat sounds
-  Object.values(sounds.combat).forEach(sound => {
+  Object.values(sounds.combat).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
   // Stop all skill sounds
-  Object.values(sounds.skills).forEach(sound => {
+  Object.values(sounds.skills).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
   // Stop all UI sounds
-  Object.values(sounds.ui).forEach(sound => {
+  Object.values(sounds.ui).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
   // Stop all powerup sounds
-  Object.values(sounds.powerups).forEach(sound => {
+  Object.values(sounds.powerups).forEach((sound) => {
     if (sound && sound.isPlaying()) sound.stop();
   });
 
@@ -675,7 +747,10 @@ function toggleMute() {
 
   try {
     // Check if p5.sound is available
-    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
+    if (
+      typeof p5 !== "undefined" &&
+      p5.prototype.hasOwnProperty("masterVolume")
+    ) {
       if (soundSettings.muted) {
         stopAllSounds();
       } else {
@@ -687,11 +762,13 @@ function toggleMute() {
           playMusic(soundSettings.currentMusic, 0.5);
         } else {
           // If no music was playing, start the main theme
-          playMusic('main', 0.5);
+          playMusic("main", 0.5);
         }
       }
     } else {
-      console.warn("p5.sound library not fully loaded. Mute state changed but volume control unavailable.");
+      console.warn(
+        "p5.sound library not fully loaded. Mute state changed but volume control unavailable."
+      );
     }
   } catch (e) {
     console.error("Error toggling mute:", e);
@@ -706,10 +783,15 @@ function setMasterVolume(volume) {
 
   try {
     // Check if p5.sound is available
-    if (typeof p5 !== 'undefined' && p5.prototype.hasOwnProperty('masterVolume')) {
+    if (
+      typeof p5 !== "undefined" &&
+      p5.prototype.hasOwnProperty("masterVolume")
+    ) {
       masterVolume(soundSettings.masterVolume);
     } else {
-      console.warn("p5.sound library not fully loaded. Volume change requested but unavailable.");
+      console.warn(
+        "p5.sound library not fully loaded. Volume change requested but unavailable."
+      );
     }
   } catch (e) {
     console.error("Error setting master volume:", e);
@@ -719,10 +801,12 @@ function setMasterVolume(volume) {
 // Set music volume
 function setMusicVolume(volume) {
   soundSettings.musicVolume = constrain(volume, 0, 1);
-  
+
   // Update volume of currently playing music
   if (soundSettings.currentMusic && sounds.music[soundSettings.currentMusic]) {
-    sounds.music[soundSettings.currentMusic].setVolume(soundSettings.musicVolume);
+    sounds.music[soundSettings.currentMusic].setVolume(
+      soundSettings.musicVolume
+    );
   }
 }
 
@@ -736,7 +820,11 @@ function updateAmbientSounds() {
   // Only play ambient sounds if not muted
   if (soundSettings.muted) {
     // If muted, make sure ambient sounds are paused
-    if (sounds.environment.wind && sounds.environment.wind.isPlaying && sounds.environment.wind.isPlaying()) {
+    if (
+      sounds.environment.wind &&
+      sounds.environment.wind.isPlaying &&
+      sounds.environment.wind.isPlaying()
+    ) {
       sounds.environment.wind.pause();
     }
     return;
@@ -757,20 +845,20 @@ function updateAmbientSounds() {
 function playRandomHitSound(x, y, isCritical = false) {
   // Start a new sound frame to track batched sounds
   soundManager.startFrame();
-  
+
   if (isCritical) {
-    playCombatSound('criticalHit', x, y, 1.0);
+    playCombatSound("criticalHit", x, y, 1.0);
   } else {
     // For regular hits, randomize volume slightly
     const hitVolume = random(0.8, 1.0);
-    
+
     // For regular hits, we'll use the sound manager's batching system
     // The rate will be set in the playCombatSound function
-    playCombatSound('hit', x, y, hitVolume);
-    
+    playCombatSound("hit", x, y, hitVolume);
+
     // We don't need to set the rate directly anymore as the sound manager handles it
   }
-  
+
   // Process any batched sounds at the end of the frame
   soundManager.endFrame();
 }
@@ -779,41 +867,44 @@ function playRandomHitSound(x, y, isCritical = false) {
 function playExplosionSound(x, y, size = 1.0) {
   // Start a new sound frame
   soundManager.startFrame();
-  
+
   // Larger explosions have lower pitch and higher volume
   const rate = map(size, 0.5, 3, 1.2, 0.7);
   const volume = map(size, 0.5, 3, 0.7, 1.0);
-  
+
   // For explosions, we'll use a higher priority for larger explosions
-  const priority = soundSettings.soundPriority.explosion + 
-                  (size > 2.0 ? 2 : size > 1.0 ? 1 : 0);
-  
+  const priority =
+    soundSettings.soundPriority.explosion +
+    (size > 2.0 ? 2 : size > 1.0 ? 1 : 0);
+
   // Use the sound manager to play the explosion sound
   if (sounds.combat.explosion) {
     // Calculate pan based on x position
     const screenCenterX = width / 2;
-    const pan = constrain((x - screenCenterX) / (screenCenterX), -1, 1) * 0.7;
-    
+    const pan = constrain((x - screenCenterX) / screenCenterX, -1, 1) * 0.7;
+
     // Calculate volume falloff based on distance
     const distanceFromCamera = abs(y - cameraOffsetY) / height;
     const distanceVolume = constrain(1 - distanceFromCamera * 0.5, 0.3, 1);
-    
+
     // Calculate final volume
-    const finalVolume = soundSettings.sfxVolume * 
-                       (soundSettings.combatVolume.explosion || 1.0) * 
-                       volume * distanceVolume;
-    
+    const finalVolume =
+      soundSettings.sfxVolume *
+      (soundSettings.combatVolume.explosion || 1.0) *
+      volume *
+      distanceVolume;
+
     // Request the sound directly through the sound manager
     soundManager.requestSound(
       sounds.combat.explosion,
       finalVolume,
       rate,
       pan,
-      'explosion',
+      "explosion",
       priority
     );
   }
-  
+
   // Process any batched sounds
   soundManager.endFrame();
 }
@@ -834,13 +925,13 @@ function handleSoundLoadError() {
         pan: () => {},
         fade: () => {},
         // Flag to identify dummy sounds
-        isDummy: true
+        isDummy: true,
       };
     };
 
     // Create placeholder sounds for any that failed to load
-    Object.keys(sounds).forEach(category => {
-      Object.keys(sounds[category]).forEach(soundName => {
+    Object.keys(sounds).forEach((category) => {
+      Object.keys(sounds[category]).forEach((soundName) => {
         if (!sounds[category][soundName]) {
           console.log(`Creating fallback for sound: ${category}.${soundName}`);
           sounds[category][soundName] = createDummySound();
@@ -858,16 +949,16 @@ function handleSoundLoadError() {
 function updateSoundSystem() {
   // Skip if sound system isn't initialized
   if (!soundSystemInitialized) return;
-  
+
   // Start a new sound frame
   soundManager.startFrame();
-  
+
   // Update ambient sounds
   updateAmbientSounds();
-  
+
   // Clean up finished sounds
   soundManager.cleanupFinishedSounds();
-  
+
   // Process any batched sounds
   soundManager.endFrame();
 }
@@ -879,7 +970,7 @@ function getSoundStats() {
     maxSounds: soundSettings.maxConcurrentSounds,
     performanceIssue: soundManager.performanceIssue,
     muted: soundSettings.muted,
-    currentMusic: soundSettings.currentMusic
+    currentMusic: soundSettings.currentMusic,
   };
 }
 
@@ -1060,7 +1151,7 @@ let skills = {
     cooldown: 600,
     lastUsed: 0,
     active: false,
-    activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
+    activeDuration: 120, // Machine Gun duration (5 seconds = 300 frames at 60fps)
     endTime: 0,
   },
   skill3: {
@@ -1439,7 +1530,7 @@ const PerformanceManager = {
 
         // Set depth function to less than or equal for better z-fighting handling
         gl.depthFunc(gl.LEQUAL);
-        
+
         // Reset any custom shaders to default to avoid 'totalLight' errors
         resetShader();
       }
@@ -1681,29 +1772,33 @@ function setup() {
       "webglcontextrestored",
       function () {
         console.log("WebGL context restored. Reinitializing...");
-        
+
         try {
           // Reset any custom shaders to default
           resetShader();
-          
+
           // Reapply WebGL settings
           PerformanceManager.applyWebGLSettings();
-          
+
           // Reset perspective
           perspective(PI / 4, width / height, 0.1, 5000);
-          
+
           // Recalculate camera zoom
           cameraZoom = calculateDynamicCameraZoom();
-          
+
           // Force a redraw
           redraw();
-          
+
           console.log("WebGL context successfully restored");
         } catch (e) {
           console.error("Error during WebGL context restoration:", e);
-          
+
           // Try to recover by reloading the page if restoration fails
-          if (confirm("Graphics recovery failed. Would you like to reload the game?")) {
+          if (
+            confirm(
+              "Graphics recovery failed. Would you like to reload the game?"
+            )
+          ) {
             window.location.reload();
           }
         }
@@ -1845,11 +1940,15 @@ function touchEnded() {
 }
 
 // Prevent double-tap zoom on mobile
-document.addEventListener('touchstart', function(event) {
-  if (event.touches.length > 1) {
-    event.preventDefault();
-  }
-}, { passive: false });
+document.addEventListener(
+  "touchstart",
+  function (event) {
+    if (event.touches.length > 1) {
+      event.preventDefault();
+    }
+  },
+  { passive: false }
+);
 
 // Initialize all UI elements
 function initializeUI() {
@@ -3031,20 +3130,26 @@ function drawSkyOverlay() {
           // For mobile, use a much simpler cloud rendering approach
           // Draw just a few simple cloud shapes
           const cloudCount = 3; // Fewer clouds for mobile
-          
+
           for (let i = 0; i < cloudCount; i++) {
             // Simple cloud positioning
-            const cloudX = map(noise(i * 0.5, frameCount * 0.0005), 0, 1, -width/2, width/2);
+            const cloudX = map(
+              noise(i * 0.5, frameCount * 0.0005),
+              0,
+              1,
+              -width / 2,
+              width / 2
+            );
             const cloudY = height * 0.25; // Fixed position above horizon
-            
+
             // Draw a simple cloud shape
             fill(255, 255, 255, 80); // Very transparent
             noStroke();
-            
+
             // Use a single ellipse for each cloud on mobile
             const cloudWidth = 150 + i * 30;
             const cloudHeight = 40;
-            
+
             ellipse(cloudX, cloudY, cloudWidth, cloudHeight);
           }
         } catch (e) {
@@ -3557,65 +3662,89 @@ function drawPowerUpLane() {
         // Use 2D mode for mobile rendering to avoid WebGL issues
         // Save the current renderer state
         const currentCanvas = _renderer;
-        
+
         // Switch to 2D temporarily if we're in WEBGL mode
         let tempCanvas = null;
         if (_renderer.isP3D) {
           // Create a temporary 2D canvas for drawing
           tempCanvas = createGraphics(width, height);
           tempCanvas.background(0, 0, 0, 0); // Transparent background
-          
+
           // Set up the 2D canvas
           tempCanvas.push();
-          tempCanvas.translate(width/2, height/2); // Center origin
-          tempCanvas.fill(POWER_UP_LANE_COLOR[0], POWER_UP_LANE_COLOR[1], POWER_UP_LANE_COLOR[2]);
+          tempCanvas.translate(width / 2, height / 2); // Center origin
+          tempCanvas.fill(
+            POWER_UP_LANE_COLOR[0],
+            POWER_UP_LANE_COLOR[1],
+            POWER_UP_LANE_COLOR[2]
+          );
           tempCanvas.rectMode(CENTER);
-          
+
           // Draw the power-up lane as a simple rectangle
           const laneWidth = POWER_UP_LANE_WIDTH;
           const laneHeight = height * 0.8; // Use a percentage of screen height
-          tempCanvas.rect(BRIDGE_WIDTH/2 + laneWidth/2, 0, laneWidth, laneHeight);
-          
+          tempCanvas.rect(
+            BRIDGE_WIDTH / 2 + laneWidth / 2,
+            0,
+            laneWidth,
+            laneHeight
+          );
+
           // Add a few simple lane markers
           tempCanvas.fill(180, 220, 255, 150);
           const markerCount = 5;
           const markerSpacing = laneHeight / markerCount;
-          
+
           for (let i = 0; i < markerCount; i++) {
-            const yPos = -laneHeight/2 + i * markerSpacing + markerSpacing/2;
-            tempCanvas.rect(BRIDGE_WIDTH/2 + laneWidth/2, yPos, laneWidth - 20, 5);
+            const yPos =
+              -laneHeight / 2 + i * markerSpacing + markerSpacing / 2;
+            tempCanvas.rect(
+              BRIDGE_WIDTH / 2 + laneWidth / 2,
+              yPos,
+              laneWidth - 20,
+              5
+            );
           }
-          
+
           tempCanvas.pop();
-          
+
           // Draw the 2D canvas to the screen
-          image(tempCanvas, -width/2, -height/2);
+          image(tempCanvas, -width / 2, -height / 2);
         } else {
           // If we're already in 2D mode, draw directly
-          translate(width/2 + BRIDGE_WIDTH/2 + POWER_UP_LANE_WIDTH/2, height/2);
+          translate(
+            width / 2 + BRIDGE_WIDTH / 2 + POWER_UP_LANE_WIDTH / 2,
+            height / 2
+          );
           fill(...POWER_UP_LANE_COLOR);
           rectMode(CENTER);
           rect(0, 0, POWER_UP_LANE_WIDTH, height * 0.8);
-          
+
           // Add minimal lane markers
           fill(180, 220, 255, 150);
           const laneHeight = height * 0.8;
           const markerCount = 5;
           const markerSpacing = laneHeight / markerCount;
-          
+
           for (let i = 0; i < markerCount; i++) {
-            const yPos = -laneHeight/2 + i * markerSpacing + markerSpacing/2;
+            const yPos =
+              -laneHeight / 2 + i * markerSpacing + markerSpacing / 2;
             rect(0, yPos, POWER_UP_LANE_WIDTH - 20, 5);
           }
         }
-        
+
         pop();
       } catch (e) {
         console.warn("Error in mobile power-up lane rendering:", e);
         // Fallback to an even simpler rendering if there's an error
         try {
           push();
-          fill(POWER_UP_LANE_COLOR[0], POWER_UP_LANE_COLOR[1], POWER_UP_LANE_COLOR[2], 200);
+          fill(
+            POWER_UP_LANE_COLOR[0],
+            POWER_UP_LANE_COLOR[1],
+            POWER_UP_LANE_COLOR[2],
+            200
+          );
           rect(width - POWER_UP_LANE_WIDTH, 0, POWER_UP_LANE_WIDTH, height);
           pop();
         } catch (e2) {
@@ -8312,9 +8441,6 @@ function activateSkill(skillNameOrNumber) {
   // Play skill activation sound
   playSkillSound(skillKey);
 
-  // Set cooldown
-  skills[skillKey].lastUsed = frameCount;
-
   // Apply skill effect with accumulative power-ups
   switch (skillName) {
     case SkillName.STAR_BLAST: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
@@ -8356,6 +8482,7 @@ function activateSkill(skillNameOrNumber) {
 }
 
 function updateSkillActivation(skill) {
+  skill.lastUsed = frameCount;
   skill.active = true;
   skill.endTime = frameCount + skill.activeDuration;
   setTimeout(() => {
@@ -9620,10 +9747,19 @@ function updateSkillBar() {
       skillDiv.style("box-shadow", "0 4px 12px rgba(100, 255, 100, 0.4)");
     }
 
-    if (cooldownRemaining >= 0) {
+    if (cooldownPercent > 0) {
       skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
       select(`#skillName${i}`).html(`(${Math.ceil(cooldownRemaining / 60)}s)`);
+    } else {
+      // Reset the skill name to normal
+      select(`#skillName${i}`).html(getSkillName(i));
+
+      // Reset key display
+      if (i === 8) {
+        select(`#skillKey${i}`).html("R");
+      }
     }
+
     if (isSkillActive) {
       // Get colors for current skill
       const colors = generateSkillColors(i);
@@ -9676,18 +9812,11 @@ function updateSkillBar() {
       skillDiv.style("box-shadow", "none");
       skillDiv.style("transform", "scale(1.0)");
 
-      // Reset the skill name to normal
-      select(`#skillName${i}`).html(getSkillName(i));
       select(`#skillName${i}`).style("color", "white");
 
       // Reset key color
       select(`#skillKey${i}`).style("color", "white");
       select(`#skillKey${i}`).style("text-shadow", "none");
-
-      // Reset key display
-      if (i === 8) {
-        select(`#skillKey${i}`).html("R");
-      }
     }
 
     // Update needle rotation
@@ -10936,10 +11065,6 @@ function activateStarBlastSkill() {
   // Get directions based on performance level
   const directions = getStarBlastDirections();
 
-  // Activate star blast mode
-  skills.skill1.active = true;
-  skills.skill1.endTime = frameCount + starBlastDuration;
-
   // Initial star blast
   fireStarBlast(squadCenter, directions, areaDamageRadius, areaDamageAmount);
 
@@ -10991,8 +11116,6 @@ function activateStarBlastSkill() {
 
   // Schedule deactivation after duration
   setTimeout(() => {
-    skills.skill1.active = false;
-
     // Final star blast when the skill ends
     if (squad.length > 0) {
       // Fire a final star blast with increased damage
@@ -11177,10 +11300,6 @@ function activateMachineGunSkill() {
   // Store the normal fire rate to restore later
   const normalFireRate = squadFireRate;
 
-  // Activate machine gun mode
-  skills.skill2.active = true;
-  skills.skill2.endTime = frameCount + skills.skill2.activeDuration;
-
   // Set the much faster fire rate (machine gun speed)
   squadFireRate = 5; // Fire every 5 frames instead of 30 (6x faster)
 
@@ -11232,10 +11351,6 @@ function activateShieldSkill() {
   const shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
   const shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
 
-  // Activate shield mode
-  skills.skill3.active = true;
-  skills.skill3.endTime = frameCount + shieldDuration;
-
   // Calculate the center point of the squad for the shield (optimized)
   const shieldCenter = calculateSquadCenter();
 
@@ -11254,8 +11369,6 @@ function activateShieldSkill() {
 
   // Schedule deactivation after duration
   setTimeout(() => {
-    skills.skill3.active = false;
-
     // Final shield collapse effect when the skill ends
     if (squad.length > 0) {
       const finalCenter = calculateSquadCenter();
