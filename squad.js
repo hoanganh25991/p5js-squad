@@ -1142,66 +1142,66 @@ let currentWeapon = WEAPON_TYPES[0];
 let skills = {
   skill1: {
     cooldown: 300,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
     endTime: 0,
   },
   skill2: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
-    activeDuration: 120, // Machine Gun duration (5 seconds = 300 frames at 60fps)
+    activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
     endTime: 0,
   },
   skill3: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
     endTime: 0,
   },
   skill4: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
-    activeDuration: 120, // Freeze duration (2 seconds = 120 frames at 60fps)
+    activeDuration: 180, // Freeze duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
   skill5: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 120,
     endTime: 0,
   },
   skill6: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 120,
     endTime: 0,
   },
   skill7: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 120,
     endTime: 0,
   },
   skill8: {
     cooldown: 600,
-    lastUsed: 0,
+    lastUsed: -10_000,
     active: false,
     activeDuration: 120,
     endTime: 0,
   },
   skill9: {
-    cooldown: 450,
-    lastUsed: 0,
+    cooldown: 480,
+    lastUsed: -10_000,
     active: false,
     endTime: 0,
-    health: 500, // Barrier health
+    health: 5_000, // Barrier health
     activeDuration: 120,
     maxBarriers: 5, // Maximum number of barriers allowed
     activeBarriers: 0, // Current number of active barriers
@@ -8430,9 +8430,11 @@ function activateSkill(skillNameOrNumber) {
   }
 
   const skillKey = `skill${skillNumber}`;
+  const skill = skills[skillKey];
+
 
   // In debug mode, ignore cooldowns; in normal mode, check cooldowns
-  if (frameCount - skills[skillKey].lastUsed < skills[skillKey].cooldown) {
+  if (frameCount - skill.lastUsed < skill.cooldown) {
     // Skill on cooldown (only in non-debug mode)
     playUISound("error"); // Play error sound for cooldown
     return;
@@ -8441,42 +8443,43 @@ function activateSkill(skillNameOrNumber) {
   // Play skill activation sound
   playSkillSound(skillKey);
 
+
   // Apply skill effect with accumulative power-ups
   switch (skillName) {
     case SkillName.STAR_BLAST: // Star Blast - damages enemies in all 8 directions simultaneously for a duration
-      activateStarBlastSkill();
+      activateStarBlastSkill(skill);
       break;
 
     case SkillName.MACHINE_GUN: // Machine Gun - fire much faster for 5 seconds for each squad member
-      activateMachineGunSkill();
+      activateMachineGunSkill(skill);
       break;
 
     case SkillName.SHIELD: // Shield - protective barrier that follows the squad
-      activateShieldSkill();
+      activateShieldSkill(skill);
       break;
 
     case SkillName.FREEZE: // Freeze - ice effect that freezes enemies
-      activateFreezeSkill();
+      activateFreezeSkill(skill);
       break;
 
     case SkillName.REJUVENATION: // Rejuvenation Field - Advanced healing with regeneration over time
-      activateRejuvenationSkill();
+      activateRejuvenationSkill(skill);
       break;
 
     case SkillName.INFERNAL_RAGE: // Infernal Rage - Creates a devastating inferno on the enemy side of the bridge
-      activateInfernalRageSkill();
+      activateInfernalRageSkill(skill);
       break;
 
     case SkillName.QUANTUM_ACCELERATION: // Quantum Acceleration - Advanced speed boost with time dilation effects
-      activateQuantumAccelerationSkill();
+      activateQuantumAccelerationSkill(skill);
       break;
 
     case SkillName.APOCALYPTIC_DEVASTATION: // Apocalyptic Devastation - Radically Optimized Ultimate Weapon
-      activateApocalypticDevastation();
+      activateApocalypticDevastation(skill);
       break;
 
     case SkillName.BARRIER: // Barrier - Places a wall that enemies target first
-      activateBarrierSkill();
+      activateBarrierSkill(skill);
       break;
   }
 }
@@ -8495,8 +8498,8 @@ function updateSkillActivation(skill) {
  * This is a radically optimized ultimate weapon that drops a powerful atomic bomb
  * causing massive damage to enemies in a large area
  */
-function activateApocalypticDevastation() {
-  updateSkillActivation(skills.skill8);
+function activateApocalypticDevastation(skill) {
+  updateSkillActivation(skill);
 
   // Get bomb drop point - farther ahead of the player for better visibility
   let bombCenter = { x: 0, y: 0, z: 0 };
@@ -8617,18 +8620,18 @@ function activateApocalypticDevastation() {
  * Activates the Barrier skill (Skill 9)
  * Places a wall that enemies target first, protecting the squad
  */
-function activateBarrierSkill() {
-  updateSkillActivation(skills.skill9);
+function activateBarrierSkill(skill) {
+  updateSkillActivation(skill);
 
   // Check if maximum number of barriers has been reached
-  if (skills.skill9.activeBarriers >= skills.skill9.maxBarriers) {
+  if (skill.activeBarriers >= skill.maxBarriers) {
     // Play error sound and show error message
     playUISound("error");
     return; // Exit the function without creating a barrier
   }
 
   // Calculate barrier parameters based on player stats
-  const barrierHealth = skills.skill9.health + damageBoost * 20; // Barrier health enhanced by damage boost
+  const barrierHealth = skill.health + damageBoost * 20; // Barrier health enhanced by damage boost
   const barrierWidth = BRIDGE_WIDTH * 0.8 + aoeBoost * 10; // Barrier width enhanced by AOE boost
   const barrierHeight = WALL_HEIGHT * 0.8 + aoeBoost * 5; // Barrier height enhanced by AOE boost
 
@@ -8643,7 +8646,7 @@ function activateBarrierSkill() {
   }
 
   // Increment active barriers count
-  skills.skill9.activeBarriers++;
+  skill.activeBarriers++;
 
   // Create a barrier effect with no lifetime (will exist until destroyed)
   const barrier = {
@@ -8661,7 +8664,7 @@ function activateBarrierSkill() {
     forceRenderDetail: true,
     // Add a callback for when the barrier is destroyed
     onDestroy: function () {
-      skills.skill9.activeBarriers--; // Decrement active barriers count
+      skill.activeBarriers--; // Decrement active barriers count
       createBarrierCollapseEffect(barrierPosition, barrierWidth, barrierHeight);
     },
   };
@@ -11045,8 +11048,8 @@ function createExplosionEffect(position, size, life, color) {
  * Activates the Star Blast skill
  * Damages enemies in all directions simultaneously for a duration
  */
-function activateStarBlastSkill() {
-  updateSkillActivation(skills.skill1);
+function activateStarBlastSkill(skill) {
+  updateSkillActivation(skill);
 
   // Performance check
   const isLowPerformance =
@@ -11057,7 +11060,7 @@ function activateStarBlastSkill() {
   // Calculate damage parameters based on player stats
   const areaDamageRadius = 400 + aoeBoost * 20; // Base radius + bonus from AOE boost
   const areaDamageAmount = 100 + damageBoost * 15; // Base damage + bonus from damage boost
-  const starBlastDuration = skills.skill1.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
+  const starBlastDuration = skill.activeDuration + fireRateBoost * 15; // Duration enhanced by fire rate boost
 
   // Get squad center position
   const squadCenter = calculateSquadCenter();
@@ -11086,7 +11089,7 @@ function activateStarBlastSkill() {
   for (let i = 1; i <= totalIntervals; i++) {
     setTimeout(() => {
       // Only continue if the skill is still active
-      if (skills.skill1.active && frameCount < skills.skill1.endTime) {
+      if (skill.active && frameCount < skill.endTime) {
         // Determine whether to recalculate center position
         let currentCenter;
 
@@ -11295,8 +11298,8 @@ function createIceEffect(x, y, z) {
  * Activates the Machine Gun skill (Skill 2)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateMachineGunSkill() {
-  updateSkillActivation(skills.skill2);
+function activateMachineGunSkill(skill) {
+  updateSkillActivation(skill);
   // Store the normal fire rate to restore later
   const normalFireRate = squadFireRate;
 
@@ -11322,7 +11325,7 @@ function activateMachineGunSkill() {
       z: member.z,
       type: "machineGun",
       size: member.size * 1.2,
-      life: skills.skill2.activeDuration,
+      life: skill.activeDuration,
       member: member, // reference to follow the member
       color: [255, 255, 0], // Yellow for machine gun mode
     });
@@ -11332,23 +11335,21 @@ function activateMachineGunSkill() {
   setTimeout(() => {
     // Only restore fire rate if machine gun mode is still active
     // (prevents conflicts with other skills that might have changed fire rate)
-    if (skills.skill2.active) {
-      squadFireRate = normalFireRate;
-      skills.skill2.active = false;
-    }
-  }, skills.skill2.activeDuration * (1000 / 60)); // Convert frames to ms
+    squadFireRate = normalFireRate;
+
+  }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
 }
 
 /**
  * Activates the Shield skill (Skill 3)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateShieldSkill() {
-  updateSkillActivation(skills.skill3);
+function activateShieldSkill(skill) {
+  updateSkillActivation(skill);
 
   // Calculate shield parameters based on player stats
   const shieldStrength = 100 + damageBoost * 10; // Shield strength enhanced by damage boost
-  const shieldDuration = skills.skill3.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
+  const shieldDuration = skill.activeDuration + fireRateBoost * 30; // Duration enhanced by fire rate boost
   const shieldRadius = 200 + aoeBoost * 10; // Shield radius enhanced by AOE boost
 
   // Calculate the center point of the squad for the shield (optimized)
@@ -11392,8 +11393,8 @@ function activateShieldSkill() {
  * Activates the Freeze skill (Skill 4)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateFreezeSkill() {
-  updateSkillActivation(skills.skill4);
+function activateFreezeSkill(skill) {
+  updateSkillActivation(skill);
 
   // OPTIMIZATION: Check device performance
   const freezeIsLowPerformance =
@@ -11402,7 +11403,7 @@ function activateFreezeSkill() {
     currentPerformanceLevel === PerformanceLevel.MEDIUM;
 
   // Visual effect lasts 2 seconds, enemy freeze effect lasts 5 seconds
-  const visualEffectDuration = skills.skill4.activeDuration; // 2 seconds (120 frames)
+  const visualEffectDuration = skill.activeDuration; // 2 seconds (120 frames)
   const enemyFreezeEffectDuration = 300; // 5 seconds (300 frames)
   const freezeStrength = 0.1 - aoeBoost * 0.01; // More slowdown with AOE boost (slower movement, lower is slower)
   // OPTIMIZATION: Reduce radius on low performance devices
@@ -11663,8 +11664,8 @@ function applyFreezeEffectToEnemies(
  * Activates the Rejuvenation Field skill (Skill 5)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateRejuvenationSkill() {
-  updateSkillActivation(skills.skill5);
+function activateRejuvenationSkill(skill) {
+  updateSkillActivation(skill);
 
   // Calculate healing parameters based on player stats
   const initialHealAmount = 30 + damageBoost * 3; // Immediate healing
@@ -11805,8 +11806,8 @@ function createHealingShockwaves(center, radius) {
  * Activates the Infernal Rage skill (Skill 6)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateInfernalRageSkill() {
-  updateSkillActivation(skills.skill6);
+function activateInfernalRageSkill(skill) {
+  updateSkillActivation(skill);
 
   // Calculate damage parameters based on player stats
   const damageBoostBase = 2.5; // 2.5x damage (increased from 2x)
@@ -12180,8 +12181,8 @@ function resetDamageBoostAndCreateEndEffects(
  * Activates the Quantum Acceleration skill (Skill 7)
  * Optimized implementation with reduced complexity and improved performance
  */
-function activateQuantumAccelerationSkill() {
-  updateSkillActivation(skills.skill7);
+function activateQuantumAccelerationSkill(skill) {
+  updateSkillActivation(skill);
   // Calculate speed parameters based on player stats
   const baseSpeedBoost = 1.8; // 80% faster
   const additionalSpeedBoost = 0.15 * fireRateBoost; // 15% more per fire rate boost
