@@ -45,6 +45,36 @@ const skillDisplayNames = {
   [SkillName.BARRIER]: "Defense Wall",
 };
 
+// Gamepad button constants (for DualShock controller)
+const GamepadButton = {
+  CROSS: 0,      // X button
+  CIRCLE: 1,     // Circle button
+  SQUARE: 2,     // Square button
+  TRIANGLE: 3,   // Triangle button
+  L1: 4,         // Left shoulder button
+  R1: 5,         // Right shoulder button
+  L2: 6,         // Left trigger
+  R2: 7,         // Right trigger
+  SHARE: 8,      // Share button
+  OPTIONS: 9,    // Options button
+  L3: 10,        // Left stick press
+  R3: 11,        // Right stick press
+  DPAD_UP: 12,   // D-pad up
+  DPAD_DOWN: 13, // D-pad down
+  DPAD_LEFT: 14, // D-pad left
+  DPAD_RIGHT: 15,// D-pad right
+  PS: 16,        // PlayStation button
+  TOUCHPAD: 17   // Touchpad button
+};
+
+// Gamepad axis constants
+const GamepadAxis = {
+  LEFT_STICK_X: 0,
+  LEFT_STICK_Y: 1,
+  RIGHT_STICK_X: 2,
+  RIGHT_STICK_Y: 3
+};
+
 const skillKeys = {
   [SkillName.STAR_BLAST]: "A",
   [SkillName.MACHINE_GUN]: "S",
@@ -55,6 +85,19 @@ const skillKeys = {
   [SkillName.QUANTUM_ACCELERATION]: "E",
   [SkillName.ATOMIC_BOMB]: "R",
   [SkillName.BARRIER]: "B",
+};
+
+// Mapping of gamepad buttons to skills
+const gamepadSkillMap = {
+  [GamepadButton.SQUARE]: SkillName.STAR_BLAST,       // Square button -> Star Blast
+  [GamepadButton.CROSS]: SkillName.MACHINE_GUN,       // X button -> Machine Gun
+  [GamepadButton.CIRCLE]: SkillName.SHIELD,           // Circle button -> Shield
+  [GamepadButton.TRIANGLE]: SkillName.FREEZE,         // Triangle button -> Freeze
+  [GamepadButton.L1]: SkillName.REJUVENATION,         // L1 button -> Rejuvenation
+  [GamepadButton.R1]: SkillName.INFERNAL_RAGE,        // R1 button -> Infernal Rage
+  [GamepadButton.L2]: SkillName.QUANTUM_ACCELERATION, // L2 button -> Quantum Acceleration
+  [GamepadButton.R2]: SkillName.ATOMIC_BOMB,          // R2 button -> Atomic Bomb
+  // For Barrier (skill 9), we'll use a combination of L1+R1 (implemented in the gamepad handler)
 };
 
 const skillHandlers = {
@@ -133,6 +176,11 @@ let gameStartTime = 0;
 let startTime = 0;
 let totalEnemiesKilled = 0; // Total enemies killed across all waves
 let waveEnemiesKilled = 0; // Enemies killed in the current wave
+
+// Gamepad variables
+let gamepadConnected = false;
+let gamepadDeadzone = 0.1; // Analog stick deadzone
+let lastGamepadButtonState = {}; // Track button states to detect presses
 
 // Sound system variables
 let soundSystemInitialized = false;
@@ -7458,7 +7506,10 @@ function updateSquad() {
 
   let mainMember = squad[0];
 
-  // Arrow key movement
+  // Check for gamepad input first
+  handleGamepadInput();
+
+  // Arrow key movement (keyboard)
   if (keyIsDown(LEFT_ARROW)) {
     moveSquad(-squadSpeed, 0);
   }
@@ -10182,6 +10233,115 @@ function updateHUD() {
 }
 
 // Input handlers
+// Gamepad handling functions
+function handleGamepadInput() {
+  // Check if gamepads are available
+  const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gamepad = null;
+  
+  // Find the first connected gamepad
+  for (let i = 0; i < gamepads.length; i++) {
+    if (gamepads[i] && gamepads[i].connected) {
+      gamepad = gamepads[i];
+      if (!gamepadConnected) {
+        console.log("Gamepad connected:", gamepad.id);
+        gamepadConnected = true;
+        lastGamepadButtonState = {}; // Initialize button state tracking
+      }
+      break;
+    }
+  }
+  
+  if (!gamepad) {
+    gamepadConnected = false;
+    return;
+  }
+  
+  // Handle movement with left analog stick
+  handleGamepadMovement(gamepad);
+  
+  // Handle button presses for skills
+  handleGamepadButtons(gamepad);
+}
+
+function handleGamepadMovement(gamepad) {
+  // Get left stick values
+  let leftX = gamepad.axes[GamepadAxis.LEFT_STICK_X];
+  let leftY = gamepad.axes[GamepadAxis.LEFT_STICK_Y];
+  
+  // Apply deadzone to prevent drift
+  if (Math.abs(leftX) < gamepadDeadzone) leftX = 0;
+  if (Math.abs(leftY) < gamepadDeadzone) leftY = 0;
+  
+  // Move squad based on analog stick input
+  if (leftX !== 0 || leftY !== 0) {
+    // Scale the movement based on how far the stick is pushed
+    const magnitude = Math.sqrt(leftX * leftX + leftY * leftY);
+    const normalizedX = leftX / magnitude;
+    const normalizedY = leftY / magnitude;
+    
+    // Apply the movement (note: Y axis is inverted in most gamepads)
+    moveSquad(normalizedX * squadSpeed, normalizedY * squadSpeed);
+  }
+  
+  // Also handle D-pad movement
+  if (gamepad.buttons[GamepadButton.DPAD_LEFT].pressed) {
+    moveSquad(-squadSpeed, 0);
+  }
+  if (gamepad.buttons[GamepadButton.DPAD_RIGHT].pressed) {
+    moveSquad(squadSpeed, 0);
+  }
+  if (gamepad.buttons[GamepadButton.DPAD_UP].pressed) {
+    moveSquad(0, -squadSpeed);
+  }
+  if (gamepad.buttons[GamepadButton.DPAD_DOWN].pressed) {
+    moveSquad(0, squadSpeed);
+  }
+}
+
+function handleGamepadButtons(gamepad) {
+  // Handle menu navigation and game control buttons
+  if (gamepad.buttons[GamepadButton.OPTIONS].pressed && !lastGamepadButtonState[GamepadButton.OPTIONS]) {
+    // Options button acts like P key for pause/resume
+    if (gameState === GameState.PLAYING) {
+      pauseGame();
+      gameStartTime = frameCount;
+    } else if (gameState === GameState.PAUSED) {
+      resumeGame();
+    }
+  }
+  
+  // Start game with X button from menu
+  if (gamepad.buttons[GamepadButton.CROSS].pressed && !lastGamepadButtonState[GamepadButton.CROSS]) {
+    if (gameState === GameState.MENU || gameState === GameState.GAME_OVER) {
+      startGame();
+    }
+  }
+  
+  // Only process skill buttons during gameplay
+  if (gameState === GameState.PLAYING) {
+    // Check for L1+R1 combination for Barrier (skill 9)
+    if (gamepad.buttons[GamepadButton.L1].pressed && 
+        gamepad.buttons[GamepadButton.R1].pressed && 
+        (!lastGamepadButtonState[GamepadButton.L1] || !lastGamepadButtonState[GamepadButton.R1])) {
+      activateSkill(SkillName.BARRIER);
+    } else {
+      // Process individual skill buttons
+      for (const [buttonIndex, skillName] of Object.entries(gamepadSkillMap)) {
+        const buttonIdx = parseInt(buttonIndex);
+        if (gamepad.buttons[buttonIdx].pressed && !lastGamepadButtonState[buttonIdx]) {
+          activateSkill(skillName);
+        }
+      }
+    }
+  }
+  
+  // Update button state tracking
+  for (let i = 0; i < gamepad.buttons.length; i++) {
+    lastGamepadButtonState[i] = gamepad.buttons[i].pressed;
+  }
+}
+
 function keyPressed() {
   if (keyCode === ENTER) {
     if (gameState === "menu" || gameState === "gameOver") {
