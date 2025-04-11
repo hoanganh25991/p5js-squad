@@ -2613,6 +2613,10 @@ function updateTechBoardVisibility() {
 
 // ===== GAME LOOP =====
 function draw() {
+  // Always process gamepad input regardless of game state
+  // This ensures the OPTIONS button can be used to resume from pause
+  handleGamepadInput();
+  
   // Special handling for mobile landscape mode
   if (isMobileDevice && windowWidth > windowHeight) {
     // In mobile landscape mode, use a simplified rendering approach to avoid WebGL errors
@@ -7506,8 +7510,8 @@ function updateSquad() {
 
   let mainMember = squad[0];
 
-  // Check for gamepad input first
-  handleGamepadInput();
+  // Note: handleGamepadInput() is now called in the main draw loop
+  // to ensure gamepad controls work even when the game is paused
 
   // Arrow key movement (keyboard)
   if (keyIsDown(LEFT_ARROW)) {
