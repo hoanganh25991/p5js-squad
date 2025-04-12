@@ -3155,13 +3155,29 @@ function draw() {
   // Draw sky and environment instead of just a black background
   drawSkyAndMountains();
 
-  // Check for global effects
-  let globalFrostEffect = effects.find((e) => e.type === "globalFrost");
-  let globalFireEffect = effects.find((e) => e.type === "globalFire");
-  let globalTimeDilationEffect = effects.find(
-    (e) => e.type === "globalTimeDilation"
-  );
+  // Check for global effects - use a single loop for better performance
+  let globalFrostEffect = null;
+  let globalFireEffect = null;
+  let globalTimeDilationEffect = null;
+  
+  // Use a more efficient approach to find global effects
+  for (let i = 0; i < effects.length; i++) {
+    const effect = effects[i];
+    if (effect.type === "globalFrost") globalFrostEffect = effect;
+    else if (effect.type === "globalFire") globalFireEffect = effect;
+    else if (effect.type === "globalTimeDilation") globalTimeDilationEffect = effect;
+    
+    // Break early if we found all effects
+    if (globalFrostEffect && globalFireEffect && globalTimeDilationEffect) break;
+  }
 
+  // Performance optimization: Skip rendering global effects on low-end devices when multiple effects are active
+  const multipleEffectsActive = (globalFrostEffect ? 1 : 0) + 
+                               (globalFireEffect ? 1 : 0) + 
+                               (globalTimeDilationEffect ? 1 : 0) > 1;
+                               
+  const skipDetailedEffects = isMobileDevice && multipleEffectsActive && useLowDetail;
+  
   // Handle multiple global effects with priority
   if (globalFrostEffect && globalFireEffect && globalTimeDilationEffect) {
     // If all three effects are active, create a simplified blend
@@ -3169,25 +3185,22 @@ function draw() {
     const fireIntensity = globalFireEffect.intensity || 0.3;
     const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 12; // Adjusted for shorter duration
-    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 12; // Reduced for blending
-    const dilationFadeAlpha =
-      (globalTimeDilationEffect.life / 480) * dilationIntensity * 12; // Reduced for blending
+    // Optimize alpha calculations
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 12;
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 12;
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 12;
+    
+    // Calculate combined alpha once
+    const combinedAlpha = min((frostFadeAlpha + fireFadeAlpha + dilationFadeAlpha) / 2, 120);
 
     // Apply a simplified overlay
     push();
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     noStroke();
 
-    // Combined layer - blend all effects
-    fill(
-      (255 + 200 + 0) / 3,
-      (100 + 240 + 200) / 3,
-      (50 + 255 + 255) / 3,
-      min((frostFadeAlpha + fireFadeAlpha + dilationFadeAlpha) / 2, 150) // Cap alpha for performance
-    );
+    // Combined layer - blend all effects with pre-calculated color
+    fill(152, 180, 170, combinedAlpha); // Pre-calculated average: (255+200+0)/3, (100+240+200)/3, (50+255+255)/3
     plane(width * 2, height * 2);
-
     pop();
 
     // Balanced lighting for combined effects
@@ -3198,57 +3211,53 @@ function draw() {
     const frostIntensity = globalFrostEffect.intensity || 0.5;
     const fireIntensity = globalFireEffect.intensity || 0.3;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15; // Adjusted for shorter duration
-    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 15; // Reduced for blending
+    // Optimize alpha calculations
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15;
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 15;
+    
+    // Calculate combined alpha once
+    const combinedAlpha = min((frostFadeAlpha + fireFadeAlpha) / 2, 120);
 
     // Apply a single blended overlay for better performance
     push();
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     noStroke();
 
-    // Combined layer - purple-ish blend of fire and ice
-    fill(
-      (255 + 200) / 2,
-      (100 + 240) / 2,
-      (50 + 255) / 2,
-      min((frostFadeAlpha + fireFadeAlpha) / 2, 150) // Cap alpha for performance
-    );
-    plane(width * 2, height * 2); // Cover the entire screen
-
+    // Combined layer - purple-ish blend of fire and ice (pre-calculated)
+    fill(227, 170, 152, combinedAlpha); // Pre-calculated: (255+200)/2, (100+240)/2, (50+255)/2
+    plane(width * 2, height * 2);
     pop();
 
     // Adjust lighting for combined effect - balanced light
-    ambientLight(200, 190, 210); // Balanced ambient light
-    directionalLight(230, 220, 230, 0, -1, -1); // Balanced directional light
+    ambientLight(200, 190, 210);
+    directionalLight(230, 220, 230, 0, -1, -1);
   } else if (globalFrostEffect && globalTimeDilationEffect) {
     // If both frost and time dilation effects are active, use a simplified blend
     const frostIntensity = globalFrostEffect.intensity || 0.5;
     const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
 
-    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15; // Adjusted for shorter duration
-    const dilationFadeAlpha =
-      (globalTimeDilationEffect.life / 480) * dilationIntensity * 15; // Reduced for blending
+    // Optimize alpha calculations
+    const frostFadeAlpha = (globalFrostEffect.life / 120) * frostIntensity * 15;
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 15;
+    
+    // Calculate combined alpha once
+    const combinedAlpha = min((frostFadeAlpha + dilationFadeAlpha) / 2, 120);
 
     // Apply a single blended overlay for better performance
     push();
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     noStroke();
 
-    // Combined layer - cyan blend of frost and time dilation
-    fill(
-      (200 + 0) / 2,
-      (240 + 200) / 2,
-      255,
-      min((frostFadeAlpha + dilationFadeAlpha) / 2, 150) // Cap alpha for performance
-    );
+    // Combined layer - cyan blend of frost and time dilation (pre-calculated)
+    fill(100, 220, 255, combinedAlpha); // Pre-calculated: (200+0)/2, (240+200)/2, 255
     plane(width * 2, height * 2);
 
     // Simplified special effect - only on desktop and less frequent
-    if (!isMobileDevice && frameCount % 8 === 0) {
-      fill(150, 220, 255, random(3, 8));
+    // Skip on low-end devices for better performance
+    if (!skipDetailedEffects && frameCount % 12 === 0) {
+      fill(150, 220, 255, random(3, 6));
       plane(width * 2, height * 2);
     }
-
     pop();
 
     // Adjust lighting for combined effect - cool cyan light
@@ -3259,29 +3268,27 @@ function draw() {
     const fireIntensity = globalFireEffect.intensity || 0.3;
     const dilationIntensity = globalTimeDilationEffect.intensity || 0.2;
 
-    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 20; // Reduced for blending
-    const dilationFadeAlpha =
-      (globalTimeDilationEffect.life / 480) * dilationIntensity * 20; // Reduced for blending
+    // Optimize alpha calculations
+    const fireFadeAlpha = (globalFireEffect.life / 600) * fireIntensity * 20;
+    const dilationFadeAlpha = (globalTimeDilationEffect.life / 480) * dilationIntensity * 20;
+    
+    // Calculate combined alpha once
+    const combinedAlpha = min((fireFadeAlpha + dilationFadeAlpha) / 2, 120);
 
-    // Apply a semi-transparent blended overlay
+    // Apply a simplified overlay for better performance
     push();
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     noStroke();
 
-    // First layer - fire effect
-    fill(255, 100, 50, fireFadeAlpha * 0.7);
+    // Use a single combined layer instead of multiple layers
+    fill(128, 150, 152, combinedAlpha); // Blend of fire and time dilation colors
     plane(width * 2, height * 2);
 
-    // Second layer - time dilation effect
-    fill(0, 200, 255, dilationFadeAlpha * 0.6);
-    plane(width * 2, height * 2);
-
-    // Add special combined effect - energy flicker
-    if (frameCount % 3 === 0) {
-      fill(200, 150, 200, random(5, 10));
+    // Add special combined effect - energy flicker (less frequent on mobile)
+    if (!skipDetailedEffects && frameCount % (isMobileDevice ? 6 : 3) === 0) {
+      fill(200, 150, 200, random(3, 8));
       plane(width * 2, height * 2);
     }
-
     pop();
 
     // Adjust lighting for combined effect - energized light
@@ -3290,77 +3297,73 @@ function draw() {
   } else if (globalFrostEffect) {
     // Apply a simplified blue tint to the scene based on the frost intensity
     const intensity = globalFrostEffect.intensity || 0.5;
-    const fadeAlpha = (globalFrostEffect.life / 120) * intensity * 25; // Fade as effect expires, adjusted for shorter duration
+    const fadeAlpha = min((globalFrostEffect.life / 120) * intensity * 25, 120);
 
     // Apply a simplified semi-transparent blue overlay
     push();
-    translate(0, 0, 1000); // Move in front of everything
-    fill(200, 240, 255, min(fadeAlpha, 150)); // Cap the maximum alpha for better performance
+    translate(0, 0, 1000);
+    fill(200, 240, 255, fadeAlpha);
     noStroke();
-    plane(width * 2, height * 2); // Cover the entire screen
+    plane(width * 2, height * 2);
     pop();
 
     // Simplified lighting for frost effect
-    ambientLight(190, 210, 230); // Bluer ambient light
-    directionalLight(200, 220, 255, 0, -1, -1); // Bluer directional light
+    ambientLight(190, 210, 230);
+    directionalLight(200, 220, 255, 0, -1, -1);
   } else if (globalFireEffect) {
     // Apply a red-orange tint to the scene based on the fire intensity
     const intensity = globalFireEffect.intensity || 0.3;
-    const fadeAlpha = (globalFireEffect.life / 600) * intensity * 30; // Fade as effect expires
+    const fadeAlpha = min((globalFireEffect.life / 600) * intensity * 30, 120);
 
     // Apply a semi-transparent red-orange overlay
     push();
-    // Use a 2D overlay for the fire effect
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     fill(255, 100, 50, fadeAlpha);
     noStroke();
-    plane(width * 2, height * 2); // Cover the entire screen
+    plane(width * 2, height * 2);
 
-    // Add flickering effect
-    if (frameCount % 5 === 0) {
-      // Random flicker overlay
-      fill(255, 150, 0, random(5, 15));
+    // Add flickering effect - less frequent on mobile
+    if (!skipDetailedEffects && frameCount % (isMobileDevice ? 10 : 5) === 0) {
+      fill(255, 150, 0, random(3, 10));
       plane(width * 2, height * 2);
     }
     pop();
 
     // Adjust lighting for fire effect - warmer, redder light
-    ambientLight(220, 180, 160); // Warmer ambient light
-    directionalLight(255, 220, 180, 0, -1, -1); // Warmer directional light
+    ambientLight(220, 180, 160);
+    directionalLight(255, 220, 180, 0, -1, -1);
   } else if (globalTimeDilationEffect) {
     // Apply a cyan tint to the scene based on the time dilation intensity
     const intensity = globalTimeDilationEffect.intensity || 0.2;
-    const fadeAlpha = (globalTimeDilationEffect.life / 480) * intensity * 25; // Fade as effect expires
+    const fadeAlpha = min((globalTimeDilationEffect.life / 480) * intensity * 25, 120);
 
     // Apply a semi-transparent cyan overlay
     push();
-    // Use a 2D overlay for the time dilation effect
-    translate(0, 0, 1000); // Move in front of everything
+    translate(0, 0, 1000);
     fill(0, 200, 255, fadeAlpha);
     noStroke();
-    plane(width * 2, height * 2); // Cover the entire screen
+    plane(width * 2, height * 2);
 
-    // Add time ripple effect
-    if (frameCount % 6 === 0) {
-      // Subtle ripple overlay
-      fill(100, 220, 255, random(3, 8));
+    // Add time ripple effect - less frequent on mobile
+    if (!skipDetailedEffects && frameCount % (isMobileDevice ? 12 : 6) === 0) {
+      fill(100, 220, 255, random(2, 6));
       plane(width * 2, height * 2);
     }
 
-    // Add occasional bright flash for time distortion
-    if (frameCount % 60 === 0) {
-      fill(200, 240, 255, random(10, 20));
+    // Add occasional bright flash for time distortion - skip on mobile
+    if (!isMobileDevice && frameCount % 60 === 0) {
+      fill(200, 240, 255, random(5, 15));
       plane(width * 2, height * 2);
     }
     pop();
 
     // Adjust lighting for time dilation effect - cooler, cyan-tinted light
-    ambientLight(190, 210, 220); // Cyan-tinted ambient light
-    directionalLight(200, 240, 255, 0, -1, -1); // Cyan-tinted directional light
+    ambientLight(190, 210, 220);
+    directionalLight(200, 240, 255, 0, -1, -1);
   } else {
     // Normal lighting
-    ambientLight(200); // Higher value for more brightness
-    directionalLight(255, 255, 255, 0, -1, -1); // Optimize lighting - only one light source
+    ambientLight(200);
+    directionalLight(255, 255, 255, 0, -1, -1);
   }
 
   // Apply camera transformations with optional shake effect
