@@ -29,7 +29,7 @@ const SkillName = {
   INFERNAL_RAGE: "INFERNAL_RAGE",
   QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
   ATOMIC_BOMB: "ATOMIC_BOMB",
-  BARRIER: "DEFENSE_WALL",
+  DEFENSE_WALL: "DEFENSE_WALL",
   RAPID_FIRE: "RAPID_FIRE",
   BAMBOO_TRAP: "BAMBOO_TRAP",
   FREEZE_WEAPON: "FREEZE_WEAPON",
@@ -45,7 +45,7 @@ const skillDisplayNames = {
   [SkillName.INFERNAL_RAGE]: "Infernal Rage",
   [SkillName.QUANTUM_ACCELERATION]: "Quantum Accel",
   [SkillName.ATOMIC_BOMB]: "Atomic Bomb",
-  [SkillName.BARRIER]: "Defense Wall",
+  [SkillName.DEFENSE_WALL]: "Defense Wall",
   [SkillName.RAPID_FIRE]: "Rapid Fire",
   [SkillName.BAMBOO_TRAP]: "Bamboo Spike Trap",
   [SkillName.FREEZE_WEAPON]: "Freeze Weapon",
@@ -60,47 +60,34 @@ const skillKeys = {
   [SkillName.INFERNAL_RAGE]: "W",
   [SkillName.QUANTUM_ACCELERATION]: "E",
   [SkillName.ATOMIC_BOMB]: "R",
-  [SkillName.BARRIER]: "B",
+  [SkillName.DEFENSE_WALL]: "B",
   [SkillName.RAPID_FIRE]: "V",
   [SkillName.BAMBOO_TRAP]: "G",
   [SkillName.FREEZE_WEAPON]: "T",
 };
 
-const skillUIOrder = [
-  SkillName.STAR_BLAST,
-  SkillName.MACHINE_GUN,
-  SkillName.SHIELD,
-  SkillName.FREEZE,
-  SkillName.REJUVENATION,
-  SkillName.INFERNAL_RAGE,
-  SkillName.QUANTUM_ACCELERATION,
-  SkillName.ATOMIC_BOMB,
-  SkillName.BARRIER,
-  SkillName.RAPID_FIRE,
-  SkillName.BAMBOO_TRAP,
-  SkillName.FREEZE_WEAPON,
-];
+const skillUIOrder = Object.keys(SkillName);
 
 // Gamepad button constants (for DualShock controller)
 const GamepadButton = {
-  CROSS: 0,      // X button
-  CIRCLE: 1,     // Circle button
-  SQUARE: 2,     // Square button
-  TRIANGLE: 3,   // Triangle button
-  L1: 4,         // Left shoulder button
-  R1: 5,         // Right shoulder button
-  L2: 6,         // Left trigger
-  R2: 7,         // Right trigger
-  SHARE: 8,      // Share button
-  OPTIONS: 9,    // Options button
-  L3: 10,        // Left stick press
-  R3: 11,        // Right stick press
-  DPAD_UP: 12,   // D-pad up
+  CROSS: 0, // X button
+  CIRCLE: 1, // Circle button
+  SQUARE: 2, // Square button
+  TRIANGLE: 3, // Triangle button
+  L1: 4, // Left shoulder button
+  R1: 5, // Right shoulder button
+  L2: 6, // Left trigger
+  R2: 7, // Right trigger
+  SHARE: 8, // Share button
+  OPTIONS: 9, // Options button
+  L3: 10, // Left stick press
+  R3: 11, // Right stick press
+  DPAD_UP: 12, // D-pad up
   DPAD_DOWN: 13, // D-pad down
   DPAD_LEFT: 14, // D-pad left
-  DPAD_RIGHT: 15,// D-pad right
-  PS: 16,        // PlayStation button
-  TOUCHPAD: 17   // Touchpad button
+  DPAD_RIGHT: 15, // D-pad right
+  PS: 16, // PlayStation button
+  TOUCHPAD: 17, // Touchpad button
 };
 
 // Gamepad axis constants
@@ -108,20 +95,20 @@ const GamepadAxis = {
   LEFT_STICK_X: 0,
   LEFT_STICK_Y: 1,
   RIGHT_STICK_X: 2,
-  RIGHT_STICK_Y: 3
+  RIGHT_STICK_Y: 3,
 };
 
 // Mapping of gamepad buttons to skills
 const gamepadSkillMap = {
-  [GamepadButton.SQUARE]: SkillName.STAR_BLAST,       // Square button -> Star Blast
-  [GamepadButton.CROSS]: SkillName.MACHINE_GUN,       // X button -> Machine Gun
-  [GamepadButton.CIRCLE]: SkillName.SHIELD,           // Circle button -> Shield
-  [GamepadButton.TRIANGLE]: SkillName.FREEZE,         // Triangle button -> Freeze
-  [GamepadButton.L1]: SkillName.REJUVENATION,         // L1 button -> Rejuvenation
-  [GamepadButton.R1]: SkillName.INFERNAL_RAGE,        // R1 button -> Infernal Rage
+  [GamepadButton.SQUARE]: SkillName.STAR_BLAST, // Square button -> Star Blast
+  [GamepadButton.CROSS]: SkillName.MACHINE_GUN, // X button -> Machine Gun
+  [GamepadButton.CIRCLE]: SkillName.SHIELD, // Circle button -> Shield
+  [GamepadButton.TRIANGLE]: SkillName.FREEZE, // Triangle button -> Freeze
+  [GamepadButton.L1]: SkillName.REJUVENATION, // L1 button -> Rejuvenation
+  [GamepadButton.R1]: SkillName.INFERNAL_RAGE, // R1 button -> Infernal Rage
   [GamepadButton.L2]: SkillName.QUANTUM_ACCELERATION, // L2 button -> Quantum Acceleration
-  [GamepadButton.R2]: SkillName.ATOMIC_BOMB,          // R2 button -> Atomic Bomb
-  [GamepadButton.R3]: SkillName.RAPID_FIRE,           // R3 button (right stick press) -> Rapid Fire
+  [GamepadButton.R2]: SkillName.ATOMIC_BOMB, // R2 button -> Atomic Bomb
+  [GamepadButton.R3]: SkillName.RAPID_FIRE, // R3 button (right stick press) -> Rapid Fire
   // For Barrier (skill 9), we'll use a combination of L1+R1 (implemented in the gamepad handler)
 };
 
@@ -134,7 +121,7 @@ const skillHandlers = {
   [SkillName.INFERNAL_RAGE]: activateInfernalRageSkill,
   [SkillName.QUANTUM_ACCELERATION]: activateQuantumAccelerationSkill,
   [SkillName.ATOMIC_BOMB]: activateAtomicBombSkill,
-  [SkillName.BARRIER]: activateBarrierSkill,
+  [SkillName.DEFENSE_WALL]: activateBarrierSkill,
   [SkillName.RAPID_FIRE]: activateRapidFireSkill,
   [SkillName.BAMBOO_TRAP]: activateBambooTrapSkill,
   [SkillName.FREEZE_WEAPON]: activateFreezeWeaponSkill,
@@ -148,22 +135,22 @@ const skillHandlers = {
  */
 function activateRapidFireSkill(skill) {
   updateSkillActivation(skill);
-  
+
   // Store the original squad size and fire rate to restore later
   const originalSquadSize = squad.length;
   const normalFireRate = squadFireRate;
-  
+
   // Set the much faster fire rate (even faster than machine gun)
   squadFireRate = 3; // Fire every 3 frames (extremely fast)
   SQUAD_SIZE = 1;
-  
+
   // Store squad members' positions
-  const squadPositions = squad.map(member => ({
+  const squadPositions = squad.map((member) => ({
     x: member.x,
     y: member.y,
-    z: member.z
+    z: member.z,
   }));
-  
+
   // Create a powerful visual effect at the squad leader position
   createExplosionEffect(
     squadLeader.x,
@@ -173,11 +160,11 @@ function activateRapidFireSkill(skill) {
     50, // Large effect
     60 // Longer duration
   );
-  
+
   // Remove all squad members except the leader
   const originalSquad = [...squad];
   squad.length = 1; // Keep only the squad leader
-  
+
   // Create persistent effect around squad leader to show Rapid Fire mode
   effects.push({
     x: squadLeader.x,
@@ -189,24 +176,24 @@ function activateRapidFireSkill(skill) {
     member: squadLeader, // reference to follow the leader
     color: [255, 0, 255], // Purple for Rapid Fire mode
   });
-  
+
   // Schedule deactivation after duration
   setTimeout(() => {
     // Only restore if Rapid Fire mode is still active
     if (skill.active) {
       // Restore original fire rate
       squadFireRate = normalFireRate;
-      
+
       // Restore squad members
       squad = [...originalSquad];
-      
+
       // Update positions of restored squad members
       for (let i = 1; i < squad.length; i++) {
         squad[i].x = squadLeader.x + (i % 3) * 20 - 20;
         squad[i].y = squadLeader.y + Math.floor(i / 3) * 20 - 20;
         squad[i].z = squadLeader.z;
       }
-      
+
       // Create restoration effect
       createExplosionEffect(
         squadLeader.x,
@@ -220,11 +207,11 @@ function activateRapidFireSkill(skill) {
   }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
 }
 
-function activateFreezeWeaponSkill(skill){
+function activateFreezeWeaponSkill(skill) {
   updateSkillActivation(skill);
-  currentWeapon = WEAPON_TYPES[3]
+  currentWeapon = WEAPON_TYPES[3];
   for (memeber in squad) {
-    member.weapon = WEAPON_TYPES[3]
+    member.weapon = WEAPON_TYPES[3];
   }
 }
 
@@ -235,11 +222,11 @@ function activateFreezeWeaponSkill(skill){
  */
 function activateBambooTrapSkill(skill) {
   updateSkillActivation(skill);
-  
+
   // Calculate trap parameters based on player stats
   const trapDamage = skill.damage + damageBoost * 5; // Trap damage enhanced by damage boost
   const trapWidth = skill.width + aoeBoost * 10; // Trap width enhanced by AOE boost
-  
+
   // Calculate trap position - 400 units in front of the squad
   let trapPosition = { x: 0, y: 0, z: 0 };
   if (squad.length > 0) {
@@ -249,7 +236,7 @@ function activateBambooTrapSkill(skill) {
       z: squad[0].z + 10, // Slightly above the bridge to ensure visibility
     };
   }
-  
+
   // Create initial visual effect to show where the trap will appear
   createExplosionEffect(
     trapPosition.x,
@@ -259,14 +246,14 @@ function activateBambooTrapSkill(skill) {
     30, // Medium effect
     30 // Short duration
   );
-  
+
   // Set up the trap cycle
   let trapCyclesRemaining = skill.trapCount;
-  
+
   // Function to create a single trap cycle
   function createTrapCycle() {
     if (trapCyclesRemaining <= 0) return;
-    
+
     // Create bamboo spike effect
     const spikes = {
       x: trapPosition.x,
@@ -279,26 +266,26 @@ function activateBambooTrapSkill(skill) {
       damage: trapDamage,
       color: [220, 200, 50], // Yellow color for bamboo
     };
-    
+
     // Add the spikes to effects
     effects.push(spikes);
-    
+
     // Play spike sound
     playSkillSound(SkillName.BAMBOO_TRAP);
-    
+
     // Check for enemies in the trap area and damage them
     for (let i = 0; i < enemies.length; i++) {
       const enemy = enemies[i];
-      
+
       // Check if enemy is within the trap area - use a wider detection area
       const distanceX = Math.abs(enemy.x - trapPosition.x);
       const distanceY = Math.abs(enemy.y - trapPosition.y);
-      
+
       // Use a rectangular area that covers more of the bridge width
       if (distanceX < trapWidth * 0.75 && distanceY < trapWidth * 0.6) {
         // Apply damage to the enemy
         enemy.health -= trapDamage;
-        
+
         // Create hit effect on the enemy
         createHitEffect(
           enemy.x,
@@ -307,18 +294,18 @@ function activateBambooTrapSkill(skill) {
           [220, 200, 50], // Yellow color for bamboo hit
           20 // Medium hit effect
         );
-        
+
         // Apply a brief slowdown effect to the enemy
         if (!enemy.effects) enemy.effects = {};
-        
+
         enemy.effects.spiked = {
           duration: 90, // 1.5 second slowdown (90 frames at 60fps)
           originalSpeed: enemy.speed,
         };
-        
+
         // Slow the enemy by 60%
         enemy.speed *= 0.4;
-        
+
         // Add some additional visual effects
         if (random() > 0.5) {
           // Create bamboo splinters
@@ -336,15 +323,15 @@ function activateBambooTrapSkill(skill) {
         }
       }
     }
-    
+
     trapCyclesRemaining--;
-    
+
     // Schedule next trap cycle if there are cycles remaining
     if (trapCyclesRemaining > 0) {
       setTimeout(createTrapCycle, skill.trapInterval * (1000 / 60)); // Convert frames to ms
     }
   }
-  
+
   // Start the trap cycles
   createTrapCycle();
 }
@@ -372,7 +359,6 @@ function getSkillHandler(skillName) {
 }
 
 // Mapping of skill names for UI organization
-
 
 // For backward compatibility with UI elements that use numeric indices
 const skillNameToNumber = {};
@@ -447,7 +433,7 @@ let sounds = {
     [SkillName.INFERNAL_RAGE]: null, // Infernal Rage
     [SkillName.QUANTUM_ACCELERATION]: null, // Quantum Acceleration
     [SkillName.ATOMIC_BOMB]: null, // Apocalyptic Devastation
-    [SkillName.BARRIER]: null, // Barrier
+    [SkillName.DEFENSE_WALL]: null, // Barrier
     [SkillName.RAPID_FIRE]: null, // Rapid Fire
     [SkillName.BAMBOO_TRAP]: null, // Bamboo Spike Trap
   },
@@ -490,7 +476,7 @@ let soundSettings = {
     [SkillName.INFERNAL_RAGE]: 0.8, // Normal volume
     [SkillName.QUANTUM_ACCELERATION]: 0.8, // Normal volume
     [SkillName.ATOMIC_BOMB]: 0.8, // Normal volume
-    [SkillName.BARRIER]: 0.8, // Normal volume
+    [SkillName.DEFENSE_WALL]: 0.8, // Normal volume
     [SkillName.RAPID_FIRE]: 1.0, // Slightly higher volume for Rapid Fire
     [SkillName.BAMBOO_TRAP]: 0.9, // Normal volume for Bamboo Trap
   },
@@ -599,7 +585,7 @@ function preloadSounds() {
     sounds.skills[SkillName.ATOMIC_BOMB] = safeLoadSound(
       "sounds/skills/apocalypse.mp3"
     );
-    sounds.skills[SkillName.BARRIER] = safeLoadSound(
+    sounds.skills[SkillName.DEFENSE_WALL] = safeLoadSound(
       "sounds/skills/barrier.mp3"
     );
     sounds.skills[SkillName.RAPID_FIRE] = safeLoadSound(
@@ -1591,7 +1577,7 @@ let skills = {
     activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
     endTime: 0,
   },
-  [SkillName.BARRIER]: {
+  [SkillName.DEFENSE_WALL]: {
     cooldown: 480,
     lastUsed: -10_000,
     active: false,
@@ -2876,7 +2862,7 @@ function draw() {
   // Always process gamepad input regardless of game state
   // This ensures the OPTIONS button can be used to resume from pause
   handleGamepadInput();
-  
+
   // Special handling for mobile landscape mode
   if (isMobileDevice && windowWidth > windowHeight) {
     // In mobile landscape mode, use a simplified rendering approach to avoid WebGL errors
@@ -5089,12 +5075,12 @@ function drawEffects() {
       // Bamboo Spike Trap effect
       // Calculate animation progress (0 to 1)
       const progress = effect.life / 30; // 30 frames total
-      
+
       // Animation phases:
       // 0.0-0.3: Spikes emerge from ground
       // 0.3-0.7: Spikes fully extended
       // 0.7-1.0: Spikes retract into ground
-      
+
       // Determine spike height based on animation phase
       let spikeHeight;
       if (progress > 0.7) {
@@ -5107,59 +5093,62 @@ function drawEffects() {
         // Fully extended phase
         spikeHeight = effect.height;
       }
-      
+
       // Organize bamboo spikes across the width of the bridge
       // Use BRIDGE_WIDTH if available, otherwise use effect.width
-      const bridgeWidth = typeof BRIDGE_WIDTH !== 'undefined' ? BRIDGE_WIDTH : effect.width * 2;
-      
+      const bridgeWidth =
+        typeof BRIDGE_WIDTH !== "undefined" ? BRIDGE_WIDTH : effect.width * 2;
+
       // Number of bamboo rows and columns
       const numRows = 3; // 3 rows of bamboo
       const numCols = 7; // 7 columns across the bridge
-      
+
       // Spacing between bamboo spikes
       const rowSpacing = effect.width / numRows;
-      const colSpacing = bridgeWidth * 0.8 / numCols;
-      
+      const colSpacing = (bridgeWidth * 0.8) / numCols;
+
       // Draw the bamboo spikes
       for (let row = 0; row < numRows; row++) {
         for (let col = 0; col < numCols; col++) {
           // Calculate position with slight randomness for natural look
-          const xPos = effect.x + (col - numCols/2) * colSpacing + random(-5, 5);
-          const yPos = effect.y + (row - numRows/2) * rowSpacing + random(-5, 5);
-          
+          const xPos =
+            effect.x + (col - numCols / 2) * colSpacing + random(-5, 5);
+          const yPos =
+            effect.y + (row - numRows / 2) * rowSpacing + random(-5, 5);
+
           push();
           translate(xPos, yPos, effect.z);
-          
+
           // No rotation - keep cones static and not vibrating
-          
+
           // Draw the bamboo as a yellow cone (as requested)
           // This represents sharpened bamboo spikes
           fill(220, 200, 50); // Yellow color for bamboo
-          
+
           // Draw the cone with the point facing up
           // Make it taller during the fully extended phase
           const coneHeight = spikeHeight * 1.2; // Make cone slightly taller than the height
           cone(5, coneHeight);
-          
+
           // Add a small green base to represent the bamboo stalk
           push();
-          translate(0, 0, -spikeHeight/2 + 2);
+          translate(0, 0, -spikeHeight / 2 + 2);
           fill(120, 140, 40); // Darker green for bamboo base
           cylinder(5, 4);
           pop();
-          
+
           pop();
         }
       }
-      
+
       // Add some dust/debris effect at the base during emergence and retraction
       if (progress < 0.3 || progress > 0.7) {
         fill(139, 69, 19, 100); // Brown dust color
         for (let i = 0; i < 8; i++) {
           push();
           translate(
-            effect.x + random(-bridgeWidth/2, bridgeWidth/2),
-            effect.y + random(-effect.width/2, effect.width/2),
+            effect.x + random(-bridgeWidth / 2, bridgeWidth / 2),
+            effect.y + random(-effect.width / 2, effect.width / 2),
             effect.z + 2
           );
           sphere(3 + random(2));
@@ -10587,7 +10576,7 @@ function handleGamepadInput() {
   // Check if gamepads are available
   const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
   let gamepad = null;
-  
+
   // Find the first connected gamepad
   for (let i = 0; i < gamepads.length; i++) {
     if (gamepads[i] && gamepads[i].connected) {
@@ -10600,15 +10589,15 @@ function handleGamepadInput() {
       break;
     }
   }
-  
+
   if (!gamepad) {
     gamepadConnected = false;
     return;
   }
-  
+
   // Handle movement with left analog stick
   handleGamepadMovement(gamepad);
-  
+
   // Handle button presses for skills
   handleGamepadButtons(gamepad);
 }
@@ -10617,22 +10606,22 @@ function handleGamepadMovement(gamepad) {
   // Get left stick values
   let leftX = gamepad.axes[GamepadAxis.LEFT_STICK_X];
   let leftY = gamepad.axes[GamepadAxis.LEFT_STICK_Y];
-  
+
   // Apply deadzone to prevent drift
   if (Math.abs(leftX) < gamepadDeadzone) leftX = 0;
   if (Math.abs(leftY) < gamepadDeadzone) leftY = 0;
-  
+
   // Move squad based on analog stick input
   if (leftX !== 0 || leftY !== 0) {
     // Scale the movement based on how far the stick is pushed
     const magnitude = Math.sqrt(leftX * leftX + leftY * leftY);
     const normalizedX = leftX / magnitude;
     const normalizedY = leftY / magnitude;
-    
+
     // Apply the movement (note: Y axis is inverted in most gamepads)
     moveSquad(normalizedX * squadSpeed, normalizedY * squadSpeed);
   }
-  
+
   // Also handle D-pad movement
   if (gamepad.buttons[GamepadButton.DPAD_LEFT].pressed) {
     moveSquad(-squadSpeed, 0);
@@ -10650,7 +10639,10 @@ function handleGamepadMovement(gamepad) {
 
 function handleGamepadButtons(gamepad) {
   // Handle menu navigation and game control buttons
-  if (gamepad.buttons[GamepadButton.OPTIONS].pressed && !lastGamepadButtonState[GamepadButton.OPTIONS]) {
+  if (
+    gamepad.buttons[GamepadButton.OPTIONS].pressed &&
+    !lastGamepadButtonState[GamepadButton.OPTIONS]
+  ) {
     // Options button acts like P key for pause/resume
     if (gameState === GameState.PLAYING) {
       pauseGame();
@@ -10659,32 +10651,41 @@ function handleGamepadButtons(gamepad) {
       resumeGame();
     }
   }
-  
+
   // Start game with X button from menu
-  if (gamepad.buttons[GamepadButton.CROSS].pressed && !lastGamepadButtonState[GamepadButton.CROSS]) {
+  if (
+    gamepad.buttons[GamepadButton.CROSS].pressed &&
+    !lastGamepadButtonState[GamepadButton.CROSS]
+  ) {
     if (gameState === GameState.MENU || gameState === GameState.GAME_OVER) {
       startGame();
     }
   }
-  
+
   // Only process skill buttons during gameplay
   if (gameState === GameState.PLAYING) {
     // Check for L1+R1 combination for Barrier (skill 9)
-    if (gamepad.buttons[GamepadButton.L1].pressed && 
-        gamepad.buttons[GamepadButton.R1].pressed && 
-        (!lastGamepadButtonState[GamepadButton.L1] || !lastGamepadButtonState[GamepadButton.R1])) {
-      activateSkill(SkillName.BARRIER);
+    if (
+      gamepad.buttons[GamepadButton.L1].pressed &&
+      gamepad.buttons[GamepadButton.R1].pressed &&
+      (!lastGamepadButtonState[GamepadButton.L1] ||
+        !lastGamepadButtonState[GamepadButton.R1])
+    ) {
+      activateSkill(SkillName.DEFENSE_WALL);
     } else {
       // Process individual skill buttons
       for (const [buttonIndex, skillName] of Object.entries(gamepadSkillMap)) {
         const buttonIdx = parseInt(buttonIndex);
-        if (gamepad.buttons[buttonIdx].pressed && !lastGamepadButtonState[buttonIdx]) {
+        if (
+          gamepad.buttons[buttonIdx].pressed &&
+          !lastGamepadButtonState[buttonIdx]
+        ) {
           activateSkill(skillName);
         }
       }
     }
   }
-  
+
   // Update button state tracking
   for (let i = 0; i < gamepad.buttons.length; i++) {
     lastGamepadButtonState[i] = gamepad.buttons[i].pressed;
@@ -10731,7 +10732,7 @@ function keyPressed() {
     } else if (key === "r" || key === "R") {
       activateSkill(SkillName.ATOMIC_BOMB);
     } else if (key === "b" || key === "B") {
-      activateSkill(SkillName.BARRIER);
+      activateSkill(SkillName.DEFENSE_WALL);
     } else if (key === "v" || key === "V") {
       activateSkill(SkillName.RAPID_FIRE);
     } else if (key === "g" || key === "G") {
@@ -10955,11 +10956,11 @@ function applyEnemyEffects() {
           delete enemy.effects.frozen;
         }
       }
-      
+
       // Process bamboo spike trap effect
       if (enemy.effects.spiked) {
         enemy.effects.spiked.duration--;
-        
+
         // Create occasional bamboo splinter effects
         if (frameCount % 15 === 0) {
           effects.push({
@@ -10972,7 +10973,7 @@ function applyEnemyEffects() {
             color: [0, 150, 0], // Green for bamboo
           });
         }
-        
+
         if (enemy.effects.spiked.duration <= 0) {
           // Reset speed when effect expires
           enemy.speed = enemy.effects.spiked.originalSpeed;
@@ -11068,7 +11069,14 @@ function createExplosion(x, y, z, color) {
   createEffect("explosion", x, y, z, color, 30);
 }
 
-function createExplosionEffect(x, y, z, color, size = 30, duration = EFFECT_DURATION) {
+function createExplosionEffect(
+  x,
+  y,
+  z,
+  color,
+  size = 30,
+  duration = EFFECT_DURATION
+) {
   // Enhanced explosion effect with custom size and duration
   createEffect("explosion", x, y, z, color, size, duration);
 }
