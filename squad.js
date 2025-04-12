@@ -234,54 +234,65 @@ function activateElectricFenceSkill(skill) {
 
   // Calculate fence position - 300 units in front of the squad
   let fencePosition = { x: 0, y: 0, z: 0 };
-  if (squad.length > 0) {
-    fencePosition = {
-      x: squad[0].x,
-      y: squad[0].y - 300, // 300 units in front of the squad
-      z: squad[0].z,
-    };
-  }
+  // Use the squad leader's position for more reliable positioning
+  fencePosition = {
+    x: squadLeader.x,
+    y: squadLeader.y - 300, // 300 units in front of the squad (negative Y is forward)
+    z: squadLeader.z,
+  };
 
   // Create the left pole
   const leftPole = {
     x: fencePosition.x - fenceWidth / 2,
     y: fencePosition.y,
-    z: fencePosition.z,
-    type: "electricPole",
+    z: fencePosition.z + 30, // Position well above the bridge (bridge height is 10)
+    type: "barrier", // Use barrier type for rendering
     width: 10,
     height: 60,
+    thickness: 10, // Make it a solid pole
     life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
+    health: 1000, // Doesn't matter as it can't be destroyed
+    maxHealth: 1000, // For rendering
     color: [50, 50, 200], // Blue color for the poles
+    forceRenderDetail: true, // Force rendering even at distance
   };
 
   // Create the right pole
   const rightPole = {
     x: fencePosition.x + fenceWidth / 2,
     y: fencePosition.y,
-    z: fencePosition.z,
-    type: "electricPole",
+    z: fencePosition.z + 30, // Position well above the bridge (bridge height is 10)
+    type: "barrier", // Use barrier type for rendering
     width: 10,
     height: 60,
+    thickness: 10, // Make it a solid pole
     life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
+    health: 1000, // Doesn't matter as it can't be destroyed
+    maxHealth: 1000, // For rendering
     color: [50, 50, 200], // Blue color for the poles
+    forceRenderDetail: true, // Force rendering even at distance
   };
 
   // Create the electric fence effect
   const fence = {
     x: fencePosition.x,
     y: fencePosition.y,
-    z: fencePosition.z + 20, // Slightly above the bridge
-    type: "electricFence",
+    z: fencePosition.z + 40, // Position well above the bridge for better visibility
+    type: "barrier", // Use barrier type for rendering
     width: fenceWidth,
-    height: 5, // Thin electric line
+    height: 60, // Taller for better visibility
+    thickness: 5, // Thin electric line
     life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
     damage: fenceDamage,
+    health: 1000, // Doesn't matter as it can't be destroyed
+    maxHealth: 1000, // For rendering
     color: [30, 144, 255, 180], // Electric blue with some transparency
     leftPole: leftPole,
     rightPole: rightPole,
     // Add a pulsing effect
     pulseRate: 10, // Pulse every 10 frames
     pulseFrame: 0,
+    forceRenderDetail: true, // Force rendering even at distance
     // Add a callback for damage application
     applyDamage: function (enemy) {
       // Apply damage to the enemy
@@ -323,7 +334,7 @@ function activateElectricFenceSkill(skill) {
   createExplosionEffect(
     fencePosition.x,
     fencePosition.y,
-    fencePosition.z + 10,
+    fencePosition.z + 40, // Match the fence height for the effect
     [30, 144, 255], // Electric blue
     40, // Large effect
     30 // Medium duration
@@ -331,13 +342,42 @@ function activateElectricFenceSkill(skill) {
 
   // Play activation sound
   playSkillSound(SkillName.ELECTRIC_FENCE);
+  
+  // Add electric spark effects that will appear periodically
+  const createSparks = () => {
+    // Create sparks along the fence
+    for (let i = 0; i < 5; i++) {
+      const sparkX = fencePosition.x + random(-fenceWidth/2 * 0.9, fenceWidth/2 * 0.9);
+      effects.push({
+        x: sparkX,
+        y: fencePosition.y,
+        z: fencePosition.z + 40 + random(-10, 10),
+        type: "spark",
+        size: random(3, 8),
+        life: random(10, 20),
+        color: [100, 149, 237], // Cornflower blue for sparks
+        velocity: {
+          x: random(-1, 1),
+          y: random(-1, 1),
+          z: random(0.5, 2),
+        }
+      });
+    }
+  };
+  
+  // Create initial sparks
+  createSparks();
+  
+  // Set up periodic spark creation
+  const sparkInterval = setInterval(createSparks, 500); // Create new sparks every 500ms
 
   // Set up the damage checking interval
   const damageInterval = setInterval(() => {
     // Check if the fence still exists
-    const fenceIndex = effects.findIndex((e) => e.type === "electricFence");
+    const fenceIndex = effects.findIndex((e) => e.type === "barrier" && e === fence);
     if (fenceIndex === -1) {
       clearInterval(damageInterval);
+      clearInterval(sparkInterval);
       return;
     }
 
@@ -373,12 +413,13 @@ function activateElectricFenceSkill(skill) {
   // Schedule cleanup after duration
   setTimeout(() => {
     clearInterval(damageInterval);
+    clearInterval(sparkInterval);
 
     // Create dissipation effect when the fence disappears
     createExplosionEffect(
       fencePosition.x,
       fencePosition.y,
-      fencePosition.z + 10,
+      fencePosition.z + 40, // Match the fence height for the effect
       [100, 149, 237, 150], // Faded electric blue
       30, // Medium effect
       20 // Short duration
@@ -9198,7 +9239,7 @@ function activateAtomicBombSkill(skill) {
     });
 
     // Apply damage to enemies in batches for better performance
-    applyApocalypticDamage(bombCenter, atomicDamage);
+    applyAtomicBombDamage(bombCenter, atomicDamage);
 
     // Apply radiation damage after a short delay
     setTimeout(() => {
@@ -9269,13 +9310,13 @@ function activateDefenseWallSkill(skill) {
   effects.push(barrier);
 
   // Create deployment effect
-  createBarrierDeploymentEffect(barrierPosition, barrierWidth, barrierHeight);
+  createDefenseWallDeploymentEffect(barrierPosition, barrierWidth, barrierHeight);
 }
 
 /**
  * Creates visual effects for barrier deployment
  */
-function createBarrierDeploymentEffect(position, width, height) {
+function createDefenseWallDeploymentEffect(position, width, height) {
   // Create a shockwave effect at the barrier position
   effects.push({
     x: position.x,
@@ -9344,7 +9385,7 @@ function createBarrierCollapseEffect(position, width, height) {
   }
 }
 
-function applyApocalypticDamage(bombCenter, atomicDamage) {
+function applyAtomicBombDamage(bombCenter, atomicDamage) {
   // RADICAL OPTIMIZATION: Process enemies in batches for damage calculation
   // This reduces the number of distance calculations and improves performance
   const BATCH_SIZE = 20; // Process enemies in batches
