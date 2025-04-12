@@ -331,10 +331,11 @@ function activateFreezeWeaponSkill(skill) {
  */
 function activateElectricFenceSkill(skill) {
   updateSkillActivation(skill);
+  playSkillSound(SkillName.ELECTRIC_FENCE, 0.8);
 
   // Calculate fence parameters based on player stats
   const fenceDamage = 30 + damageBoost * 5; // Base damage enhanced by damage boost
-  const fenceWidth = BRIDGE_WIDTH * 0.9; // 90% of bridge width
+  const fenceWidth = BRIDGE_WIDTH; // 90% of bridge width
 
   // Calculate fence position - 300 units in front of the squad
   let fencePosition = { x: 0, y: 0, z: 0 };
@@ -401,10 +402,7 @@ function activateElectricFenceSkill(skill) {
       enemy.health -= this.damage * 1.5; // 50% more damage
 
       // Use the enhanced electric shock effect
-      createElectricShockEffect(enemy);
-
-      // Play electric shock sound with higher volume
-      playSkillSound(SkillName.ELECTRIC_FENCE, 0.8);
+      // createElectricShockEffect(enemy);
     },
   };
 
@@ -423,32 +421,6 @@ function activateElectricFenceSkill(skill) {
     30 // Medium duration
   );
 
-  // Play activation sound
-  playSkillSound(SkillName.ELECTRIC_FENCE);
-  
-  // Create a looping electric shock sound for the duration of the fence
-  let electricLoopSound;
-  try {
-    electricLoopSound = playSkillSound(SkillName.ELECTRIC_FENCE, 0.6, true); // Play looping at 60% volume
-    
-    // Fade in the sound
-    if (electricLoopSound && electricLoopSound.setVolume) {
-      electricLoopSound.setVolume(0);
-      // Fade in over 500ms
-      let volume = 0;
-      const fadeInterval = setInterval(() => {
-        volume += 0.05;
-        if (volume >= 0.6) {
-          volume = 0.6;
-          clearInterval(fadeInterval);
-        }
-        electricLoopSound.setVolume(volume);
-      }, 50);
-    }
-  } catch (e) {
-    console.warn("Could not play electric fence loop sound:", e);
-  }
-  
   // Add electric spark effects that will appear periodically
   const createSparks = () => {
     // Create sparks along the fence
@@ -523,19 +495,6 @@ function activateElectricFenceSkill(skill) {
         // Apply increased damage to the enemy through the fence's damage function
         currentFence.applyDamage(enemy);
         
-        // Play electric shock sound (if not already playing for this enemy)
-        if (!enemy.shockSoundPlaying) {
-          playSkillSound(SkillName.ELECTRIC_FENCE, 0.7, false); // Play non-looping at 70% volume
-          enemy.shockSoundPlaying = true;
-          
-          // Reset sound flag after a delay to prevent sound spam
-          setTimeout(() => {
-            if (enemy && !enemy.dead) {
-              enemy.shockSoundPlaying = false;
-            }
-          }, 1000);
-        }
-
         // Add a super significant stun effect to the enemy
         if (!enemy.effects) enemy.effects = {};
 
@@ -582,7 +541,7 @@ function activateElectricFenceSkill(skill) {
       50, // Larger effect
       30 // Longer duration
     );
-    
+
     // Add a final surge of electricity before disappearing
     for (let i = 0; i < 10; i++) {
       const surgePosX = fencePosition.x + random(-fenceWidth/2 * 0.9, fenceWidth/2 * 0.9);
@@ -601,160 +560,7 @@ function activateElectricFenceSkill(skill) {
         }
       });
     }
-    
-    // Stop the looping electric sound with a fade out
-    if (electricLoopSound && electricLoopSound.setVolume) {
-      // Fade out over 500ms
-      let volume = 0.6; // Match the increased volume
-      const fadeInterval = setInterval(() => {
-        volume -= 0.05;
-        if (volume <= 0) {
-          volume = 0;
-          clearInterval(fadeInterval);
-          // Stop the sound after fade out
-          if (electricLoopSound.stop) {
-            electricLoopSound.stop();
-          }
-        }
-        electricLoopSound.setVolume(volume);
-      }, 50);
-    } else if (electricLoopSound && electricLoopSound.stop) {
-      // If no volume control, just stop
-      electricLoopSound.stop();
-    }
   }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
-}
-
-/**
- * Creates an enhanced electric shock visual effect on an enemy
- * @param {Object} enemy - The enemy to apply the effect to
- */
-function createElectricShockEffect(enemy) {
-  // Create multiple electric sparks around the enemy
-  for (let i = 0; i < 12; i++) { // Increased number of sparks
-    effects.push({
-      x: enemy.x + random(-enemy.size/2, enemy.size/2),
-      y: enemy.y + random(-enemy.size/2, enemy.size/2),
-      z: enemy.z + random(0, enemy.size),
-      type: "spark",
-      size: random(5, 12), // Larger sparks
-      life: random(15, 30), // Longer life
-      color: [0, 255, 255], // Bright cyan for more visibility
-      velocity: {
-        x: random(-2, 2),
-        y: random(-2, 2),
-        z: random(1, 3),
-      }
-    });
-  }
-  
-  // Create a bright flash effect at the enemy's position
-  effects.push({
-    x: enemy.x,
-    y: enemy.y,
-    z: enemy.z + enemy.size/2,
-    type: "flash",
-    size: enemy.size * 2,
-    life: 10,
-    color: [255, 255, 255, 200], // Bright white flash
-  });
-  
-  // Create a lingering electric aura
-  effects.push({
-    x: enemy.x,
-    y: enemy.y,
-    z: enemy.z,
-    type: "glow",
-    size: enemy.size * 1.5,
-    life: 30,
-    color: [0, 200, 255, 150], // Semi-transparent cyan
-    fadeOut: true
-  });
-  effects.push({
-    x: enemy.x,
-    y: enemy.y,
-    z: enemy.z + 15,
-    type: "explosion",
-    size: 20,
-    life: 10,
-    color: [100, 149, 237, 150], // Cornflower blue with transparency
-  });
-  
-  // Add a shock wave effect
-  effects.push({
-    x: enemy.x,
-    y: enemy.y,
-    z: enemy.z + 5,
-    type: "shockwave",
-    size: 30,
-    life: 15,
-    color: [30, 144, 255, 100], // Electric blue with high transparency
-  });
-  
-  // Add a continuous electric effect that follows the enemy
-  const electricEffect = {
-    x: enemy.x,
-    y: enemy.y,
-    z: enemy.z + 15,
-    type: "spark",
-    size: 15,
-    life: 60, // 1 second effect
-    color: [30, 144, 255], // Electric blue
-    followEnemy: enemy, // Reference to the enemy to follow
-    update: function() {
-      // Update position to follow the enemy
-      if (this.followEnemy && !this.followEnemy.dead) {
-        this.x = this.followEnemy.x;
-        this.y = this.followEnemy.y;
-        this.z = this.followEnemy.z + 15;
-        
-        // Process damage over time if the enemy has the shocked effect
-        if (this.followEnemy.effects && this.followEnemy.effects.shocked) {
-          const shocked = this.followEnemy.effects.shocked;
-          
-          // Apply damage over time
-          if (shocked.damageOverTime) {
-            shocked.damageTimer++;
-            
-            if (shocked.damageTimer >= shocked.damageInterval) {
-              shocked.damageTimer = 0;
-              
-              // Apply a portion of the damage
-              const dotDamage = shocked.totalDamage / (shocked.duration / shocked.damageInterval);
-              this.followEnemy.health -= dotDamage;
-              
-              // Create a small spark effect to visualize the damage
-              effects.push({
-                x: this.followEnemy.x + random(-10, 10),
-                y: this.followEnemy.y + random(-10, 10),
-                z: this.followEnemy.z + random(10, 20),
-                type: "spark",
-                size: random(2, 5),
-                life: random(5, 10),
-                color: [100, 149, 237], // Cornflower blue
-                velocity: {
-                  x: random(-1, 1),
-                  y: random(-1, 1),
-                  z: random(0.5, 1.5),
-                }
-              });
-            }
-          }
-          
-          // Process duration
-          shocked.duration--;
-          
-          // If the effect has expired, restore the enemy's speed
-          if (shocked.duration <= 0) {
-            this.followEnemy.speed = shocked.originalSpeed;
-            delete this.followEnemy.effects.shocked;
-          }
-        }
-      }
-    }
-  };
-  
-  effects.push(electricEffect);
 }
 
 /**
