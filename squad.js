@@ -402,7 +402,6 @@ function activateElectricFenceSkill(skill) {
       enemy.health -= this.damage * 1.5; // 50% more damage
 
       // Use the enhanced electric shock effect
-      // createElectricShockEffect(enemy);
     },
   };
 
