@@ -30,6 +30,8 @@ const SkillName = {
   QUANTUM_ACCELERATION: "QUANTUM_ACCELERATION",
   ATOMIC_BOMB: "ATOMIC_BOMB",
   BARRIER: "DEFENSE_WALL",
+  RAPID_FIRE: "RAPID_FIRE",
+  BAMBOO_TRAP: "BAMBOO_TRAP",
 };
 
 // Mapping of skill enum values to their display names
@@ -43,6 +45,8 @@ const skillDisplayNames = {
   [SkillName.QUANTUM_ACCELERATION]: "Quantum Accel",
   [SkillName.ATOMIC_BOMB]: "Atomic Bomb",
   [SkillName.BARRIER]: "Defense Wall",
+  [SkillName.RAPID_FIRE]: "Rapid Fire",
+  [SkillName.BAMBOO_TRAP]: "Bamboo Spike Trap",
 };
 
 // Gamepad button constants (for DualShock controller)
@@ -85,6 +89,8 @@ const skillKeys = {
   [SkillName.QUANTUM_ACCELERATION]: "E",
   [SkillName.ATOMIC_BOMB]: "R",
   [SkillName.BARRIER]: "B",
+  [SkillName.RAPID_FIRE]: "V",
+  [SkillName.BAMBOO_TRAP]: "G",
 };
 
 // Mapping of gamepad buttons to skills
@@ -97,6 +103,7 @@ const gamepadSkillMap = {
   [GamepadButton.R1]: SkillName.INFERNAL_RAGE,        // R1 button -> Infernal Rage
   [GamepadButton.L2]: SkillName.QUANTUM_ACCELERATION, // L2 button -> Quantum Acceleration
   [GamepadButton.R2]: SkillName.ATOMIC_BOMB,          // R2 button -> Atomic Bomb
+  [GamepadButton.R3]: SkillName.RAPID_FIRE,           // R3 button (right stick press) -> Rapid Fire
   // For Barrier (skill 9), we'll use a combination of L1+R1 (implemented in the gamepad handler)
 };
 
@@ -110,7 +117,192 @@ const skillHandlers = {
   [SkillName.QUANTUM_ACCELERATION]: activateQuantumAccelerationSkill,
   [SkillName.ATOMIC_BOMB]: activateAtomicBombSkill,
   [SkillName.BARRIER]: activateBarrierSkill,
+  [SkillName.RAPID_FIRE]: activateRapidFireSkill,
+  [SkillName.BAMBOO_TRAP]: activateBambooTrapSkill,
 };
+
+/**
+ * Activates the Rapid Fire skill
+ * This skill unites all squad members into one to fire faster
+ * with a 5-minute cooldown and 5-minute active duration
+ * Drawback: squad_size = 0 during activation
+ */
+function activateRapidFireSkill(skill) {
+  updateSkillActivation(skill);
+  
+  // Store the original squad size and fire rate to restore later
+  const originalSquadSize = squad.length;
+  const normalFireRate = squadFireRate;
+  
+  // Set the much faster fire rate (even faster than machine gun)
+  squadFireRate = 3; // Fire every 3 frames (extremely fast)
+  
+  // Store squad members' positions
+  const squadPositions = squad.map(member => ({
+    x: member.x,
+    y: member.y,
+    z: member.z
+  }));
+  
+  // Create a powerful visual effect at the squad leader position
+  createExplosionEffect(
+    squadLeader.x,
+    squadLeader.y,
+    squadLeader.z,
+    [255, 0, 255], // Purple color for Rapid Fire
+    50, // Large effect
+    60 // Longer duration
+  );
+  
+  // Remove all squad members except the leader
+  const originalSquad = [...squad];
+  squad.length = 1; // Keep only the squad leader
+  
+  // Create persistent effect around squad leader to show Rapid Fire mode
+  effects.push({
+    x: squadLeader.x,
+    y: squadLeader.y,
+    z: squadLeader.z,
+    type: "rapidFire",
+    size: squadLeader.size * 2,
+    life: skill.activeDuration,
+    member: squadLeader, // reference to follow the leader
+    color: [255, 0, 255], // Purple for Rapid Fire mode
+  });
+  
+  // Schedule deactivation after duration
+  setTimeout(() => {
+    // Only restore if Rapid Fire mode is still active
+    if (skill.active) {
+      // Restore original fire rate
+      squadFireRate = normalFireRate;
+      
+      // Restore squad members
+      squad = [...originalSquad];
+      
+      // Update positions of restored squad members
+      for (let i = 1; i < squad.length; i++) {
+        squad[i].x = squadLeader.x + (i % 3) * 20 - 20;
+        squad[i].y = squadLeader.y + Math.floor(i / 3) * 20 - 20;
+        squad[i].z = squadLeader.z;
+      }
+      
+      // Create restoration effect
+      createExplosionEffect(
+        squadLeader.x,
+        squadLeader.y,
+        squadLeader.z,
+        [100, 100, 255], // Blue color for restoration
+        40,
+        30
+      );
+    }
+  }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Activates the Bamboo Spike Trap skill
+ * Creates bamboo spikes on the bridge that appear from the ground, hit enemies, then disappear
+ * Repeats 5 times with a 1-second gap between each appearance
+ */
+function activateBambooTrapSkill(skill) {
+  updateSkillActivation(skill);
+  
+  // Calculate trap parameters based on player stats
+  const trapDamage = skill.damage + damageBoost * 5; // Trap damage enhanced by damage boost
+  const trapWidth = skill.width + aoeBoost * 10; // Trap width enhanced by AOE boost
+  
+  // Calculate trap position - 400 units in front of the squad
+  let trapPosition = { x: 0, y: 0, z: 0 };
+  if (squad.length > 0) {
+    trapPosition = {
+      x: squad[0].x,
+      y: squad[0].y - 400, // 400 units in front of the squad
+      z: squad[0].z + 10, // Slightly above the bridge to ensure visibility
+    };
+  }
+  
+  // Create initial visual effect to show where the trap will appear
+  createExplosionEffect(
+    trapPosition.x,
+    trapPosition.y,
+    trapPosition.z,
+    [0, 150, 0], // Green color for bamboo
+    30, // Medium effect
+    30 // Short duration
+  );
+  
+  // Set up the trap cycle
+  let trapCyclesRemaining = skill.trapCount;
+  
+  // Function to create a single trap cycle
+  function createTrapCycle() {
+    if (trapCyclesRemaining <= 0) return;
+    
+    // Create bamboo spike effect
+    const spikes = {
+      x: trapPosition.x,
+      y: trapPosition.y,
+      z: trapPosition.z,
+      type: "bambooSpikes",
+      width: trapWidth,
+      height: 50, // Height of spikes
+      life: 30, // Spikes visible for 0.5 seconds (30 frames at 60fps)
+      damage: trapDamage,
+      color: [0, 150, 0], // Green color for bamboo
+    };
+    
+    // Add the spikes to effects
+    effects.push(spikes);
+    
+    // Play spike sound
+    playSkillSound(SkillName.BAMBOO_TRAP);
+    
+    // Check for enemies in the trap area and damage them
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
+      
+      // Check if enemy is within the trap area
+      const distanceX = Math.abs(enemy.x - trapPosition.x);
+      const distanceY = Math.abs(enemy.y - trapPosition.y);
+      
+      if (distanceX < trapWidth / 2 && distanceY < trapWidth / 2) {
+        // Apply damage to the enemy
+        enemy.health -= trapDamage;
+        
+        // Create hit effect on the enemy
+        createHitEffect(
+          enemy.x,
+          enemy.y,
+          enemy.z,
+          [0, 150, 0], // Green color for bamboo hit
+          20 // Medium hit effect
+        );
+        
+        // Apply a brief slowdown effect to the enemy
+        if (!enemy.effects) enemy.effects = {};
+        
+        enemy.effects.spiked = {
+          duration: 60, // 1 second slowdown (60 frames at 60fps)
+          originalSpeed: enemy.speed,
+        };
+        
+        // Slow the enemy by 50%
+        enemy.speed *= 0.5;
+      }
+    }
+    
+    trapCyclesRemaining--;
+    
+    // Schedule next trap cycle if there are cycles remaining
+    if (trapCyclesRemaining > 0) {
+      setTimeout(createTrapCycle, skill.trapInterval * (1000 / 60)); // Convert frames to ms
+    }
+  }
+  
+  // Start the trap cycles
+  createTrapCycle();
+}
 
 /**
  * Get the human-readable display name for a skill
@@ -145,8 +337,8 @@ const skillUIOrder = [
   SkillName.QUANTUM_ACCELERATION,
   SkillName.ATOMIC_BOMB,
   SkillName.BARRIER,
-  "G",
-  "T",
+  SkillName.RAPID_FIRE,
+  SkillName.BAMBOO_TRAP,
   "Y",
 ];
 
@@ -224,6 +416,8 @@ let sounds = {
     [SkillName.QUANTUM_ACCELERATION]: null, // Quantum Acceleration
     [SkillName.ATOMIC_BOMB]: null, // Apocalyptic Devastation
     [SkillName.BARRIER]: null, // Barrier
+    [SkillName.RAPID_FIRE]: null, // Rapid Fire
+    [SkillName.BAMBOO_TRAP]: null, // Bamboo Spike Trap
   },
 
   // Environment sounds
@@ -265,6 +459,8 @@ let soundSettings = {
     [SkillName.QUANTUM_ACCELERATION]: 0.8, // Normal volume
     [SkillName.ATOMIC_BOMB]: 0.8, // Normal volume
     [SkillName.BARRIER]: 0.8, // Normal volume
+    [SkillName.RAPID_FIRE]: 1.0, // Slightly higher volume for Rapid Fire
+    [SkillName.BAMBOO_TRAP]: 0.9, // Normal volume for Bamboo Trap
   },
 
   muted: false, // Sound off by default
@@ -373,6 +569,12 @@ function preloadSounds() {
     );
     sounds.skills[SkillName.BARRIER] = safeLoadSound(
       "sounds/skills/barrier.mp3"
+    );
+    sounds.skills[SkillName.RAPID_FIRE] = safeLoadSound(
+      "sounds/skills/rapid_fire.mp3"
+    );
+    sounds.skills[SkillName.BAMBOO_TRAP] = safeLoadSound(
+      "sounds/skills/trap.mp3"
     );
 
     // Environment sounds
@@ -1366,6 +1568,24 @@ let skills = {
     activeDuration: 120, // Barrier duration (2 seconds = 120 frames at 60fps)
     maxBarriers: 5, // Maximum number of barriers allowed
     activeBarriers: 0, // Current number of active barriers
+  },
+  [SkillName.RAPID_FIRE]: {
+    cooldown: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
+    endTime: 0,
+  },
+  [SkillName.BAMBOO_TRAP]: {
+    cooldown: 600, // 10 seconds = 600 frames at 60fps
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 300, // 5 seconds = 300 frames at 60fps
+    endTime: 0,
+    trapCount: 5, // Number of trap cycles
+    trapInterval: 60, // 1 second interval between traps (60 frames at 60fps)
+    damage: 50, // Base damage per spike
+    width: 100, // Width of the trap area
   },
 };
 
@@ -4825,6 +5045,73 @@ function drawEffects() {
       }
 
       pop();
+    } else if (effect.type === "bambooSpikes") {
+      // Bamboo Spike Trap effect
+      // Calculate animation progress (0 to 1)
+      const progress = effect.life / 30; // 30 frames total
+      
+      // Animation phases:
+      // 0.0-0.3: Spikes emerge from ground
+      // 0.3-0.7: Spikes fully extended
+      // 0.7-1.0: Spikes retract into ground
+      
+      // Determine spike height based on animation phase
+      let spikeHeight;
+      if (progress > 0.7) {
+        // Retraction phase
+        spikeHeight = effect.height * map(progress, 0.7, 1, 1, 0);
+      } else if (progress < 0.3) {
+        // Emergence phase
+        spikeHeight = effect.height * map(progress, 0, 0.3, 0, 1);
+      } else {
+        // Fully extended phase
+        spikeHeight = effect.height;
+      }
+      
+      // Draw the bamboo spikes
+      fill(0, 150, 0); // Green bamboo color
+      
+      // Create a grid of spikes
+      const gridSize = 5; // 5x5 grid of spikes
+      const spacing = effect.width / gridSize;
+      
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          // Calculate position with some randomness
+          const xPos = effect.x + (i - gridSize/2) * spacing + random(-5, 5);
+          const yPos = effect.y + (j - gridSize/2) * spacing + random(-5, 5);
+          
+          push();
+          translate(xPos, yPos, effect.z);
+          
+          // Rotate spikes slightly for natural look
+          rotateX(random(-0.2, 0.2));
+          rotateY(random(-0.2, 0.2));
+          
+          // Draw the spike
+          cylinder(3, spikeHeight);
+          
+          // Add a tip to the spike
+          translate(0, 0, spikeHeight/2);
+          cone(3, 10);
+          pop();
+        }
+      }
+      
+      // Add some dust/debris effect at the base
+      if (progress < 0.3 || progress > 0.7) {
+        fill(139, 69, 19, 100); // Brown dust color
+        for (let i = 0; i < 5; i++) {
+          push();
+          translate(
+            effect.x + random(-effect.width/2, effect.width/2),
+            effect.y + random(-effect.width/2, effect.width/2),
+            effect.z + 2
+          );
+          sphere(3 + random(2));
+          pop();
+        }
+      }
     } else if (effect.type === "machineGun") {
       // Machine Gun effect - visual indicator for active machine gun skill
       // Follow the squad member if reference exists
@@ -9863,9 +10150,13 @@ function updateSkillBar() {
 
     if (cooldownPercent > 0) {
       skillDiv.style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)");
-      select(`#skillName-${skillName}`).html(
-        `(${Math.ceil(cooldownRemaining / 60)}s)`
-      );
+      if (cooldownRemaining <= 600) {
+        select(`#skillName-${skillName}`).html(
+          `(${Math.ceil(cooldownRemaining / 60)}s)`
+        );
+      } else {
+        select(`#skillName-${skillName}`).html("(∞)");
+      }
     } else {
       // Reset the skill name to normal
       select(`#skillName-${skillName}`).html(getSkillName(skillName));
@@ -10387,6 +10678,10 @@ function keyPressed() {
       activateSkill(SkillName.ATOMIC_BOMB);
     } else if (key === "b" || key === "B") {
       activateSkill(SkillName.BARRIER);
+    } else if (key === "v" || key === "V") {
+      activateSkill(SkillName.RAPID_FIRE);
+    } else if (key === "g" || key === "G") {
+      activateSkill(SkillName.BAMBOO_TRAP);
     }
   }
 }
@@ -10691,6 +10986,11 @@ function createEffect(type, x, y, z, color, size) {
 // Simplified effect functions that use the centralized createEffect function
 function createExplosion(x, y, z, color) {
   createEffect("explosion", x, y, z, color, 30);
+}
+
+function createExplosionEffect(x, y, z, color, size = 30, duration = EFFECT_DURATION) {
+  // Enhanced explosion effect with custom size and duration
+  createEffect("explosion", x, y, z, color, size, duration);
 }
 
 function createHitEffect(x, y, z, color, customSize) {
