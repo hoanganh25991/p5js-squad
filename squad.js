@@ -69,6 +69,110 @@ const skillKeys = {
   [SkillName.ELECTRIC_FENCE]: "Y",
 };
 
+// Skills cooldowns and durations in frames (60 frames = 1 second)
+// Player skills with cooldowns and durations
+let skills = {
+  [SkillName.STAR_BLAST]: {
+    cooldown: 300,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.MACHINE_GUN]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.SHIELD]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.FREEZE]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 180, // Freeze duration (3 seconds = 180 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.REJUVENATION]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 120, // Rejuvenation duration (2 seconds = 120 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.INFERNAL_RAGE]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 120, // Infernal Rage duration (2 seconds = 120 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.QUANTUM_ACCELERATION]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 120, // Quantum Acceleration duration (2 seconds = 120 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.ATOMIC_BOMB]: {
+    cooldown: 600,
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
+    endTime: 0,
+  },
+  [SkillName.DEFENSE_WALL]: {
+    cooldown: 480,
+    lastUsed: -10_000,
+    active: false,
+    endTime: 0,
+    health: 5_000, // Barrier health
+    activeDuration: 120, // Barrier duration (2 seconds = 120 frames at 60fps)
+    maxBarriers: 5, // Maximum number of barriers allowed
+    activeBarriers: 0, // Current number of active barriers
+  },
+  [SkillName.RAPID_FIRE]: {
+    cooldown: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
+    endTime: 0,
+  },
+  [SkillName.BAMBOO_TRAP]: {
+    cooldown: 600, // 10 seconds = 600 frames at 60fps
+    lastUsed: -10_000,
+    active: false,
+    activeDuration: 300, // 5 seconds = 300 frames at 60fps
+    endTime: 0,
+    trapCount: 5, // Number of trap cycles
+    trapInterval: 60, // 1 second interval between traps (60 frames at 60fps)
+    damage: 75, // Base damage per spike (increased from 50)
+    width: 200, // Width of the trap area (increased from 100)
+    height: 50, // Height of the bamboo spikes
+  },
+  [SkillName.FREEZE_WEAPON]: {
+    cooldown: 480,
+    lastUsed: -10_000,
+    active: false,
+    endTime: 0,
+    activeDuration: 120,
+  },
+  [SkillName.ELECTRIC_FENCE]: {
+    cooldown: 15 * 60,
+    lastUsed: -10_000,
+    active: false,
+    endTime: 0,
+    activeDuration: 9 * 60,
+  },
+};
+
 const skillUIOrder = Object.keys(SkillName);
 
 // Gamepad button constants (for DualShock controller)
@@ -293,33 +397,14 @@ function activateElectricFenceSkill(skill) {
     forceRenderDetail: true, // Force rendering even at distance
     // Add a callback for damage application
     applyDamage: function (enemy) {
-      // Apply damage to the enemy
-      enemy.health -= this.damage;
+      // Apply increased damage to the enemy
+      enemy.health -= this.damage * 1.5; // 50% more damage
 
-      // Create electric hit effect on the enemy
-      createHitEffect(
-        enemy.x,
-        enemy.y,
-        enemy.z,
-        [100, 149, 237], // Cornflower blue for electric hit
-        25 // Medium-large hit effect
-      );
+      // Use the enhanced electric shock effect
+      createElectricShockEffect(enemy);
 
-      // Add some additional visual effects - electric sparks
-      for (let i = 0; i < 5; i++) {
-        effects.push({
-          x: enemy.x + random(-15, 15),
-          y: enemy.y + random(-15, 15),
-          z: enemy.z + random(5, 20),
-          type: "spark",
-          size: random(3, 8),
-          life: random(10, 20),
-          color: [100, 149, 237], // Cornflower blue for sparks
-        });
-      }
-
-      // Play electric shock sound
-      playSkillSound(SkillName.ELECTRIC_FENCE);
+      // Play electric shock sound with higher volume
+      playSkillSound(SkillName.ELECTRIC_FENCE, 0.8);
     },
   };
 
@@ -344,7 +429,7 @@ function activateElectricFenceSkill(skill) {
   // Create a looping electric shock sound for the duration of the fence
   let electricLoopSound;
   try {
-    electricLoopSound = playSkillSound(SkillName.ELECTRIC_FENCE, 0.4, true); // Play looping at 40% volume
+    electricLoopSound = playSkillSound(SkillName.ELECTRIC_FENCE, 0.6, true); // Play looping at 60% volume
     
     // Fade in the sound
     if (electricLoopSound && electricLoopSound.setVolume) {
@@ -353,8 +438,8 @@ function activateElectricFenceSkill(skill) {
       let volume = 0;
       const fadeInterval = setInterval(() => {
         volume += 0.05;
-        if (volume >= 0.4) {
-          volume = 0.4;
+        if (volume >= 0.6) {
+          volume = 0.6;
           clearInterval(fadeInterval);
         }
         electricLoopSound.setVolume(volume);
@@ -394,6 +479,24 @@ function activateElectricFenceSkill(skill) {
 
   // Electric fence rendering has been added to the drawEffects function
   
+  // Create a pulsing glow effect around the fence
+  const glowInterval = setInterval(() => {
+    // Add a pulsing glow effect along the fence
+    for (let i = 0; i < 3; i++) {
+      const glowX = fencePosition.x + random(-fenceWidth/2 * 0.9, fenceWidth/2 * 0.9);
+      effects.push({
+        x: glowX,
+        y: fencePosition.y,
+        z: fencePosition.z + 20,
+        type: "glow",
+        size: random(30, 50),
+        life: random(20, 30),
+        color: [0, 200, 255, 150], // Semi-transparent cyan glow
+        fadeOut: true
+      });
+    }
+  }, 300); // Create new glow effects every 300ms
+
   // Set up the damage checking interval
   const damageInterval = setInterval(() => {
     // Check if the fence still exists
@@ -401,6 +504,7 @@ function activateElectricFenceSkill(skill) {
     if (fenceIndex === -1) {
       clearInterval(damageInterval);
       clearInterval(sparkInterval);
+      clearInterval(glowInterval); // Clear the glow interval
       return;
     }
 
@@ -419,9 +523,6 @@ function activateElectricFenceSkill(skill) {
         // Apply increased damage to the enemy through the fence's damage function
         currentFence.applyDamage(enemy);
         
-        // Create electric shock visual effect on the enemy
-        createElectricShockEffect(enemy);
-        
         // Play electric shock sound (if not already playing for this enemy)
         if (!enemy.shockSoundPlaying) {
           playSkillSound(SkillName.ELECTRIC_FENCE, 0.7, false); // Play non-looping at 70% volume
@@ -435,20 +536,33 @@ function activateElectricFenceSkill(skill) {
           }, 1000);
         }
 
-        // Add a more significant stun effect to the enemy
+        // Add a super significant stun effect to the enemy
         if (!enemy.effects) enemy.effects = {};
 
         enemy.effects.shocked = {
-          duration: 60, // 1 second stun (60 frames at 60fps)
+          duration: 300, // 5 seconds stun (300 frames at 60fps) - much longer duration
           originalSpeed: enemy.speed,
           damageOverTime: true, // Flag to apply damage over time
           damageInterval: 15, // Apply damage every 15 frames
           damageTimer: 0, // Timer for damage application
-          totalDamage: currentFence.damage * 0.5, // 50% of initial damage applied over time
+          totalDamage: currentFence.damage * 0.8, // 80% of initial damage applied over time - increased damage
         };
 
-        // Slow the enemy by 90% briefly - more significant slow
-        enemy.speed *= 0.1;
+        // Super slow the enemy by 99% - extremely significant slow
+        enemy.speed *= 0.01;
+        
+        // Add visual indicator for super-slowed enemies
+        effects.push({
+          x: enemy.x,
+          y: enemy.y,
+          z: enemy.z + 10,
+          type: "text",
+          text: "PARALYZED!",
+          size: 15,
+          life: 60,
+          color: [0, 255, 255],
+          velocity: { x: 0, y: 0, z: 0.5 }
+        });
       }
     }
   }, 500); // Check every 500ms
@@ -457,6 +571,7 @@ function activateElectricFenceSkill(skill) {
   setTimeout(() => {
     clearInterval(damageInterval);
     clearInterval(sparkInterval);
+    clearInterval(glowInterval); // Clear the glow interval
 
     // Create dissipation effect when the fence disappears
     createExplosionEffect(
@@ -464,14 +579,33 @@ function activateElectricFenceSkill(skill) {
       fencePosition.y,
       fencePosition.z + 40, // Match the fence height for the effect
       [100, 149, 237, 150], // Faded electric blue
-      30, // Medium effect
-      20 // Short duration
+      50, // Larger effect
+      30 // Longer duration
     );
+    
+    // Add a final surge of electricity before disappearing
+    for (let i = 0; i < 10; i++) {
+      const surgePosX = fencePosition.x + random(-fenceWidth/2 * 0.9, fenceWidth/2 * 0.9);
+      effects.push({
+        x: surgePosX,
+        y: fencePosition.y,
+        z: fencePosition.z + random(10, 50),
+        type: "spark",
+        size: random(5, 15),
+        life: random(20, 40),
+        color: [0, 255, 255],
+        velocity: {
+          x: random(-2, 2),
+          y: random(-2, 2),
+          z: random(1, 3)
+        }
+      });
+    }
     
     // Stop the looping electric sound with a fade out
     if (electricLoopSound && electricLoopSound.setVolume) {
       // Fade out over 500ms
-      let volume = 0.4;
+      let volume = 0.6; // Match the increased volume
       const fadeInterval = setInterval(() => {
         volume -= 0.05;
         if (volume <= 0) {
@@ -492,20 +626,20 @@ function activateElectricFenceSkill(skill) {
 }
 
 /**
- * Creates an electric shock visual effect on an enemy
+ * Creates an enhanced electric shock visual effect on an enemy
  * @param {Object} enemy - The enemy to apply the effect to
  */
 function createElectricShockEffect(enemy) {
   // Create multiple electric sparks around the enemy
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) { // Increased number of sparks
     effects.push({
-      x: enemy.x + random(-15, 15),
-      y: enemy.y + random(-15, 15),
-      z: enemy.z + random(0, 30),
+      x: enemy.x + random(-enemy.size/2, enemy.size/2),
+      y: enemy.y + random(-enemy.size/2, enemy.size/2),
+      z: enemy.z + random(0, enemy.size),
       type: "spark",
-      size: random(3, 8),
-      life: random(10, 20),
-      color: [30, 144, 255], // Electric blue
+      size: random(5, 12), // Larger sparks
+      life: random(15, 30), // Longer life
+      color: [0, 255, 255], // Bright cyan for more visibility
       velocity: {
         x: random(-2, 2),
         y: random(-2, 2),
@@ -514,7 +648,28 @@ function createElectricShockEffect(enemy) {
     });
   }
   
-  // Create a brief flash effect
+  // Create a bright flash effect at the enemy's position
+  effects.push({
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z + enemy.size/2,
+    type: "flash",
+    size: enemy.size * 2,
+    life: 10,
+    color: [255, 255, 255, 200], // Bright white flash
+  });
+  
+  // Create a lingering electric aura
+  effects.push({
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z,
+    type: "glow",
+    size: enemy.size * 1.5,
+    life: 30,
+    color: [0, 200, 255, 150], // Semi-transparent cyan
+    fadeOut: true
+  });
   effects.push({
     x: enemy.x,
     y: enemy.y,
@@ -1910,109 +2065,7 @@ const SKILL_TYPES = ["fire_rate", "damage", "aoe"];
 // Currently equipped weapon
 let currentWeapon = WEAPON_TYPES[0];
 
-// Skills cooldowns and durations in frames (60 frames = 1 second)
-// Player skills with cooldowns and durations
-let skills = {
-  [SkillName.STAR_BLAST]: {
-    cooldown: 300,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 180, // Star Blast duration (3 seconds = 180 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.MACHINE_GUN]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 300, // Machine Gun duration (5 seconds = 300 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.SHIELD]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 300, // Shield duration (5 seconds = 300 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.FREEZE]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 180, // Freeze duration (3 seconds = 180 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.REJUVENATION]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 120, // Rejuvenation duration (2 seconds = 120 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.INFERNAL_RAGE]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 120, // Infernal Rage duration (2 seconds = 120 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.QUANTUM_ACCELERATION]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 120, // Quantum Acceleration duration (2 seconds = 120 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.ATOMIC_BOMB]: {
-    cooldown: 600,
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 120, // Apocalyptic Devastation duration (2 seconds = 120 frames at 60fps)
-    endTime: 0,
-  },
-  [SkillName.DEFENSE_WALL]: {
-    cooldown: 480,
-    lastUsed: -10_000,
-    active: false,
-    endTime: 0,
-    health: 5_000, // Barrier health
-    activeDuration: 120, // Barrier duration (2 seconds = 120 frames at 60fps)
-    maxBarriers: 5, // Maximum number of barriers allowed
-    activeBarriers: 0, // Current number of active barriers
-  },
-  [SkillName.RAPID_FIRE]: {
-    cooldown: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 18000, // 5 minutes = 300 seconds = 18000 frames at 60fps
-    endTime: 0,
-  },
-  [SkillName.BAMBOO_TRAP]: {
-    cooldown: 600, // 10 seconds = 600 frames at 60fps
-    lastUsed: -10_000,
-    active: false,
-    activeDuration: 300, // 5 seconds = 300 frames at 60fps
-    endTime: 0,
-    trapCount: 5, // Number of trap cycles
-    trapInterval: 60, // 1 second interval between traps (60 frames at 60fps)
-    damage: 75, // Base damage per spike (increased from 50)
-    width: 200, // Width of the trap area (increased from 100)
-    height: 50, // Height of the bamboo spikes
-  },
-  [SkillName.FREEZE_WEAPON]: {
-    cooldown: 480,
-    lastUsed: -10_000,
-    active: false,
-    endTime: 0,
-    activeDuration: 120,
-  },
-  [SkillName.ELECTRIC_FENCE]: {
-    cooldown: 480,
-    lastUsed: -10_000,
-    active: false,
-    endTime: 0,
-    activeDuration: 300,
-  },
-};
+
 
 let squadLeader = {
   x: SQUAD_X,
@@ -8709,6 +8762,59 @@ function updateEnemies() {
       // Calculate distance to barrier
       const distToBarrierY = Math.abs(barrierY - enemy.y);
       const distToBarrierX = Math.abs(barrierX - enemy.x);
+    
+    // Process enemy effects
+    if (enemy.effects) {
+      // Process shocked effect
+      if (enemy.effects.shocked) {
+        // Decrease duration
+        enemy.effects.shocked.duration--;
+        
+        // Apply damage over time if enabled
+        if (enemy.effects.shocked.damageOverTime) {
+          enemy.effects.shocked.damageTimer++;
+          if (enemy.effects.shocked.damageTimer >= enemy.effects.shocked.damageInterval) {
+            enemy.effects.shocked.damageTimer = 0;
+            // Apply a portion of the total damage
+            const tickDamage = enemy.effects.shocked.totalDamage / 
+                              (enemy.effects.shocked.duration / enemy.effects.shocked.damageInterval);
+            enemy.health -= tickDamage;
+            
+            // Create electric damage effect
+            if (frameCount % 10 === 0) {
+              effects.push({
+                x: enemy.x,
+                y: enemy.y,
+                z: enemy.z,
+                type: "hit",
+                size: 10,
+                life: 10,
+                color: [0, 200, 255],
+              });
+            }
+          }
+        }
+        
+        // If effect duration is over, restore original speed
+        if (enemy.effects.shocked.duration <= 0) {
+          enemy.speed = enemy.effects.shocked.originalSpeed;
+          delete enemy.effects.shocked;
+          
+          // Create recovery effect
+          effects.push({
+            x: enemy.x,
+            y: enemy.y,
+            z: enemy.z + 10,
+            type: "text",
+            text: "RECOVERED",
+            size: 12,
+            life: 30,
+            color: [255, 255, 0],
+            velocity: { x: 0, y: 0, z: 0.3 }
+          });
+        }
+      }
+    }
 
       // Check if enemy is within range to target the barrier
       // Only target the barrier if the enemy is close enough and within the barrier's width
