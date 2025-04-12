@@ -32,6 +32,7 @@ const SkillName = {
   BARRIER: "DEFENSE_WALL",
   RAPID_FIRE: "RAPID_FIRE",
   BAMBOO_TRAP: "BAMBOO_TRAP",
+  FREEZE_WEAPON: "FREEZE_WEAPON",
 };
 
 // Mapping of skill enum values to their display names
@@ -47,7 +48,38 @@ const skillDisplayNames = {
   [SkillName.BARRIER]: "Defense Wall",
   [SkillName.RAPID_FIRE]: "Rapid Fire",
   [SkillName.BAMBOO_TRAP]: "Bamboo Spike Trap",
+  [SkillName.FREEZE_WEAPON]: "Freeze Weapon",
 };
+
+const skillKeys = {
+  [SkillName.STAR_BLAST]: "A",
+  [SkillName.MACHINE_GUN]: "S",
+  [SkillName.SHIELD]: "D",
+  [SkillName.FREEZE]: "F",
+  [SkillName.REJUVENATION]: "Q",
+  [SkillName.INFERNAL_RAGE]: "W",
+  [SkillName.QUANTUM_ACCELERATION]: "E",
+  [SkillName.ATOMIC_BOMB]: "R",
+  [SkillName.BARRIER]: "B",
+  [SkillName.RAPID_FIRE]: "V",
+  [SkillName.BAMBOO_TRAP]: "G",
+  [SkillName.FREEZE_WEAPON]: "T",
+};
+
+const skillUIOrder = [
+  SkillName.STAR_BLAST,
+  SkillName.MACHINE_GUN,
+  SkillName.SHIELD,
+  SkillName.FREEZE,
+  SkillName.REJUVENATION,
+  SkillName.INFERNAL_RAGE,
+  SkillName.QUANTUM_ACCELERATION,
+  SkillName.ATOMIC_BOMB,
+  SkillName.BARRIER,
+  SkillName.RAPID_FIRE,
+  SkillName.BAMBOO_TRAP,
+  SkillName.FREEZE_WEAPON,
+];
 
 // Gamepad button constants (for DualShock controller)
 const GamepadButton = {
@@ -79,20 +111,6 @@ const GamepadAxis = {
   RIGHT_STICK_Y: 3
 };
 
-const skillKeys = {
-  [SkillName.STAR_BLAST]: "A",
-  [SkillName.MACHINE_GUN]: "S",
-  [SkillName.SHIELD]: "D",
-  [SkillName.FREEZE]: "F",
-  [SkillName.REJUVENATION]: "Q",
-  [SkillName.INFERNAL_RAGE]: "W",
-  [SkillName.QUANTUM_ACCELERATION]: "E",
-  [SkillName.ATOMIC_BOMB]: "R",
-  [SkillName.BARRIER]: "B",
-  [SkillName.RAPID_FIRE]: "V",
-  [SkillName.BAMBOO_TRAP]: "G",
-};
-
 // Mapping of gamepad buttons to skills
 const gamepadSkillMap = {
   [GamepadButton.SQUARE]: SkillName.STAR_BLAST,       // Square button -> Star Blast
@@ -119,6 +137,7 @@ const skillHandlers = {
   [SkillName.BARRIER]: activateBarrierSkill,
   [SkillName.RAPID_FIRE]: activateRapidFireSkill,
   [SkillName.BAMBOO_TRAP]: activateBambooTrapSkill,
+  [SkillName.FREEZE_WEAPON]: activateFreezeWeaponSkill,
 };
 
 /**
@@ -136,6 +155,7 @@ function activateRapidFireSkill(skill) {
   
   // Set the much faster fire rate (even faster than machine gun)
   squadFireRate = 3; // Fire every 3 frames (extremely fast)
+  SQUAD_SIZE = 1;
   
   // Store squad members' positions
   const squadPositions = squad.map(member => ({
@@ -198,6 +218,14 @@ function activateRapidFireSkill(skill) {
       );
     }
   }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
+}
+
+function activateFreezeWeaponSkill(skill){
+  updateSkillActivation(skill);
+  currentWeapon = WEAPON_TYPES[3]
+  for (memeber in squad) {
+    member.weapon = WEAPON_TYPES[3]
+  }
 }
 
 /**
@@ -344,20 +372,7 @@ function getSkillHandler(skillName) {
 }
 
 // Mapping of skill names for UI organization
-const skillUIOrder = [
-  SkillName.STAR_BLAST,
-  SkillName.MACHINE_GUN,
-  SkillName.SHIELD,
-  SkillName.FREEZE,
-  SkillName.REJUVENATION,
-  SkillName.INFERNAL_RAGE,
-  SkillName.QUANTUM_ACCELERATION,
-  SkillName.ATOMIC_BOMB,
-  SkillName.BARRIER,
-  SkillName.RAPID_FIRE,
-  SkillName.BAMBOO_TRAP,
-  "Y",
-];
+
 
 // For backward compatibility with UI elements that use numeric indices
 const skillNameToNumber = {};
@@ -1450,7 +1465,7 @@ const WEAPON_COLORS = {
 
 // Squad properties
 const HUMAN_SIZE = 30;
-const SQUAD_SIZE = 9; // Maximum number of squad members
+let SQUAD_SIZE = 9; // Maximum number of squad members
 let squad = [];
 let squadSpeed = 10;
 let squadFireRate = 30; // frames between shots (faster firing rate)
@@ -1604,6 +1619,13 @@ let skills = {
     damage: 75, // Base damage per spike (increased from 50)
     width: 200, // Width of the trap area (increased from 100)
     height: 50, // Height of the bamboo spikes
+  },
+  [SkillName.FREEZE_WEAPON]: {
+    cooldown: 480,
+    lastUsed: -10_000,
+    active: false,
+    endTime: 0,
+    activeDuration: 120,
   },
 };
 
@@ -10714,6 +10736,8 @@ function keyPressed() {
       activateSkill(SkillName.RAPID_FIRE);
     } else if (key === "g" || key === "G") {
       activateSkill(SkillName.BAMBOO_TRAP);
+    } else if (key === "t" || key === "T") {
+      activateSkill(SkillName.FREEZE_WEAPON);
     }
   }
 }
