@@ -33,6 +33,7 @@ const SkillName = {
   RAPID_FIRE: "RAPID_FIRE",
   BAMBOO_TRAP: "BAMBOO_TRAP",
   FREEZE_WEAPON: "FREEZE_WEAPON",
+  ELECTRIC_FENCE: "ELECTRIC_FENCE",
 };
 
 // Mapping of skill enum values to their display names
@@ -49,6 +50,7 @@ const skillDisplayNames = {
   [SkillName.RAPID_FIRE]: "Rapid Fire",
   [SkillName.BAMBOO_TRAP]: "Bamboo Spike Trap",
   [SkillName.FREEZE_WEAPON]: "Freeze Weapon",
+  [SkillName.ELECTRIC_FENCE]: "Electric Fence",
 };
 
 const skillKeys = {
@@ -64,6 +66,7 @@ const skillKeys = {
   [SkillName.RAPID_FIRE]: "V",
   [SkillName.BAMBOO_TRAP]: "G",
   [SkillName.FREEZE_WEAPON]: "T",
+  [SkillName.ELECTRIC_FENCE]: "Y",
 };
 
 const skillUIOrder = Object.keys(SkillName);
@@ -121,10 +124,11 @@ const skillHandlers = {
   [SkillName.INFERNAL_RAGE]: activateInfernalRageSkill,
   [SkillName.QUANTUM_ACCELERATION]: activateQuantumAccelerationSkill,
   [SkillName.ATOMIC_BOMB]: activateAtomicBombSkill,
-  [SkillName.DEFENSE_WALL]: activateBarrierSkill,
+  [SkillName.DEFENSE_WALL]: activateDefenseWallSkill,
   [SkillName.RAPID_FIRE]: activateRapidFireSkill,
   [SkillName.BAMBOO_TRAP]: activateBambooTrapSkill,
   [SkillName.FREEZE_WEAPON]: activateFreezeWeaponSkill,
+  [SkillName.ELECTRIC_FENCE]: activateElectricFenceSkill,
 };
 
 /**
@@ -213,6 +217,173 @@ function activateFreezeWeaponSkill(skill) {
   for (let member in squad) {
     member.weapon = WEAPON_TYPES[3];
   }
+}
+
+/**
+ * Activates the Electric Fence skill
+ * Creates an electric fence across the bridge with two poles on each edge
+ * Enemies can pass through but take damage when they do
+ * Active for 5 seconds with an 8-second cooldown
+ */
+function activateElectricFenceSkill(skill) {
+  updateSkillActivation(skill);
+
+  // Calculate fence parameters based on player stats
+  const fenceDamage = 30 + damageBoost * 5; // Base damage enhanced by damage boost
+  const fenceWidth = BRIDGE_WIDTH * 0.9; // 90% of bridge width
+
+  // Calculate fence position - 300 units in front of the squad
+  let fencePosition = { x: 0, y: 0, z: 0 };
+  if (squad.length > 0) {
+    fencePosition = {
+      x: squad[0].x,
+      y: squad[0].y - 300, // 300 units in front of the squad
+      z: squad[0].z,
+    };
+  }
+
+  // Create the left pole
+  const leftPole = {
+    x: fencePosition.x - fenceWidth / 2,
+    y: fencePosition.y,
+    z: fencePosition.z,
+    type: "electricPole",
+    width: 10,
+    height: 60,
+    life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
+    color: [50, 50, 200], // Blue color for the poles
+  };
+
+  // Create the right pole
+  const rightPole = {
+    x: fencePosition.x + fenceWidth / 2,
+    y: fencePosition.y,
+    z: fencePosition.z,
+    type: "electricPole",
+    width: 10,
+    height: 60,
+    life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
+    color: [50, 50, 200], // Blue color for the poles
+  };
+
+  // Create the electric fence effect
+  const fence = {
+    x: fencePosition.x,
+    y: fencePosition.y,
+    z: fencePosition.z + 20, // Slightly above the bridge
+    type: "electricFence",
+    width: fenceWidth,
+    height: 5, // Thin electric line
+    life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
+    damage: fenceDamage,
+    color: [30, 144, 255, 180], // Electric blue with some transparency
+    leftPole: leftPole,
+    rightPole: rightPole,
+    // Add a pulsing effect
+    pulseRate: 10, // Pulse every 10 frames
+    pulseFrame: 0,
+    // Add a callback for damage application
+    applyDamage: function (enemy) {
+      // Apply damage to the enemy
+      enemy.health -= this.damage;
+
+      // Create electric hit effect on the enemy
+      createHitEffect(
+        enemy.x,
+        enemy.y,
+        enemy.z,
+        [100, 149, 237], // Cornflower blue for electric hit
+        25 // Medium-large hit effect
+      );
+
+      // Add some additional visual effects - electric sparks
+      for (let i = 0; i < 5; i++) {
+        effects.push({
+          x: enemy.x + random(-15, 15),
+          y: enemy.y + random(-15, 15),
+          z: enemy.z + random(5, 20),
+          type: "spark",
+          size: random(3, 8),
+          life: random(10, 20),
+          color: [100, 149, 237], // Cornflower blue for sparks
+        });
+      }
+
+      // Play electric shock sound
+      playSkillSound(SkillName.ELECTRIC_FENCE);
+    },
+  };
+
+  // Add the poles and fence to effects
+  effects.push(leftPole);
+  effects.push(rightPole);
+  effects.push(fence);
+
+  // Create initial deployment effect - electric surge
+  createExplosionEffect(
+    fencePosition.x,
+    fencePosition.y,
+    fencePosition.z + 10,
+    [30, 144, 255], // Electric blue
+    40, // Large effect
+    30 // Medium duration
+  );
+
+  // Play activation sound
+  playSkillSound(SkillName.ELECTRIC_FENCE);
+
+  // Set up the damage checking interval
+  const damageInterval = setInterval(() => {
+    // Check if the fence still exists
+    const fenceIndex = effects.findIndex((e) => e.type === "electricFence");
+    if (fenceIndex === -1) {
+      clearInterval(damageInterval);
+      return;
+    }
+
+    const currentFence = effects[fenceIndex];
+
+    // Check for enemies passing through the fence
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
+
+      // Check if enemy is within the fence area
+      const distanceX = Math.abs(enemy.x - currentFence.x);
+      const distanceY = Math.abs(enemy.y - currentFence.y);
+
+      // Use a narrow band for the fence
+      if (distanceX < currentFence.width / 2 && distanceY < 20) {
+        // Apply damage to the enemy through the fence's damage function
+        currentFence.applyDamage(enemy);
+
+        // Add a brief stun effect to the enemy
+        if (!enemy.effects) enemy.effects = {};
+
+        enemy.effects.shocked = {
+          duration: 30, // 0.5 second stun (30 frames at 60fps)
+          originalSpeed: enemy.speed,
+        };
+
+        // Slow the enemy by 80% briefly
+        enemy.speed *= 0.2;
+      }
+    }
+  }, 500); // Check every 500ms
+
+  // Schedule cleanup after duration
+  setTimeout(() => {
+    clearInterval(damageInterval);
+
+    // Create dissipation effect when the fence disappears
+    createExplosionEffect(
+      fencePosition.x,
+      fencePosition.y,
+      fencePosition.z + 10,
+      [100, 149, 237, 150], // Faded electric blue
+      30, // Medium effect
+      20 // Short duration
+    );
+  }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
 }
 
 /**
@@ -436,6 +607,7 @@ let sounds = {
     [SkillName.DEFENSE_WALL]: null, // Barrier
     [SkillName.RAPID_FIRE]: null, // Rapid Fire
     [SkillName.BAMBOO_TRAP]: null, // Bamboo Spike Trap
+    [SkillName.ELECTRIC_FENCE]: null, // Electric Fence
   },
 
   // Environment sounds
@@ -479,6 +651,7 @@ let soundSettings = {
     [SkillName.DEFENSE_WALL]: 0.8, // Normal volume
     [SkillName.RAPID_FIRE]: 1.0, // Slightly higher volume for Rapid Fire
     [SkillName.BAMBOO_TRAP]: 0.9, // Normal volume for Bamboo Trap
+    [SkillName.ELECTRIC_FENCE]: 1.2, // Higher volume for Electric Fence (electric buzzing sound)
   },
 
   muted: false, // Sound off by default
@@ -1612,6 +1785,13 @@ let skills = {
     active: false,
     endTime: 0,
     activeDuration: 120,
+  },
+  [SkillName.ELECTRIC_FENCE]: {
+    cooldown: 480,
+    lastUsed: -10_000,
+    active: false,
+    endTime: 0,
+    activeDuration: 300,
   },
 };
 
@@ -9036,7 +9216,7 @@ function activateAtomicBombSkill(skill) {
  * Activates the Barrier skill (Skill 9)
  * Places a wall that enemies target first, protecting the squad
  */
-function activateBarrierSkill(skill) {
+function activateDefenseWallSkill(skill) {
   updateSkillActivation(skill);
 
   // Check if maximum number of barriers has been reached
@@ -10711,7 +10891,6 @@ function keyPressed() {
 
   // Only process skill keys during gameplay
   if (gameState === GameState.PLAYING) {
-    // Bottom row skills (A, S, D, F)
     if (key === "a" || key === "A") {
       activateSkill(SkillName.STAR_BLAST);
     } else if (key === "s" || key === "S") {
@@ -10720,10 +10899,7 @@ function keyPressed() {
       activateSkill(SkillName.SHIELD);
     } else if (key === "f" || key === "F") {
       activateSkill(SkillName.FREEZE);
-    }
-
-    // Top row skills (Q, W, E, R)
-    if (key === "q" || key === "Q") {
+    } else if (key === "q" || key === "Q") {
       activateSkill(SkillName.REJUVENATION);
     } else if (key === "w" || key === "W") {
       activateSkill(SkillName.INFERNAL_RAGE);
@@ -10739,6 +10915,8 @@ function keyPressed() {
       activateSkill(SkillName.BAMBOO_TRAP);
     } else if (key === "t" || key === "T") {
       activateSkill(SkillName.FREEZE_WEAPON);
+    } else if (key === "y" || key === "Y") {
+      activateSkill(SkillName.ELECTRIC_FENCE);
     }
   }
 }
