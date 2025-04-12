@@ -273,20 +273,18 @@ function activateElectricFenceSkill(skill) {
     forceRenderDetail: true, // Force rendering even at distance
   };
 
-  // Create the electric fence effect
+  // Instead of creating a solid fence, we'll just create the electric lines
+  // between the poles and use sparks to represent the electricity
   const fence = {
     x: fencePosition.x,
     y: fencePosition.y,
     z: fencePosition.z + 40, // Position well above the bridge for better visibility
-    type: "barrier", // Use barrier type for rendering
+    type: "electricLines", // Custom type for our special rendering
     width: fenceWidth,
     height: 60, // Taller for better visibility
-    thickness: 5, // Thin electric line
+    thickness: 1, // Very thin for just electric lines
     life: skill.activeDuration, // 5 seconds (300 frames at 60fps)
     damage: fenceDamage,
-    health: 1000, // Doesn't matter as it can't be destroyed
-    maxHealth: 1000, // For rendering
-    color: [30, 144, 255, 180], // Electric blue with some transparency
     leftPole: leftPole,
     rightPole: rightPole,
     // Add a pulsing effect
@@ -343,6 +341,29 @@ function activateElectricFenceSkill(skill) {
   // Play activation sound
   playSkillSound(SkillName.ELECTRIC_FENCE);
   
+  // Create a looping electric shock sound for the duration of the fence
+  let electricLoopSound;
+  try {
+    electricLoopSound = playSkillSound(SkillName.ELECTRIC_FENCE, 0.4, true); // Play looping at 40% volume
+    
+    // Fade in the sound
+    if (electricLoopSound && electricLoopSound.setVolume) {
+      electricLoopSound.setVolume(0);
+      // Fade in over 500ms
+      let volume = 0;
+      const fadeInterval = setInterval(() => {
+        volume += 0.05;
+        if (volume >= 0.4) {
+          volume = 0.4;
+          clearInterval(fadeInterval);
+        }
+        electricLoopSound.setVolume(volume);
+      }, 50);
+    }
+  } catch (e) {
+    console.warn("Could not play electric fence loop sound:", e);
+  }
+  
   // Add electric spark effects that will appear periodically
   const createSparks = () => {
     // Create sparks along the fence
@@ -371,10 +392,12 @@ function activateElectricFenceSkill(skill) {
   // Set up periodic spark creation
   const sparkInterval = setInterval(createSparks, 500); // Create new sparks every 500ms
 
+  // Electric fence rendering has been added to the drawEffects function
+  
   // Set up the damage checking interval
   const damageInterval = setInterval(() => {
     // Check if the fence still exists
-    const fenceIndex = effects.findIndex((e) => e.type === "barrier" && e === fence);
+    const fenceIndex = effects.findIndex((e) => e.type === "electricLines" && e === fence);
     if (fenceIndex === -1) {
       clearInterval(damageInterval);
       clearInterval(sparkInterval);
@@ -393,19 +416,39 @@ function activateElectricFenceSkill(skill) {
 
       // Use a narrow band for the fence
       if (distanceX < currentFence.width / 2 && distanceY < 20) {
-        // Apply damage to the enemy through the fence's damage function
+        // Apply increased damage to the enemy through the fence's damage function
         currentFence.applyDamage(enemy);
+        
+        // Create electric shock visual effect on the enemy
+        createElectricShockEffect(enemy);
+        
+        // Play electric shock sound (if not already playing for this enemy)
+        if (!enemy.shockSoundPlaying) {
+          playSkillSound(SkillName.ELECTRIC_FENCE, 0.7, false); // Play non-looping at 70% volume
+          enemy.shockSoundPlaying = true;
+          
+          // Reset sound flag after a delay to prevent sound spam
+          setTimeout(() => {
+            if (enemy && !enemy.dead) {
+              enemy.shockSoundPlaying = false;
+            }
+          }, 1000);
+        }
 
-        // Add a brief stun effect to the enemy
+        // Add a more significant stun effect to the enemy
         if (!enemy.effects) enemy.effects = {};
 
         enemy.effects.shocked = {
-          duration: 30, // 0.5 second stun (30 frames at 60fps)
+          duration: 60, // 1 second stun (60 frames at 60fps)
           originalSpeed: enemy.speed,
+          damageOverTime: true, // Flag to apply damage over time
+          damageInterval: 15, // Apply damage every 15 frames
+          damageTimer: 0, // Timer for damage application
+          totalDamage: currentFence.damage * 0.5, // 50% of initial damage applied over time
         };
 
-        // Slow the enemy by 80% briefly
-        enemy.speed *= 0.2;
+        // Slow the enemy by 90% briefly - more significant slow
+        enemy.speed *= 0.1;
       }
     }
   }, 500); // Check every 500ms
@@ -424,7 +467,139 @@ function activateElectricFenceSkill(skill) {
       30, // Medium effect
       20 // Short duration
     );
+    
+    // Stop the looping electric sound with a fade out
+    if (electricLoopSound && electricLoopSound.setVolume) {
+      // Fade out over 500ms
+      let volume = 0.4;
+      const fadeInterval = setInterval(() => {
+        volume -= 0.05;
+        if (volume <= 0) {
+          volume = 0;
+          clearInterval(fadeInterval);
+          // Stop the sound after fade out
+          if (electricLoopSound.stop) {
+            electricLoopSound.stop();
+          }
+        }
+        electricLoopSound.setVolume(volume);
+      }, 50);
+    } else if (electricLoopSound && electricLoopSound.stop) {
+      // If no volume control, just stop
+      electricLoopSound.stop();
+    }
   }, skill.activeDuration * (1000 / 60)); // Convert frames to ms
+}
+
+/**
+ * Creates an electric shock visual effect on an enemy
+ * @param {Object} enemy - The enemy to apply the effect to
+ */
+function createElectricShockEffect(enemy) {
+  // Create multiple electric sparks around the enemy
+  for (let i = 0; i < 8; i++) {
+    effects.push({
+      x: enemy.x + random(-15, 15),
+      y: enemy.y + random(-15, 15),
+      z: enemy.z + random(0, 30),
+      type: "spark",
+      size: random(3, 8),
+      life: random(10, 20),
+      color: [30, 144, 255], // Electric blue
+      velocity: {
+        x: random(-2, 2),
+        y: random(-2, 2),
+        z: random(1, 3),
+      }
+    });
+  }
+  
+  // Create a brief flash effect
+  effects.push({
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z + 15,
+    type: "explosion",
+    size: 20,
+    life: 10,
+    color: [100, 149, 237, 150], // Cornflower blue with transparency
+  });
+  
+  // Add a shock wave effect
+  effects.push({
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z + 5,
+    type: "shockwave",
+    size: 30,
+    life: 15,
+    color: [30, 144, 255, 100], // Electric blue with high transparency
+  });
+  
+  // Add a continuous electric effect that follows the enemy
+  const electricEffect = {
+    x: enemy.x,
+    y: enemy.y,
+    z: enemy.z + 15,
+    type: "spark",
+    size: 15,
+    life: 60, // 1 second effect
+    color: [30, 144, 255], // Electric blue
+    followEnemy: enemy, // Reference to the enemy to follow
+    update: function() {
+      // Update position to follow the enemy
+      if (this.followEnemy && !this.followEnemy.dead) {
+        this.x = this.followEnemy.x;
+        this.y = this.followEnemy.y;
+        this.z = this.followEnemy.z + 15;
+        
+        // Process damage over time if the enemy has the shocked effect
+        if (this.followEnemy.effects && this.followEnemy.effects.shocked) {
+          const shocked = this.followEnemy.effects.shocked;
+          
+          // Apply damage over time
+          if (shocked.damageOverTime) {
+            shocked.damageTimer++;
+            
+            if (shocked.damageTimer >= shocked.damageInterval) {
+              shocked.damageTimer = 0;
+              
+              // Apply a portion of the damage
+              const dotDamage = shocked.totalDamage / (shocked.duration / shocked.damageInterval);
+              this.followEnemy.health -= dotDamage;
+              
+              // Create a small spark effect to visualize the damage
+              effects.push({
+                x: this.followEnemy.x + random(-10, 10),
+                y: this.followEnemy.y + random(-10, 10),
+                z: this.followEnemy.z + random(10, 20),
+                type: "spark",
+                size: random(2, 5),
+                life: random(5, 10),
+                color: [100, 149, 237], // Cornflower blue
+                velocity: {
+                  x: random(-1, 1),
+                  y: random(-1, 1),
+                  z: random(0.5, 1.5),
+                }
+              });
+            }
+          }
+          
+          // Process duration
+          shocked.duration--;
+          
+          // If the effect has expired, restore the enemy's speed
+          if (shocked.duration <= 0) {
+            this.followEnemy.speed = shocked.originalSpeed;
+            delete this.followEnemy.effects.shocked;
+          }
+        }
+      }
+    }
+  };
+  
+  effects.push(electricEffect);
 }
 
 /**
@@ -807,6 +982,9 @@ function preloadSounds() {
     );
     sounds.skills[SkillName.BAMBOO_TRAP] = safeLoadSound(
       "sounds/skills/trap.mp3"
+    );
+    sounds.skills[SkillName.ELECTRIC_FENCE] = safeLoadSound(
+      "sounds/skills/electric_shock.mp3"
     );
 
     // Environment sounds
@@ -5292,6 +5470,36 @@ function drawEffects() {
       }
 
       pop();
+    } else if (effect.type === "electricLines") {
+      // Electric fence effect - just the electric lines between poles
+      noFill();
+      
+      // Draw multiple electric lines between the poles
+      for (let i = 0; i < 5; i++) {
+        // Use a bright electric blue color with some transparency
+        stroke(30, 144, 255, 180 * (effect.life / effect.life));
+        strokeWeight(1 + random(2)); // Varying thickness for more dynamic look
+        
+        // Draw a zigzag line between the poles
+        beginShape();
+        const segments = 12; // Number of segments in the zigzag
+        
+        for (let j = 0; j <= segments; j++) {
+          // Calculate position along the line
+          const t = j / segments;
+          const x = map(t, 0, 1, -effect.width/2, effect.width/2);
+          
+          // Add randomness to y and z for zigzag effect
+          // Use frameCount to make it animate
+          const phase = frameCount * 0.1 + i; // Different phase for each line
+          const amplitude = 10 + i * 2; // Different amplitude for each line
+          const y = sin(t * PI * 4 + phase) * amplitude;
+          const z = cos(t * PI * 3 + phase) * amplitude;
+          
+          vertex(x, y, z);
+        }
+        endShape();
+      }
     } else if (effect.type === "bambooSpikes") {
       // Bamboo Spike Trap effect
       // Calculate animation progress (0 to 1)
@@ -8570,7 +8778,9 @@ function updateEnemies() {
                 );
 
                 // Decrement active barriers count
-                skills.skill9.activeBarriers--;
+                if (skills[SkillName.DEFENSE_WALL]) {
+                  skills[SkillName.DEFENSE_WALL].activeBarriers--;
+                }
               }
 
               // Remove the barrier
