@@ -4587,23 +4587,24 @@ function drawEnemies() {
     (skill) => skill.active
   ).length;
 
-  // Dynamically reduce detail when multiple skills are active
-  const skillDetailMultiplier = Math.max(0.3, 1 - activeSkillCount * 0.2); // Reduce by 20% per active skill, min 30%
+  // FIXED: Always render at least 80% of enemies regardless of performance level
+  // Ensure we don't reduce too much even with multiple skills active
+  const skillDetailMultiplier = Math.max(0.8, 1 - activeSkillCount * 0.05); // Reduce by only 5% per active skill, min 80%
 
-  // Adjust distance thresholds based on active skills
-  const farDistanceThreshold = activeSkillCount > 1 ? 600 * 600 : 800 * 800;
-  const mediumDistanceThreshold = activeSkillCount > 1 ? 300 * 300 : 400 * 400;
+  // FIXED: Increase distance thresholds to ensure more enemies are visible
+  // Even on high-performance machines with multiple skills active
+  const farDistanceThreshold = 1200 * 1200; // Increased significantly
+  const mediumDistanceThreshold = 600 * 600; // Increased significantly
 
-  // Limit the number of enemies to render when multiple skills are active
-  const maxEnemiesToRender =
-    activeSkillCount > 1
-      ? Math.floor(enemies.length * skillDetailMultiplier)
-      : enemies.length;
+  // FIXED: Ensure we render most enemies, especially on high-performance machines
+  const maxEnemiesToRender = currentPerformanceLevel === PerformanceLevel.HIGH
+    ? enemies.length // Always render all enemies on HIGH performance
+    : Math.max(Math.floor(enemies.length * skillDetailMultiplier), enemies.length * 0.8); // At least 80% on other levels
 
   // Sort enemies by distance for better culling
   const sortedEnemies = [...enemies];
 
-  if (squad.length > 0 && activeSkillCount > 1) {
+  if (squad.length > 0) {
     const mainMember = squad[0];
     sortedEnemies.sort((a, b) => {
       const dxA = a.x - mainMember.x;
@@ -4631,8 +4632,11 @@ function drawEnemies() {
       distToCamera = dx * dx + dy * dy; // Squared distance - no need for sqrt
     }
 
-    // Skip very distant enemies when multiple skills are active
-    if (activeSkillCount > 1 && distToCamera > farDistanceThreshold) {
+    // FIXED: Only skip extremely distant enemies on LOW performance level
+    // On HIGH performance, always render all enemies
+    if (currentPerformanceLevel !== PerformanceLevel.HIGH && 
+        currentPerformanceLevel !== PerformanceLevel.MEDIUM &&
+        distToCamera > farDistanceThreshold * 1.5) {
       continue;
     }
 
@@ -4640,7 +4644,7 @@ function drawEnemies() {
     translate(enemy.x, enemy.y, enemy.z + enemy.size / 2);
 
     // Apply distance-based LOD
-    if (distToCamera > farDistanceThreshold) {
+    if (distToCamera > farDistanceThreshold && currentPerformanceLevel !== PerformanceLevel.HIGH) {
       // Very distant enemies - ultra simplified rendering
       fill(...ENEMY_COLORS[enemy.type]);
       sphere(enemy.size / 2);
@@ -4661,7 +4665,7 @@ function drawEnemies() {
       cone(enemy.size / 2, enemy.size);
     } else {
       // Standard enemies - simplify for medium distances
-      if (distToCamera > mediumDistanceThreshold) {
+      if (distToCamera > mediumDistanceThreshold && currentPerformanceLevel !== PerformanceLevel.HIGH) {
         // Medium distance - use simpler shape
         sphere(enemy.size / 2);
       } else {
@@ -4670,12 +4674,15 @@ function drawEnemies() {
       }
     }
 
-    // Only draw health bars for enemies within reasonable distance and when not too many skills active
-    if (
-      distToCamera < 600 * 600 &&
-      (activeSkillCount < 2 || enemy.type.includes("boss"))
-    ) {
-      // Draw health bar above enemy - only for bosses when multiple skills active
+    // FIXED: Always draw health bars for enemies on HIGH performance level
+    // For other levels, use distance-based culling
+    const shouldDrawHealthBar = 
+      currentPerformanceLevel === PerformanceLevel.HIGH || 
+      distToCamera < 800 * 800 ||
+      enemy.type.includes("boss");
+      
+    if (shouldDrawHealthBar) {
+      // Draw health bar above enemy
       const maxHealth = getEnemyMaxHealth(enemy.type);
       const healthPercentage = enemy.health / maxHealth;
 
@@ -4683,8 +4690,8 @@ function drawEnemies() {
       const healthBarWidth = enemy.size * 1.2;
       const healthBarHeight = 5;
 
-      // Use simpler rendering for health bars when skills active
-      if (activeSkillCount > 0 && !enemy.type.includes("boss")) {
+      // FIXED: Use full health bars on HIGH performance level
+      if (currentPerformanceLevel !== PerformanceLevel.HIGH && activeSkillCount > 1 && !enemy.type.includes("boss")) {
         // Simplified health bar for non-boss enemies - just the health part, no background
         fill(255 * (1 - healthPercentage), 255 * healthPercentage, 0);
         box(healthBarWidth * healthPercentage, healthBarHeight, 3);
