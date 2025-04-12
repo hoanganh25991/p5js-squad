@@ -210,7 +210,7 @@ function activateRapidFireSkill(skill) {
 function activateFreezeWeaponSkill(skill) {
   updateSkillActivation(skill);
   currentWeapon = WEAPON_TYPES[3];
-  for (memeber in squad) {
+  for (let memeber in squad) {
     member.weapon = WEAPON_TYPES[3];
   }
 }
