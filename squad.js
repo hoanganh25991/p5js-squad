@@ -227,7 +227,7 @@ function activateBambooTrapSkill(skill) {
     trapPosition.x,
     trapPosition.y,
     trapPosition.z,
-    [0, 150, 0], // Green color for bamboo
+    [220, 200, 50], // Yellow color for bamboo
     30, // Medium effect
     30 // Short duration
   );
@@ -246,10 +246,10 @@ function activateBambooTrapSkill(skill) {
       z: trapPosition.z,
       type: "bambooSpikes",
       width: trapWidth,
-      height: 50, // Height of spikes
+      height: skill.height || 50, // Use skill height or default to 50
       life: 30, // Spikes visible for 0.5 seconds (30 frames at 60fps)
       damage: trapDamage,
-      color: [0, 150, 0], // Green color for bamboo
+      color: [220, 200, 50], // Yellow color for bamboo
     };
     
     // Add the spikes to effects
@@ -262,11 +262,12 @@ function activateBambooTrapSkill(skill) {
     for (let i = 0; i < enemies.length; i++) {
       const enemy = enemies[i];
       
-      // Check if enemy is within the trap area
+      // Check if enemy is within the trap area - use a wider detection area
       const distanceX = Math.abs(enemy.x - trapPosition.x);
       const distanceY = Math.abs(enemy.y - trapPosition.y);
       
-      if (distanceX < trapWidth / 2 && distanceY < trapWidth / 2) {
+      // Use a rectangular area that covers more of the bridge width
+      if (distanceX < trapWidth * 0.75 && distanceY < trapWidth * 0.6) {
         // Apply damage to the enemy
         enemy.health -= trapDamage;
         
@@ -275,7 +276,7 @@ function activateBambooTrapSkill(skill) {
           enemy.x,
           enemy.y,
           enemy.z,
-          [0, 150, 0], // Green color for bamboo hit
+          [220, 200, 50], // Yellow color for bamboo hit
           20 // Medium hit effect
         );
         
@@ -283,12 +284,28 @@ function activateBambooTrapSkill(skill) {
         if (!enemy.effects) enemy.effects = {};
         
         enemy.effects.spiked = {
-          duration: 60, // 1 second slowdown (60 frames at 60fps)
+          duration: 90, // 1.5 second slowdown (90 frames at 60fps)
           originalSpeed: enemy.speed,
         };
         
-        // Slow the enemy by 50%
-        enemy.speed *= 0.5;
+        // Slow the enemy by 60%
+        enemy.speed *= 0.4;
+        
+        // Add some additional visual effects
+        if (random() > 0.5) {
+          // Create bamboo splinters
+          for (let j = 0; j < 3; j++) {
+            effects.push({
+              x: enemy.x + random(-10, 10),
+              y: enemy.y + random(-10, 10),
+              z: enemy.z + random(5, 15),
+              type: "hit",
+              size: 5,
+              life: 20,
+              color: [220, 200, 50], // Yellow for bamboo splinters
+            });
+          }
+        }
       }
     }
     
@@ -1584,8 +1601,9 @@ let skills = {
     endTime: 0,
     trapCount: 5, // Number of trap cycles
     trapInterval: 60, // 1 second interval between traps (60 frames at 60fps)
-    damage: 50, // Base damage per spike
-    width: 100, // Width of the trap area
+    damage: 75, // Base damage per spike (increased from 50)
+    width: 200, // Width of the trap area (increased from 100)
+    height: 50, // Height of the bamboo spikes
   },
 };
 
@@ -5068,43 +5086,57 @@ function drawEffects() {
         spikeHeight = effect.height;
       }
       
+      // Organize bamboo spikes across the width of the bridge
+      // Use BRIDGE_WIDTH if available, otherwise use effect.width
+      const bridgeWidth = typeof BRIDGE_WIDTH !== 'undefined' ? BRIDGE_WIDTH : effect.width * 2;
+      
+      // Number of bamboo rows and columns
+      const numRows = 3; // 3 rows of bamboo
+      const numCols = 7; // 7 columns across the bridge
+      
+      // Spacing between bamboo spikes
+      const rowSpacing = effect.width / numRows;
+      const colSpacing = bridgeWidth * 0.8 / numCols;
+      
       // Draw the bamboo spikes
-      fill(0, 150, 0); // Green bamboo color
-      
-      // Create a grid of spikes
-      const gridSize = 5; // 5x5 grid of spikes
-      const spacing = effect.width / gridSize;
-      
-      for (let i = 0; i < gridSize; i++) {
-        for (let j = 0; j < gridSize; j++) {
-          // Calculate position with some randomness
-          const xPos = effect.x + (i - gridSize/2) * spacing + random(-5, 5);
-          const yPos = effect.y + (j - gridSize/2) * spacing + random(-5, 5);
+      for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+          // Calculate position with slight randomness for natural look
+          const xPos = effect.x + (col - numCols/2) * colSpacing + random(-5, 5);
+          const yPos = effect.y + (row - numRows/2) * rowSpacing + random(-5, 5);
           
           push();
           translate(xPos, yPos, effect.z);
           
-          // Rotate spikes slightly for natural look
-          rotateX(random(-0.2, 0.2));
-          rotateY(random(-0.2, 0.2));
+          // No rotation - keep cones static and not vibrating
           
-          // Draw the spike
-          cylinder(3, spikeHeight);
+          // Draw the bamboo as a yellow cone (as requested)
+          // This represents sharpened bamboo spikes
+          fill(220, 200, 50); // Yellow color for bamboo
           
-          // Add a tip to the spike
-          translate(0, 0, spikeHeight/2);
-          cone(3, 10);
+          // Draw the cone with the point facing up
+          // Make it taller during the fully extended phase
+          const coneHeight = spikeHeight * 1.2; // Make cone slightly taller than the height
+          cone(5, coneHeight);
+          
+          // Add a small green base to represent the bamboo stalk
+          push();
+          translate(0, 0, -spikeHeight/2 + 2);
+          fill(120, 140, 40); // Darker green for bamboo base
+          cylinder(5, 4);
+          pop();
+          
           pop();
         }
       }
       
-      // Add some dust/debris effect at the base
+      // Add some dust/debris effect at the base during emergence and retraction
       if (progress < 0.3 || progress > 0.7) {
         fill(139, 69, 19, 100); // Brown dust color
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 8; i++) {
           push();
           translate(
-            effect.x + random(-effect.width/2, effect.width/2),
+            effect.x + random(-bridgeWidth/2, bridgeWidth/2),
             effect.y + random(-effect.width/2, effect.width/2),
             effect.z + 2
           );
@@ -10897,6 +10929,30 @@ function applyEnemyEffects() {
           // Reset speed when effect expires
           enemy.speed = enemy.effects.frozen.originalSpeed;
           delete enemy.effects.frozen;
+        }
+      }
+      
+      // Process bamboo spike trap effect
+      if (enemy.effects.spiked) {
+        enemy.effects.spiked.duration--;
+        
+        // Create occasional bamboo splinter effects
+        if (frameCount % 15 === 0) {
+          effects.push({
+            x: enemy.x + random(-10, 10),
+            y: enemy.y + random(-10, 10),
+            z: enemy.z + random(0, 15),
+            type: "hit",
+            size: 5,
+            life: 15,
+            color: [0, 150, 0], // Green for bamboo
+          });
+        }
+        
+        if (enemy.effects.spiked.duration <= 0) {
+          // Reset speed when effect expires
+          enemy.speed = enemy.effects.spiked.originalSpeed;
+          delete enemy.effects.spiked;
         }
       }
     }
